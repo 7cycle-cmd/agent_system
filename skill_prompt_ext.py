@@ -1043,9 +1043,7 @@ def improve_prompt_to_draft(
         if not improved:
             return {
                 "ok": False,
-                task_records",
-    "get_skill_task_record",
-    "list_skill_"error": "empty_improved_prompt",
+                "error": "empty_improved_prompt",
                 "model": model_id,
                 "parent_version": parent_version,
             }

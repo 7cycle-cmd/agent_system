@@ -970,48 +970,210 @@ function generateTaskIdList(root, groupedText) {
   };
 }
 
-function taskIdCodingHtml() {
+function taskIdStatusClass(status) {
+  const s = String(status || '').toLowerCase();
+  if (s === 'pass' || s === 'done' || s === 'success') return 'text-emerald-700 bg-emerald-50';
+  if (s === 'fail' || s === 'error') return 'text-rose-700 bg-rose-50';
+  if (s === 'running') return 'text-amber-700 bg-amber-50';
+  return 'text-slate-600 bg-soft';
+}
+
+function taskIdListHtml() {
   const t = state.taskId || {};
-  const out = t.output || '(Generate to see {Root}.{seq} list)';
-  const seeded =
-    (t.seededLines && t.seededLines.length
-      ? t.seededLines.join('\n')
-      : '(Load seeded root-10 lines from helper)');
+  const rows = t.records || [];
+  const selected = t.selectedId;
+  const body =
+    rows.length === 0
+      ? '<tr><td colspan="6" class="px-3 py-8 text-center text-sm text-muted">No Task ID records yet. Click <b>Seed Task Center</b> or <b>Refresh list</b>.</td></tr>'
+      : rows
+          .map((r) => {
+            const id = String(r.task_id || '');
+            const active = selected && String(selected) === id;
+            return (
+              '<tr data-tid-row="' +
+              esc(id) +
+              '" class="cursor-pointer border-t border-line hover:bg-accent-soft/40 ' +
+              (active ? 'bg-accent-soft/70' : '') +
+              '">' +
+              '<td class="whitespace-nowrap px-3 py-2 text-xs text-muted mono">' +
+              esc(r.date || '') +
+              '</td>' +
+              '<td class="whitespace-nowrap px-3 py-2 text-sm font-semibold mono text-accent">' +
+              esc(id) +
+              '</td>' +
+              '<td class="px-3 py-2 text-sm">' +
+              esc(r.channel || '') +
+              '</td>' +
+              '<td class="px-3 py-2 text-sm">' +
+              esc(r.module || '') +
+              '</td>' +
+              '<td class="px-3 py-2 text-sm">' +
+              esc(r.task_name || r.title || '') +
+              (r.item_type
+                ? ' <span class="ml-1 rounded-full bg-soft px-1.5 py-0.5 text-[10px] mono text-muted">' +
+                  esc(r.item_type) +
+                  '</span>'
+                : '') +
+              '</td>' +
+              '<td class="px-3 py-2"><span class="rounded-full px-2 py-0.5 text-xs ' +
+              taskIdStatusClass(r.status) +
+              '">' +
+              esc(r.status || '') +
+              '</span></td></tr>'
+            );
+          })
+          .join('');
+
   return (
-    '<div class="mx-auto flex max-w-5xl flex-col gap-4">' +
     '<div class="rounded-2xl border border-line bg-panel p-4 shadow-panel">' +
-    '<div class="flex flex-wrap items-start justify-between gap-3">' +
-    '<div><h2 class="text-lg font-semibold">Task ID Coding</h2>' +
-    '<p class="mt-1 text-sm text-muted">Rule: <span class="mono font-semibold text-ink">{RootTaskId}.{GlobalSequenceNumber}</span> · one continuous counter across F/A/T/D/J/E · never renumber</p></div>' +
-    '<div class="flex flex-wrap gap-2 text-xs">' +
+    '<div class="mb-3 flex flex-wrap items-center justify-between gap-2">' +
+    '<div><h2 class="text-lg font-semibold">Task ID records</h2>' +
+    '<p class="text-sm text-muted">Root <span class="mono font-medium text-ink">' +
+    esc(t.root || '10') +
+    '</span> · click a row for detail · source <span class="mono">agent.db / dev_task</span></p></div>' +
+    '<div class="flex flex-wrap gap-2">' +
+    '<button id="tid-refresh" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">Refresh list</button>' +
+    '<button id="tid-seed-tc" type="button" class="rounded-xl bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-600">Seed Task Center</button>' +
+    '</div></div>' +
+    '<div id="tid-msg" class="mb-2 text-xs text-muted">' +
+    esc(t.msg || '') +
+    '</div>' +
+    '<div class="overflow-auto rounded-xl border border-line">' +
+    '<table class="min-w-full text-left">' +
+    '<thead class="bg-soft/80 text-[11px] uppercase tracking-wide text-muted">' +
+    '<tr>' +
+    '<th class="px-3 py-2 font-semibold">Date</th>' +
+    '<th class="px-3 py-2 font-semibold">Task ID</th>' +
+    '<th class="px-3 py-2 font-semibold">channel</th>' +
+    '<th class="px-3 py-2 font-semibold">module</th>' +
+    '<th class="px-3 py-2 font-semibold">task name</th>' +
+    '<th class="px-3 py-2 font-semibold">status</th>' +
+    '</tr></thead><tbody id="tid-table-body">' +
+    body +
+    '</tbody></table></div></div>'
+  );
+}
+
+function fieldCard(label, value) {
+  return (
+    '<div class="rounded-xl border border-line bg-soft/40 p-3">' +
+    '<div class="text-[11px] uppercase tracking-wide text-muted">' +
+    esc(label) +
+    '</div>' +
+    '<div class="mt-1 break-all text-sm font-medium text-ink mono">' +
+    esc(value) +
+    '</div></div>'
+  );
+}
+
+function taskIdDetailHtml() {
+  const t = state.taskId || {};
+  const r = t.selected;
+  if (!r) {
+    return (
+      '<div class="rounded-2xl border border-line bg-panel p-8 shadow-panel text-center">' +
+      '<h2 class="text-lg font-semibold">Task Detail</h2>' +
+      '<p class="mt-2 text-sm text-muted">Click a row in <b>Task List</b> to inspect one Task ID.</p>' +
+      '<button id="tid-goto-list" type="button" class="mt-4 rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">Back to Task List</button>' +
+      '</div>'
+    );
+  }
+  const dims = t.dims || [];
+  const dimRows =
+    dims.length === 0
+      ? '<tr><td colspan="4" class="px-3 py-4 text-sm text-muted">No task_ssot dims</td></tr>'
+      : dims
+          .map(
+            (d) =>
+              '<tr class="border-t border-line">' +
+              '<td class="px-3 py-1.5 mono text-xs">' +
+              esc(d.dim_key) +
+              '</td>' +
+              '<td class="px-3 py-1.5 text-sm break-all">' +
+              esc(d.value_text) +
+              '</td>' +
+              '<td class="px-3 py-1.5 text-xs text-muted">' +
+              esc(d.value_type || '') +
+              '</td>' +
+              '<td class="px-3 py-1.5 text-xs text-muted">' +
+              esc(d.source || '') +
+              '</td></tr>'
+          )
+          .join('');
+
+  return (
+    '<div class="mx-auto flex max-w-4xl flex-col gap-4">' +
+    '<div class="rounded-2xl border border-line bg-panel p-4 shadow-panel">' +
+    '<div class="flex flex-wrap items-start justify-between gap-2">' +
+    '<div><div class="text-xs uppercase tracking-wide text-muted">Task ID</div>' +
+    '<h2 class="text-xl font-semibold mono text-accent">' +
+    esc(r.task_id) +
+    '</h2>' +
+    '<p class="mt-1 text-sm text-ink">' +
+    esc(r.title || r.task_name || '') +
+    '</p></div>' +
+    '<div class="flex flex-wrap gap-2">' +
+    '<button id="tid-goto-list" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">Back to list</button>' +
+    '<button id="tid-reload-one" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">Reload</button>' +
+    '</div></div>' +
+    '<div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 text-sm">' +
+    fieldCard('Date', r.date || r.updated_at || '') +
+    fieldCard('Task ID', r.task_id || '') +
+    fieldCard('Status', r.status || '') +
+    fieldCard('channel', r.channel || r.channel_code || '') +
+    fieldCard('module', r.module || r.module_code || '') +
+    fieldCard('task name', r.task_name || '') +
+    fieldCard('item type', r.item_type || '') +
+    fieldCard('db id', r.db_id || '') +
+    fieldCard('parent', r.parent_task_id || '—') +
+    '</div></div>' +
+    '<div class="rounded-2xl border border-line bg-panel p-4 shadow-panel">' +
+    '<h3 class="text-sm font-semibold">Payload</h3>' +
+    '<pre class="mono mt-2 max-h-56 overflow-auto rounded-xl border border-line bg-soft/60 p-3 text-xs whitespace-pre-wrap">' +
+    esc(JSON.stringify(r.payload || {}, null, 2)) +
+    '</pre></div>' +
+    '<div class="rounded-2xl border border-line bg-panel p-4 shadow-panel">' +
+    '<h3 class="text-sm font-semibold">task_ssot dimensions</h3>' +
+    '<div class="mt-2 overflow-auto rounded-xl border border-line">' +
+    '<table class="min-w-full text-left"><thead class="bg-soft/80 text-[11px] uppercase text-muted"><tr>' +
+    '<th class="px-3 py-2">dim_key</th><th class="px-3 py-2">value</th><th class="px-3 py-2">type</th><th class="px-3 py-2">source</th>' +
+    '</tr></thead><tbody>' +
+    dimRows +
+    '</tbody></table></div></div></div>'
+  );
+}
+
+function taskIdRuleHtml() {
+  return (
+    '<div class="mx-auto max-w-3xl rounded-2xl border border-line bg-panel p-4 shadow-panel">' +
+    '<h2 class="text-lg font-semibold">Task ID Coding Rule</h2>' +
+    '<p class="mt-1 text-sm text-muted">Format: <span class="mono font-semibold text-ink">{RootTaskId}.{GlobalSequenceNumber}</span></p>' +
+    '<div class="mt-3 flex flex-wrap gap-2 text-xs">' +
     '<span class="rounded-full bg-accent-soft px-2.5 py-1 text-accent mono">F Function</span>' +
     '<span class="rounded-full bg-soft px-2.5 py-1 mono">A API</span>' +
     '<span class="rounded-full bg-soft px-2.5 py-1 mono">T Table</span>' +
     '<span class="rounded-full bg-soft px-2.5 py-1 mono">D Field</span>' +
     '<span class="rounded-full bg-soft px-2.5 py-1 mono">J Job</span>' +
-    '<span class="rounded-full bg-soft px-2.5 py-1 mono">E Event</span>' +
-    '</div></div>' +
-    '<div class="mt-4 grid gap-3 lg:grid-cols-2">' +
-    '<div class="rounded-xl border border-line bg-soft/50 p-3 text-sm leading-relaxed text-ink">' +
-    '<div class="text-xs font-semibold uppercase tracking-wide text-muted">Law</div>' +
-    '<ol class="mt-2 list-decimal space-y-1 pl-4 text-sm text-muted">' +
+    '<span class="rounded-full bg-soft px-2.5 py-1 mono">E Event</span></div>' +
+    '<ol class="mt-4 list-decimal space-y-1 pl-5 text-sm text-muted">' +
     '<li>Do <b>not</b> restart sequence when type changes.</li>' +
     '<li>Each line: <span class="mono">{Root}.{seq}</span> + item name.</li>' +
     '<li>Type is metadata only; ID carries root + global seq.</li>' +
-    '<li>Assigned IDs are stable — deletes leave gaps, no renumber.</li>' +
-    '</ol>' +
-    '<pre class="mono mt-3 max-h-40 overflow-auto rounded-lg border border-line bg-canvas p-2 text-[11px] text-muted whitespace-pre-wrap">' +
+    '<li>Assigned IDs are stable — deletes leave gaps, no renumber.</li></ol>' +
+    '<pre class="mono mt-4 max-h-80 overflow-auto rounded-xl border border-line bg-canvas p-3 text-xs whitespace-pre-wrap">' +
     esc(TASK_ID_RULE_TEXT) +
-    '</pre></div>' +
-    '<div class="rounded-xl border border-line bg-soft/50 p-3">' +
-    '<div class="text-xs font-semibold uppercase tracking-wide text-muted">Seeded Skill root 10 (from helper)</div>' +
-    '<pre id="tid-seeded" class="mono mt-2 max-h-48 overflow-auto rounded-lg border border-line bg-canvas p-2 text-xs whitespace-pre-wrap">' +
-    esc(seeded) +
-    '</pre>' +
-    '<div class="mt-2 flex flex-wrap gap-2">' +
-    '<button id="tid-load-seeded" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">Load seeded 10.x</button>' +
-    '<button id="tid-seed-tc" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">Seed Task Center</button>' +
-    '</div></div></div>' +
+    '</pre></div>'
+  );
+}
+
+function taskIdGenerateHtml() {
+  const t = state.taskId || {};
+  const out = t.output || '(Generate to see {Root}.{seq} list)';
+  return (
+    '<div class="mx-auto flex max-w-5xl flex-col gap-4">' +
+    '<div class="rounded-2xl border border-line bg-panel p-4 shadow-panel">' +
+    '<h2 class="text-lg font-semibold">Generate Task IDs</h2>' +
+    '<p class="mt-1 text-sm text-muted">Paste grouped names → continuous <span class="mono">{Root}.{seq}</span> list</p>' +
     '<div class="mt-4 grid gap-4 lg:grid-cols-2">' +
     '<div>' +
     '<div class="mb-2 flex flex-wrap items-end gap-2">' +
@@ -1021,16 +1183,13 @@ function taskIdCodingHtml() {
     '" class="ml-1 w-24 rounded-xl border border-line bg-canvas px-2 py-1.5 text-sm mono" /></label>' +
     '<button id="tid-generate" type="button" class="rounded-xl bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-600">Generate list</button>' +
     '<button id="tid-copy" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">Copy output</button>' +
-    '<button id="tid-to-chat" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">To chat box</button>' +
     '</div>' +
     '<label class="block text-xs font-medium text-muted">Grouped input (by type)' +
-    '<textarea id="tid-input" rows="16" class="mono mt-1 w-full resize-y rounded-xl border border-line bg-canvas px-3 py-2 text-sm leading-relaxed outline-none focus:ring-2 focus:ring-accent" placeholder="F:\\nfn_a\\nfn_b\\n\\nA:\\napi_x">' +
+    '<textarea id="tid-input" rows="16" class="mono mt-1 w-full resize-y rounded-xl border border-line bg-canvas px-3 py-2 text-sm leading-relaxed outline-none focus:ring-2 focus:ring-accent">' +
     esc(t.input || '') +
     '</textarea></label>' +
-    '<p class="mt-1 text-[11px] text-muted">Headers: <span class="mono">F:</span> <span class="mono">A:</span> <span class="mono">T:</span> <span class="mono">D:</span> <span class="mono">J:</span> <span class="mono">E:</span> then one name per line.</p>' +
-    '</div>' +
-    '<div>' +
-    '<div class="mb-2 flex items-center justify-between"><label class="text-xs font-medium text-muted">Numbered output</label>' +
+    '<p class="mt-1 text-[11px] text-muted">Headers: F: A: T: D: J: E: then one name per line.</p></div>' +
+    '<div><div class="mb-2 flex items-center justify-between"><label class="text-xs font-medium text-muted">Numbered output</label>' +
     '<span id="tid-msg" class="text-xs text-muted">' +
     esc(t.msg || '') +
     '</span></div>' +
@@ -1040,42 +1199,50 @@ function taskIdCodingHtml() {
   );
 }
 
-function setTaskIdMsg(msg, isErr) {
+function taskIdCodingHtml() {
+  const tab = state.taskId?.tab || 'list';
+  if (tab === 'detail') return taskIdDetailHtml();
+  if (tab === 'rule') return taskIdRuleHtml();
+  if (tab === 'generate') return taskIdGenerateHtml();
+  return taskIdListHtml();
+}
+
+function setTaskIdMsg(msg, isErr, silent) {
   state.taskId.msg = msg || '';
   const el = $('#tid-msg');
   if (el) {
     el.textContent = msg || '';
     el.className = 'text-xs ' + (isErr ? 'text-rose-700' : 'text-muted');
   }
-  if (msg) toast(msg);
+  if (msg && !silent) toast(msg);
 }
 
-async function loadTaskIdSeeded(opts = {}) {
+async function loadTaskIdRecords(opts = {}) {
   const quiet = !!opts.quiet;
-  if (!quiet) setTaskIdMsg('Loading seeded lines…');
+  if (!quiet) setTaskIdMsg('Loading Task ID records…', false, true);
   try {
-    const res = await fetch('/api/skills/task-lines');
+    const root = state.taskId.root || '10';
+    const res = await fetch('/api/skills/task-records?root=' + encodeURIComponent(root));
     const data = await res.json();
-    if (!res.ok || !data.ok) throw new Error(data.error || 'task-lines failed');
-    const lines = data.lines || [];
-    state.taskId.seededLines = lines;
-    state.taskId.root = String(data.root || state.taskId.root || '10');
-    state.taskId.output = lines.join('\n');
-    if ($('#tid-root')) $('#tid-root').value = state.taskId.root;
-    if ($('#tid-seeded')) {
-      $('#tid-seeded').textContent =
-        lines.length
-          ? lines.join('\n')
-          : '(no seeded 10.x rows — click Seed Task Center)';
+    if (!res.ok || !data.ok) throw new Error(data.error || 'task-records failed');
+    state.taskId.records = data.records || [];
+    state.taskId.root = String(data.root || root);
+    state.taskId.seededLines = (data.records || [])
+      .filter((r) => String(r.task_id) !== String(data.root))
+      .map((r) => String(r.task_id) + ' ' + (r.task_name || ''));
+    state.taskId.output = state.taskId.seededLines.join('\n');
+    setTaskIdMsg(
+      (data.count || 0) + ' records · root ' + state.taskId.root + ' · agent.db dev_task',
+      false,
+      true
+    );
+    if (state.nav === 'task-id-coding' && (state.taskId.tab || 'list') === 'list') {
+      const body = $('#workspace-body');
+      if (body) {
+        body.innerHTML = taskIdListHtml();
+        bindTaskIdCodingPanel(false);
+      }
     }
-    if ($('#tid-output')) $('#tid-output').value = state.taskId.output;
-    const msg =
-      'DB records: ' +
-      lines.length +
-      ' lines · root ' +
-      state.taskId.root +
-      ' · agent.db dev_task task_label 10 / 10.1–10.20';
-    setTaskIdMsg(msg);
     return data;
   } catch (e) {
     setTaskIdMsg(String(e.message || e), true);
@@ -1083,12 +1250,58 @@ async function loadTaskIdSeeded(opts = {}) {
   }
 }
 
-function bindTaskIdCodingPanel() {
+async function loadTaskIdDetail(taskId) {
+  if (!taskId) return;
+  setTaskIdMsg('Loading ' + taskId + '…', false, true);
+  try {
+    const res = await fetch(
+      '/api/skills/task-records/' +
+        encodeURIComponent(taskId) +
+        '?root=' +
+        encodeURIComponent(state.taskId.root || '10')
+    );
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || 'task detail failed');
+    state.taskId.selectedId = String(data.record?.task_id || taskId);
+    state.taskId.selected = data.record || null;
+    state.taskId.dims = data.dims || [];
+    state.taskId.tab = 'detail';
+    mount(false);
+    toast('Opened ' + state.taskId.selectedId);
+  } catch (e) {
+    setTaskIdMsg(String(e.message || e), true);
+  }
+}
+
+function bindTaskIdCodingPanel(autoLoad = true) {
   const syncFields = () => {
     if ($('#tid-root')) state.taskId.root = $('#tid-root').value || '10';
     if ($('#tid-input')) state.taskId.input = $('#tid-input').value || '';
     if ($('#tid-output')) state.taskId.output = $('#tid-output').value || '';
   };
+
+  document.querySelectorAll('[data-tid-tab]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      state.taskId.tab = btn.getAttribute('data-tid-tab') || 'list';
+      mount(false);
+    });
+  });
+
+  document.querySelectorAll('[data-tid-row]').forEach((tr) => {
+    tr.addEventListener('click', () => {
+      const id = tr.getAttribute('data-tid-row');
+      loadTaskIdDetail(id);
+    });
+  });
+
+  $('#tid-refresh')?.addEventListener('click', () => loadTaskIdRecords());
+  $('#tid-goto-list')?.addEventListener('click', () => {
+    state.taskId.tab = 'list';
+    mount(false);
+  });
+  $('#tid-reload-one')?.addEventListener('click', () => {
+    if (state.taskId.selectedId) loadTaskIdDetail(state.taskId.selectedId);
+  });
 
   $('#tid-generate')?.addEventListener('click', () => {
     syncFields();
@@ -1127,168 +1340,27 @@ function bindTaskIdCodingPanel() {
     }
   });
 
-  $('#tid-to-chat')?.addEventListener('click', () => {
-    const text = $('#tid-output')?.value || state.taskId.output || '';
-    if (!text.trim()) return setTaskIdMsg('Generate first', true);
-    state.draft.prompt_content = text;
-    state.nav = 'task-center';
-    state.tab = 'chat';
-    mount(false);
-    toast('Task ID list → chat box');
-  });
-
-  $('#tid-load-seeded')?.addEventListener('click', () => {
-    loadTaskIdSeeded();
-  });
-
   $('#tid-seed-tc')?.addEventListener('click', async () => {
     setTaskIdMsg('Seeding Task Center root 10…');
     try {
       const res = await fetch('/api/skills/seed-tasks', { method: 'POST' });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || 'seed-tasks failed');
-      const lines = data.lines || [];
-      state.taskId.seededLines = lines;
-      state.taskId.output = lines.join('\n');
-      if ($('#tid-seeded')) {
-        $('#tid-seeded').textContent =
-          lines.join('\n') || JSON.stringify(data, null, 2);
-      }
-      if ($('#tid-output')) $('#tid-output').value = state.taskId.output;
       setTaskIdMsg(
-        'Task Center seeded · created ' +
+        'Seeded · created ' +
           (data.created_tasks || 0) +
           ' · updated ' +
-          (data.updated_tasks || 0) +
-          ' · lines ' +
-          lines.length
+          (data.updated_tasks || 0)
       );
+      await loadTaskIdRecords({ quiet: true });
     } catch (e) {
       setTaskIdMsg(String(e.message || e), true);
     }
   });
 
-  // Auto-show DB records when opening this panel
-  loadTaskIdSeeded({ quiet: true });
-}
-
-function levelBadge(level, kind) {
-  const lv = String(level || kind || 'info').toLowerCase();
-  if (lv === 'alert' || lv.includes('down') || lv.includes('fail')) {
-    return '<span class="inline-flex items-center rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700">ALERT</span>';
+  if (autoLoad && (state.taskId.tab || 'list') === 'list') {
+    loadTaskIdRecords({ quiet: true });
   }
-  if (lv === 'warn' || lv.includes('restart')) {
-    return '<span class="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">WARN</span>';
-  }
-  if (lv === 'ok' || lv.includes('ready') || lv.includes('recover') || lv.includes('up')) {
-    return '<span class="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">OK</span>';
-  }
-  return '<span class="inline-flex items-center rounded-full bg-soft px-2 py-0.5 text-[11px] font-medium text-muted">INFO</span>';
-}
-
-function watchdogHtml() {
-  const w = state.watchdog || {};
-  const events = w.events || [];
-  const selected =
-    events.find((e) => e.id === w.selectedId) ||
-    events[0] ||
-    null;
-  if (selected && !w.selectedId) state.watchdog.selectedId = selected.id;
-  const shot = (selected && selected.screenshot) || {};
-  const detail = (selected && selected.detail) || {};
-  const logTail = (w.logTail || []).slice().reverse().join('\n') || '(no log yet)';
-
-  const eventRows = events.length
-    ? events
-        .map((ev) => {
-          const active = selected && ev.id === selected.id;
-          const hasShot = !!(ev.screenshot && ev.screenshot.ok && ev.screenshot.url);
-          return (
-            '<button type="button" data-wd-id="' +
-            esc(ev.id) +
-            '" class="w-full border-b border-line px-3 py-2.5 text-left transition hover:bg-soft/80 ' +
-            (active ? 'bg-accent-soft/70' : '') +
-            '"><div class="flex items-center justify-between gap-2">' +
-            levelBadge(ev.level, ev.kind) +
-            '<span class="text-[11px] mono text-muted">' +
-            esc(ev.local_time || ev.ts || '') +
-            '</span></div><div class="mt-1 text-sm font-medium text-ink">' +
-            esc(ev.kind || 'event') +
-            (hasShot ? ' · 📷' : '') +
-            '</div><div class="mt-0.5 line-clamp-2 text-xs text-muted">' +
-            esc(ev.message || '') +
-            '</div></button>'
-          );
-        })
-        .join('')
-    : '<div class="p-4 text-sm text-muted">No watchdog events yet. Alerts appear when helper goes down / restarts.</div>';
-
-  const detailBlock = selected
-    ? '<div class="space-y-3">' +
-      '<div class="flex flex-wrap items-center gap-2">' +
-      levelBadge(selected.level, selected.kind) +
-      '<span class="text-sm font-semibold text-ink">' +
-      esc(selected.kind || '') +
-      '</span><span class="text-xs mono text-muted">' +
-      esc(selected.local_time || selected.ts || '') +
-      '</span></div>' +
-      '<p class="text-sm text-ink">' +
-      esc(selected.message || '') +
-      '</p>' +
-      '<pre class="max-h-40 overflow-auto rounded-xl border border-line bg-soft/70 p-3 text-xs mono text-muted">' +
-      esc(JSON.stringify(detail, null, 2)) +
-      '</pre>' +
-      (shot.ok && shot.url
-        ? '<div><div class="mb-1 text-xs font-medium text-muted">Desktop screenshot at alert</div>' +
-          '<a href="' +
-          esc(shot.url) +
-          '" target="_blank" rel="noopener" class="block overflow-hidden rounded-xl border border-line bg-soft">' +
-          '<img src="' +
-          esc(shot.url) +
-          '" alt="watchdog screenshot" class="max-h-[420px] w-full object-contain bg-black/5" />' +
-          '</a><div class="mt-1 text-[11px] text-muted mono">' +
-          esc(shot.path || shot.url) +
-          (shot.bytes ? ' · ' + esc(shot.bytes) + ' bytes' : '') +
-          '</div></div>'
-        : shot && shot.error
-          ? '<div class="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Screenshot failed: ' +
-            esc(shot.error) +
-            '</div>'
-          : '<div class="rounded-xl border border-line bg-soft/60 p-3 text-sm text-muted">No screenshot for this event.</div>') +
-      '</div>'
-    : '<div class="text-sm text-muted">Select an event to see why the watchdog alerted and the desktop screenshot.</div>';
-
-  return (
-    '<div class="mx-auto flex max-w-6xl flex-col gap-4">' +
-    '<div class="flex flex-wrap items-end justify-between gap-3">' +
-    '<div><h2 class="text-lg font-semibold">Watchdog</h2>' +
-    '<p class="text-sm text-muted">Keep-alive for helper :18765 · why it alerted · desktop screenshot evidence</p></div>' +
-    '<div class="flex flex-wrap items-center gap-2">' +
-    pill(!!w.running, 'Watchdog ON', 'Watchdog OFF') +
-    pill(!!state.status.helperOk, 'Helper ON', 'Helper OFF') +
-    (w.pid
-      ? '<span class="rounded-full bg-soft px-2.5 py-1 text-xs mono text-muted">pid ' + esc(w.pid) + '</span>'
-      : '') +
-    '<button id="btn-wd-refresh" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">Refresh</button>' +
-    '</div></div>' +
-    (w.msg ? '<div class="text-sm text-muted">' + esc(w.msg) + '</div>' : '') +
-    '<div class="grid gap-4 lg:grid-cols-5">' +
-    '<div class="lg:col-span-2 overflow-hidden rounded-2xl border border-line bg-panel shadow-panel">' +
-    '<div class="border-b border-line px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted">Events</div>' +
-    '<div id="wd-event-list" class="max-h-[560px] overflow-auto">' +
-    eventRows +
-    '</div></div>' +
-    '<div class="lg:col-span-3 rounded-2xl border border-line bg-panel p-4 shadow-panel">' +
-    '<div class="mb-3 text-xs font-semibold uppercase tracking-wide text-muted">Selected alert</div>' +
-    detailBlock +
-    '</div></div>' +
-    '<div class="rounded-2xl border border-line bg-panel p-4 shadow-panel">' +
-    '<div class="mb-2 flex items-center justify-between"><div class="text-xs font-semibold uppercase tracking-wide text-muted">helper_watchdog.log (tail)</div>' +
-    '<span class="text-[11px] text-muted">auto-refresh with page</span></div>' +
-    '<pre class="max-h-56 overflow-auto rounded-xl border border-line bg-soft/70 p-3 text-xs mono leading-relaxed text-ink">' +
-    esc(logTail) +
-    '</pre></div></div>'
-  );
 }
 
 function workspaceHtml() {
@@ -1366,16 +1438,27 @@ function shell() {
     ).join('') +
     '<div class="mt-auto rounded-xl border border-line bg-soft/60 p-3 text-xs text-muted">Light mode · server catalog + local drafts</div></nav></aside>' +
     '<main class="flex min-w-0 flex-1 flex-col bg-canvas"><div class="border-b border-line bg-panel px-3 py-2 sm:px-4"><div class="flex flex-wrap gap-1">' +
-    TABS.map(
-      (t) =>
-        '<button type="button" data-tab="' +
-        t.id +
-        '" class="tab-btn rounded-lg px-3 py-1.5 text-sm transition ' +
-        (state.tab === t.id ? 'bg-accent text-white' : 'text-muted hover:bg-soft') +
-        '">' +
-        t.label +
-        '</button>'
-    ).join('') +
+    (state.nav === 'task-id-coding'
+      ? TASK_ID_TABS.map(
+          (t) =>
+            '<button type="button" data-tid-tab="' +
+            t.id +
+            '" class="tab-btn rounded-lg px-3 py-1.5 text-sm transition ' +
+            ((state.taskId?.tab || 'list') === t.id ? 'bg-accent text-white' : 'text-muted hover:bg-soft') +
+            '">' +
+            t.label +
+            '</button>'
+        ).join('')
+      : TABS.map(
+          (t) =>
+            '<button type="button" data-tab="' +
+            t.id +
+            '" class="tab-btn rounded-lg px-3 py-1.5 text-sm transition ' +
+            (state.tab === t.id ? 'bg-accent text-white' : 'text-muted hover:bg-soft') +
+            '">' +
+            t.label +
+            '</button>'
+        ).join('')) +
     '</div></div><div id="workspace-body" class="fade-swap flex-1 overflow-auto p-3 sm:p-4">' +
     workspaceHtml() +
     '</div></main>' +

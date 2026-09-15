@@ -60,6 +60,10 @@ helper_watchdog.pid
 # Temporary / generated
 _chk_app.js
 _repair_wd_ui.py
+_fix_*.py
+_patch_*.py
 test_ss.png
 mouse_spot_screenshot.png
 server.log
+helper_watchdog_events.json
+helper_watchdog_snaps/

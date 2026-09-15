@@ -3405,7 +3405,13 @@ def api_skills_cases_list(skill_key: str) -> Any:
         })
     except Exception as e:
         return jsonify({"ok": False, "error": f"{type(e).__name__}: {e}"}), 500
-wd = watchdog_status_payload()
+
+
+@app.route("/api/system-status")
+def api_system_status() -> Any:
+    identity = get_computer_identity()
+    ollama = check_ollama_status()
+    wd = watchdog_status_payload()
     return jsonify({
         "ok": True,
         "ready": bool(ollama.get("ok")),
@@ -3444,7 +3450,14 @@ def api_watchdog_snapshot(name: str) -> Any:
     path = WATCHDOG_SNAPS_DIR / safe
     if not path.is_file():
         return jsonify({"ok": False, "error": "not found"}), 404
-    return send_file(path, mimetype="image/png"ry:
+    return send_file(path, mimetype="image/png")
+
+
+@app.route("/api/skills/<skill_key>/seed-gold", methods=["POST"])
+def api_skills_seed_gold(skill_key: str) -> Any:
+    data = request.get_json(silent=True) or {}
+    include_icons = data.get("include_icons", True)
+    try:
         if not AGENT_DB_PATH.is_file():
             return jsonify({"ok": False, "error": "agent.db missing"}), 500
         out = seed_gold_cases(AGENT_DB_PATH, include_icons=bool(include_icons))
@@ -3525,17 +3538,6 @@ def api_skills_seed() -> Any:
         return jsonify({"ok": False, "error": f"{type(e).__name__}: {e}"}), 500
 
 
-@app.route("/api/system-status")
-def api_system_status() -> Any:
-    identity = get_computer_identity()
-    ollama = check_ollama_status()
-    return jsonify({
-        "ok": True,
-        "ready": bool(ollama.get("ok")),
-        "identity": identity,
-        "ollama": ollama,
-        "helper": helper_status_payload(),
-    })
 
 
 @app.route("/api/state")
