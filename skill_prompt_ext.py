@@ -63,37 +63,146 @@ SOURCE_SEED = "skill_prompt_ext"
 TARGETS_DIR = BASE_DIR / "mouse_spot_targets"
 CASES_DIR = BASE_DIR / "skills" / DEFAULT_SKILL / "cases"
 
+
+# Capability catalog for module mouse_spot_helper / skill_prompt_ssot.
+# Ontology: Module contains Capability; Capability has many Worker; Worker implements Capability.
+# Capability = goal/spec (inputs/outputs/rules). Worker = executor (code/API/GUI fallback).
+SKILL_CAPABILITIES: list[dict[str, Any]] = [
+    {
+        "cap_id": "CP-S-00",
+        "cap_name": "Skill Prompt SSOT root",
+        "description": "Root capability tree for skill prompt SSOT under mouse_spot_helper.",
+        "feature_tag": "skill.root",
+    },
+    {
+        "cap_id": "CP-S-01",
+        "cap_name": "Load skill prompt",
+        "description": "Load active/draft skill prompt SSOT by skill_key + version.",
+        "feature_tag": "skill.load",
+    },
+    {
+        "cap_id": "CP-S-02",
+        "cap_name": "Render skill prompt",
+        "description": "Render prompt placeholders for vision/text analyze calls.",
+        "feature_tag": "skill.render",
+    },
+    {
+        "cap_id": "CP-S-03",
+        "cap_name": "Mouse spot visual verify",
+        "description": "Decide YES/NO whether red crosshair is on the intended target icon.",
+        "feature_tag": "vision.verify",
+    },
+    {
+        "cap_id": "CP-S-04",
+        "cap_name": "Skill prompt regression",
+        "description": "Run gold-case / N-run harness and gate promote decisions.",
+        "feature_tag": "skill.test",
+    },
+    {
+        "cap_id": "CP-S-05",
+        "cap_name": "Promote skill prompt",
+        "description": "Activate a skill prompt version only after pass_gate.",
+        "feature_tag": "skill.promote",
+    },
+    {
+        "cap_id": "CP-S-06",
+        "cap_name": "Skills HTTP API",
+        "description": "HTTP surface to list/get/test/activate skills and bind analyze.",
+        "feature_tag": "skill.api",
+    },
+    {
+        "cap_id": "CP-S-07",
+        "cap_name": "Skill prompt data model",
+        "description": "Tables/fields that store skill prompt SSOT, cases, runs, inference.",
+        "feature_tag": "skill.schema",
+    },
+    {
+        "cap_id": "CP-S-08",
+        "cap_name": "Skill prompt lifecycle events",
+        "description": "Domain events emitted when prompt is promoted or verify completes.",
+        "feature_tag": "skill.events",
+    },
+]
+
+# Example workers under capabilities (executor layer; not Task ID rows).
+SKILL_CAP_WORKERS: list[dict[str, Any]] = [
+    {
+        "worker_id": "W-S-03-A",
+        "cap_id": "CP-S-03",
+        "worker_type": "vision_llm",
+        "description": "Primary: qwen2.5vl via Ollama /api/analyze",
+        "fallback_order": 1,
+        "status": "active",
+        "physical_file_path": "./mouse_spot_helper.py",
+        "uses": "POST /api/analyze, skill_prompt_ssot",
+    },
+    {
+        "worker_id": "W-S-03-B",
+        "cap_id": "CP-S-03",
+        "worker_type": "openclaw_gui",
+        "description": "Fallback: OpenClaw GUI/vision path if primary LLM path fails",
+        "fallback_order": 2,
+        "status": "standby",
+        "physical_file_path": "./openclaw_bridge.py",
+        "uses": "OpenClaw companion / screenshot",
+    },
+    {
+        "worker_id": "W-S-04-A",
+        "cap_id": "CP-S-04",
+        "worker_type": "code_function",
+        "description": "Primary: skill_prompt_ext.test_gold_suite / test_prompt_runs",
+        "fallback_order": 1,
+        "status": "active",
+        "physical_file_path": "./skill_prompt_ext.py",
+        "uses": "skill_prompt_case, skill_prompt_test_run",
+    },
+    {
+        "worker_id": "W-S-06-A",
+        "cap_id": "CP-S-06",
+        "worker_type": "http_api",
+        "description": "Primary: Flask routes under /api/skills*",
+        "fallback_order": 1,
+        "status": "active",
+        "physical_file_path": "./mouse_spot_helper.py",
+        "uses": "/api/skills, /api/analyze",
+    },
+]
+
+_CAP_BY_ID = {c["cap_id"]: c for c in SKILL_CAPABILITIES}
+
 # Continuous global sequence 10.1–10.20 (F/A/T/D/J/E share one counter).
 # item_type is metadata only; ID = {root}.{seq}
+# capability = goal/spec this task belongs to (Module → Capability → Worker).
 SKILL_TC_ITEMS: list[dict[str, Any]] = [
     # Functions
-    {"seq": 1, "item_type": "F", "name": "skill_prompt_load", "title": "Load skill prompt SSOT"},
-    {"seq": 2, "item_type": "F", "name": "skill_prompt_render", "title": "Render skill prompt placeholders"},
-    {"seq": 3, "item_type": "F", "name": "mouse_spot_verify", "title": "Mouse spot visual verify"},
-    {"seq": 4, "item_type": "F", "name": "skill_prompt_test_100", "title": "Skill prompt 100-run harness"},
-    {"seq": 5, "item_type": "F", "name": "skill_prompt_promote", "title": "Promote skill prompt version"},
+    {"seq": 1, "item_type": "F", "name": "skill_prompt_load", "title": "Load skill prompt SSOT", "cap_id": "CP-S-01"},
+    {"seq": 2, "item_type": "F", "name": "skill_prompt_render", "title": "Render skill prompt placeholders", "cap_id": "CP-S-02"},
+    {"seq": 3, "item_type": "F", "name": "mouse_spot_verify", "title": "Mouse spot visual verify", "cap_id": "CP-S-03"},
+    {"seq": 4, "item_type": "F", "name": "skill_prompt_test_100", "title": "Skill prompt 100-run harness", "cap_id": "CP-S-04"},
+    {"seq": 5, "item_type": "F", "name": "skill_prompt_promote", "title": "Promote skill prompt version", "cap_id": "CP-S-05"},
     # APIs
-    {"seq": 6, "item_type": "A", "name": "GET /api/skills", "title": "List skills/versions"},
-    {"seq": 7, "item_type": "A", "name": "GET /api/skills/:id", "title": "Get skill active + versions"},
-    {"seq": 8, "item_type": "A", "name": "POST /api/skills/:id/test", "title": "Run skill proof test"},
-    {"seq": 9, "item_type": "A", "name": "POST /api/skills/:id/activate", "title": "Activate skill version"},
-    {"seq": 10, "item_type": "A", "name": "POST /api/analyze", "title": "Analyze bind skill SSOT"},
+    {"seq": 6, "item_type": "A", "name": "GET /api/skills", "title": "List skills/versions", "cap_id": "CP-S-06"},
+    {"seq": 7, "item_type": "A", "name": "GET /api/skills/:id", "title": "Get skill active + versions", "cap_id": "CP-S-06"},
+    {"seq": 8, "item_type": "A", "name": "POST /api/skills/:id/test", "title": "Run skill proof test", "cap_id": "CP-S-06"},
+    {"seq": 9, "item_type": "A", "name": "POST /api/skills/:id/activate", "title": "Activate skill version", "cap_id": "CP-S-06"},
+    {"seq": 10, "item_type": "A", "name": "POST /api/analyze", "title": "Analyze bind skill SSOT", "cap_id": "CP-S-06"},
     # Tables
-    {"seq": 11, "item_type": "T", "name": "skill_prompt_ssot", "title": "Table skill_prompt_ssot"},
-    {"seq": 12, "item_type": "T", "name": "skill_prompt_case", "title": "Table skill_prompt_case"},
-    {"seq": 13, "item_type": "T", "name": "skill_prompt_test_run", "title": "Table skill_prompt_test_run"},
-    {"seq": 14, "item_type": "T", "name": "skill_prompt_inference", "title": "Table skill_prompt_inference"},
+    {"seq": 11, "item_type": "T", "name": "skill_prompt_ssot", "title": "Table skill_prompt_ssot", "cap_id": "CP-S-07"},
+    {"seq": 12, "item_type": "T", "name": "skill_prompt_case", "title": "Table skill_prompt_case", "cap_id": "CP-S-07"},
+    {"seq": 13, "item_type": "T", "name": "skill_prompt_test_run", "title": "Table skill_prompt_test_run", "cap_id": "CP-S-07"},
+    {"seq": 14, "item_type": "T", "name": "skill_prompt_inference", "title": "Table skill_prompt_inference", "cap_id": "CP-S-07"},
     # Fields
-    {"seq": 15, "item_type": "D", "name": "skill_key", "title": "Field skill_key"},
-    {"seq": 16, "item_type": "D", "name": "version_label", "title": "Field version_label"},
-    {"seq": 17, "item_type": "D", "name": "prompt_text", "title": "Field prompt_text"},
+    {"seq": 15, "item_type": "D", "name": "skill_key", "title": "Field skill_key", "cap_id": "CP-S-07"},
+    {"seq": 16, "item_type": "D", "name": "version_label", "title": "Field version_label", "cap_id": "CP-S-07"},
+    {"seq": 17, "item_type": "D", "name": "prompt_text", "title": "Field prompt_text", "cap_id": "CP-S-07"},
     # Jobs / Events
-    {"seq": 18, "item_type": "J", "name": "skill_prompt_regression_100", "title": "Job skill prompt regression 100"},
-    {"seq": 19, "item_type": "E", "name": "skill_prompt_promoted", "title": "Event skill prompt promoted"},
-    {"seq": 20, "item_type": "E", "name": "mouse_spot_verify_done", "title": "Event mouse_spot_verify done"},
+    {"seq": 18, "item_type": "J", "name": "skill_prompt_regression_100", "title": "Job skill prompt regression 100", "cap_id": "CP-S-04"},
+    {"seq": 19, "item_type": "E", "name": "skill_prompt_promoted", "title": "Event skill prompt promoted", "cap_id": "CP-S-08"},
+    {"seq": 20, "item_type": "E", "name": "mouse_spot_verify_done", "title": "Event mouse_spot_verify done", "cap_id": "CP-S-08"},
 ]
 
 # Default gold cases (screenshot = NO on VS Code; icons optional YES/NO fixtures).
+# IDE target family catalog: VS Code / Cursor / Work Buddy / Codex (+ generic + 豆包).
 DEFAULT_GOLD_CASES: list[dict[str, Any]] = [
     {
         "case_key": "msv_shot_vscode_no",
@@ -104,6 +213,42 @@ DEFAULT_GOLD_CASES: list[dict[str, Any]] = [
         "expected": "NO",
         "expected_reason": "Crosshair not on VS Code icon (current desktop shot).",
         "notes": "Primary stability/correctness fixture from mouse_spot_screenshot.png",
+        "source": "seed_gold",
+        "status": "active",
+    },
+    {
+        "case_key": "msv_shot_cursor_no",
+        "skill_key": DEFAULT_SKILL,
+        "image_path": str(DEFAULT_SCREENSHOT),
+        "target_name": "Cursor",
+        "target_action": "open",
+        "expected": "NO",
+        "expected_reason": "Crosshair not on Cursor icon (current desktop shot).",
+        "notes": "IDE catalog target: Cursor",
+        "source": "seed_gold",
+        "status": "active",
+    },
+    {
+        "case_key": "msv_shot_work_buddy_no",
+        "skill_key": DEFAULT_SKILL,
+        "image_path": str(DEFAULT_SCREENSHOT),
+        "target_name": "Work Buddy",
+        "target_action": "open",
+        "expected": "NO",
+        "expected_reason": "Crosshair not on Work Buddy icon (current desktop shot).",
+        "notes": "IDE catalog target: Work Buddy",
+        "source": "seed_gold",
+        "status": "active",
+    },
+    {
+        "case_key": "msv_shot_codex_no",
+        "skill_key": DEFAULT_SKILL,
+        "image_path": str(DEFAULT_SCREENSHOT),
+        "target_name": "Codex",
+        "target_action": "open",
+        "expected": "NO",
+        "expected_reason": "Crosshair not on Codex icon (current desktop shot).",
+        "notes": "IDE catalog target: Codex",
         "source": "seed_gold",
         "status": "active",
     },
@@ -155,6 +300,38 @@ def skill_tc_item_lines(root: int | str = ROOT_TASK_ID) -> list[str]:
     ]
 
 
+
+def resolve_skill_capability(
+    *,
+    cap_id: str | None = None,
+    seq: int | None = None,
+    payload: dict[str, Any] | None = None,
+    is_root: bool = False,
+) -> dict[str, Any]:
+    """Resolve capability fields for a task row (cap_id / cap_name / feature_tag / workers)."""
+    payload = payload or {}
+    cid = (
+        (cap_id or payload.get("cap_id") or payload.get("capability_id") or "")
+        or ("" if not is_root else "CP-S-00")
+    )
+    if not cid and seq is not None:
+        meta = next((it for it in SKILL_TC_ITEMS if int(it["seq"]) == int(seq)), None)
+        if meta:
+            cid = str(meta.get("cap_id") or "")
+    cap = _CAP_BY_ID.get(str(cid)) or {}
+    workers = [w for w in SKILL_CAP_WORKERS if w.get("cap_id") == cid]
+    return {
+        "cap_id": cid or "",
+        "cap_name": cap.get("cap_name") or payload.get("cap_name") or cid or "",
+        "capability": (
+            f"{cid} {cap.get('cap_name')}" if cid and cap.get("cap_name") else (cid or cap.get("cap_name") or "")
+        ).strip(),
+        "cap_description": cap.get("description") or payload.get("cap_description") or "",
+        "feature_tag": cap.get("feature_tag") or payload.get("feature_tag") or "",
+        "workers": workers,
+    }
+
+
 def list_skill_task_records(
     db_path: Path | str | None = None,
     *,
@@ -163,7 +340,7 @@ def list_skill_task_records(
     """List seeded Task Center rows for a root (``10``, ``10.1`` …) with channel/module.
 
     Returns table-ready records:
-    Date | Task ID | channel | module | task name | status
+    Date | Task ID | channel | module | Capability | task name | status
     """
     path = Path(db_path or DEFAULT_DB)
     root_s = str(int(root))
@@ -239,18 +416,32 @@ def list_skill_task_records(
                     seq = int(label.split(".", 1)[1])
                 except Exception:
                     seq = None
+            meta_cap_id = None
             if seq is not None and int(seq) in meta_by_seq:
                 meta = meta_by_seq[int(seq)]
                 item_type = item_type or meta.get("item_type")
                 item_name = item_name or meta.get("name")
+                meta_cap_id = meta.get("cap_id")
 
-            task_name = (
-                item_name
-                or (d.get("title") or "").replace(label, "", 1).strip(" -:")
-                or d.get("title")
-                or label
-            )
+            title = str(d.get("title") or "")
+            if item_name:
+                task_name = str(item_name)
+            elif title:
+                # Prefer full title for root; strip leading "10.3 " only for children.
+                if label and title.startswith(label + " "):
+                    task_name = title[len(label) + 1 :].strip() or title
+                else:
+                    task_name = title
+            else:
+                task_name = label
             date_s = str(d.get("updated_at") or d.get("created_at") or "")[:19]
+            is_root = label == root_s
+            cap = resolve_skill_capability(
+                cap_id=meta_cap_id or payload.get("cap_id"),
+                seq=int(seq) if seq is not None else None,
+                payload=payload,
+                is_root=is_root,
+            )
             records.append(
                 {
                     "db_id": d.get("db_id"),
@@ -260,10 +451,16 @@ def list_skill_task_records(
                     "channel_code": d.get("channel_code") or "",
                     "module": d.get("module_name") or d.get("module_code") or "",
                     "module_code": d.get("module_code") or "",
+                    "capability": cap.get("capability") or "",
+                    "cap_id": cap.get("cap_id") or "",
+                    "cap_name": cap.get("cap_name") or "",
+                    "cap_description": cap.get("cap_description") or "",
+                    "feature_tag": cap.get("feature_tag") or "",
+                    "workers": cap.get("workers") or [],
                     "task_name": task_name,
                     "title": d.get("title") or "",
                     "status": d.get("status") or "",
-                    "item_type": item_type or ("ROOT" if label == root_s else ""),
+                    "item_type": item_type or ("ROOT" if is_root else ""),
                     "seq": seq,
                     "parent_task_id": d.get("parent_task_id"),
                     "created_at": d.get("created_at"),
@@ -771,6 +968,7 @@ def seed_task_center_skill_root(
                     "id": format_task_id(ROOT_TASK_ID, it["seq"]),
                     "item_type": it["item_type"],
                     "name": it["name"],
+                    "cap_id": it.get("cap_id") or "",
                 }
                 for it in SKILL_TC_ITEMS
             ],
@@ -1214,11 +1412,16 @@ __all__ = [
     "BASE_DIR",
     "ROOT_TASK_ID",
     "SKILL_TC_ITEMS",
+    "SKILL_CAPABILITIES",
+    "SKILL_CAP_WORKERS",
     "SKILL_MODULE_CODE",
     "SKILL_VERSION_LABEL",
     "DEFAULT_GOLD_CASES",
     "format_task_id",
     "skill_tc_item_lines",
+    "resolve_skill_capability",
+    "list_skill_task_records",
+    "get_skill_task_record",
     "list_skill_cases",
     "upsert_skill_case",
     "seed_gold_cases",

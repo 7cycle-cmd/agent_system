@@ -1,6 +1,7 @@
 import {
   createBlankRecord,
   deleteRecord,
+  formatIdentityTrailer,
   listRecords,
   upsertRecord,
 } from './storage.js';
@@ -49,17 +50,21 @@ const state = {
   },
   skill: {
     skillKey: 'mouse_spot_verify',
+    skillKeys: ['mouse_spot_verify'],
     version: '',
     active: null,
     versions: [],
     latestTest: null,
     casesCount: null,
+    cases: [],
+    ideTargets: ['Visual Studio Code', 'Cursor', 'Work Buddy', 'Codex'],
     msg: '',
     log: '(Seed / Reload / Test output)',
   },
   watchdog: {
     running: false,
     pid: null,
+    helperPid: null,
     lastEvent: null,
     events: [],
     logTail: [],
@@ -250,7 +255,7 @@ function renderStatusPills() {
   const last = wd.lastEvent || {};
   const alertish = String(last.level || '') === 'alert' || String(last.kind || '').includes('down') || String(last.kind || '').includes('failed');
   host.innerHTML = [
-    pill(s.helperOk, 'Helper ON', 'Helper OFF'),
+    pill(s.helperOk, 'mouse_spot_helper ON', 'mouse_spot_helper OFF'),
     pill(!!wd.running, 'Watchdog ON', 'Watchdog OFF'),
     pill(s.ollamaOk, 'LLM ON', 'LLM OFF'),
     s.modelPresent
@@ -506,7 +511,11 @@ function skillHtml() {
     esc(acc) +
     '</span></div></div>' +
     '<div class="mt-4 flex flex-wrap items-end gap-2">' +
-    '<label class="text-xs font-medium text-muted">Skill<select id="sk-pick" class="ml-1 rounded-xl border border-line bg-canvas px-2 py-1.5 text-sm"><option value="mouse_spot_verify">mouse_spot_verify</option></select></label>' +
+    '<label class="text-xs font-medium text-muted">Skill<select id="sk-pick" class="ml-1 min-w-[160px] rounded-xl border border-line bg-canvas px-2 py-1.5 text-sm">' +
+    (function(){const keys=(state.skill.skillKeys&&state.skill.skillKeys.length)?state.skill.skillKeys:['mouse_spot_verify'];const cur=state.skill.skillKey||'mouse_spot_verify';return keys.map(k=>'<option value="'+esc(k)+'"'+(k===cur?' selected':'')+'>'+esc(k)+'</option>').join('');})() +
+    '</select></label>' +
+    '<button id="sk-new-skill" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft" title="Create new skill template">+ New template</button>' +
+    '<button id="sk-clone" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft" title="New draft from template">From template</button>' +
     '<label class="text-xs font-medium text-muted">Version<select id="sk-ver" class="ml-1 min-w-[140px] rounded-xl border border-line bg-canvas px-2 py-1.5 text-sm">' +
     verOpts +
     '</select></label>' +
@@ -534,6 +543,15 @@ function skillHtml() {
     '<button id="sk-to-chat" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">To chat box</button>' +
     '<button id="sk-from-chat" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">From chat</button>' +
     '</div>' +
+    '<div class="mt-3 rounded-xl border border-dashed border-line bg-soft/40 p-3">' +
+    '<div class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Catalog case (IDE targets)</div>' +
+    '<div class="flex flex-wrap items-end gap-2">' +
+    '<label class="text-xs font-medium text-muted">target<select id="sk-case-target" class="ml-1 rounded-xl border border-line bg-canvas px-2 py-1.5 text-sm">' +
+    (state.skill.ideTargets||['Visual Studio Code','Cursor','Work Buddy','Codex']).map(function(n){return '<option value="'+esc(n)+'">'+esc(n)+'</option>';}).join('') +
+    '</select></label>' +
+    '<label class="text-xs font-medium text-muted">expected<select id="sk-case-expected" class="ml-1 rounded-xl border border-line bg-canvas px-2 py-1.5 text-sm"><option value="NO" selected>NO</option><option value="YES">YES</option></select></label>' +
+    '<button id="sk-add-case" type="button" class="rounded-xl bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-600">+ Catalog case</button>' +
+    '</div></div>' +
     '<div id="sk-msg" class="mt-2 text-sm text-muted">' +
     esc(s.msg || '') +
     '</div>' +
@@ -573,6 +591,32 @@ async function loadSkillPanel() {
     state.skill.active = data.active || null;
     state.skill.versions = data.versions || [];
     state.skill.latestTest = data.latest_test || null;
+    try {
+      const lr = await fetch('/api/skills');
+      const ld = await lr.json();
+      if (lr.ok && ld.ok) {
+        const keys = ld.skill_keys || [];
+        const fromRows = (ld.skills || []).map((r) => r.skill_key).filter(Boolean);
+        state.skill.skillKeys = Array.from(new Set([...(keys || []), ...fromRows, skill]));
+        if (ld.ide_targets && ld.ide_targets.length) state.skill.ideTargets = ld.ide_targets;
+        const pick = $('#sk-pick');
+        if (pick) {
+          const cur = skill;
+          pick.innerHTML = state.skill.skillKeys
+            .map(
+              (k) =>
+                '<option value="' +
+                esc(k) +
+                '"' +
+                (k === cur ? ' selected' : '') +
+                '>' +
+                esc(k) +
+                '</option>'
+            )
+            .join('');
+        }
+      }
+    } catch (_) {}
     if ($('#sk-prompt') && data.active && data.active.prompt_text != null) {
       $('#sk-prompt').value = data.active.prompt_text;
     }
@@ -868,6 +912,91 @@ function bindSkillPanel() {
     }
   });
 
+  $('#sk-new-skill')?.addEventListener('click', async () => {
+    const name = prompt('New skill_key (letters/digits/underscore):', 'ide_spot_verify');
+    if (!name) return;
+    const from = $('#sk-pick')?.value || 'mouse_spot_verify';
+    setSkillMsg('Creating ' + name + '…');
+    try {
+      const res = await fetch('/api/skills', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          skill_key: name.trim(),
+          from_skill: from,
+          version_label: 'v1_draft',
+          source: 'llm_tasks_spa',
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'create failed');
+      setSkillLog(data);
+      state.skill.skillKey = name.trim();
+      if (!state.skill.skillKeys.includes(name.trim())) state.skill.skillKeys.push(name.trim());
+      setSkillMsg('Created template ' + name.trim());
+      await loadSkillPanel();
+    } catch (e) {
+      setSkillMsg(String(e.message || e), true);
+    }
+  });
+
+  $('#sk-clone')?.addEventListener('click', async () => {
+    const skill = $('#sk-pick')?.value || 'mouse_spot_verify';
+    const from_version =
+      $('#sk-ver')?.value ||
+      (state.skill.active && state.skill.active.version_label) ||
+      '';
+    const version_label =
+      'draft_' + new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 14);
+    setSkillMsg('Cloning ' + (from_version || 'active') + ' → ' + version_label + '…');
+    try {
+      const res = await fetch('/api/skills/' + encodeURIComponent(skill) + '/draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          version_label,
+          from_version: from_version || undefined,
+          prompt_text: $('#sk-prompt')?.value || undefined,
+          source: 'llm_tasks_spa_clone',
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'clone failed');
+      setSkillLog(data.skill || data);
+      state.skill.version = version_label;
+      setSkillMsg('Draft from template · ' + version_label);
+      await loadSkillPanel();
+    } catch (e) {
+      setSkillMsg(String(e.message || e), true);
+    }
+  });
+
+  $('#sk-add-case')?.addEventListener('click', async () => {
+    const skill = $('#sk-pick')?.value || 'mouse_spot_verify';
+    const target_name = $('#sk-case-target')?.value || 'Visual Studio Code';
+    const expected = $('#sk-case-expected')?.value || 'NO';
+    setSkillMsg('Adding catalog case ' + target_name + '…');
+    try {
+      const res = await fetch('/api/skills/' + encodeURIComponent(skill) + '/cases', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          target_name,
+          expected,
+          target_action: 'open',
+          source: 'llm_tasks_spa',
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'case failed');
+      setSkillLog(data.case || data);
+      setSkillMsg('Catalog case · ' + target_name + ' · ' + expected);
+      await loadSkillPanel();
+    } catch (e) {
+      setSkillMsg(String(e.message || e), true);
+    }
+  });
+
   $('#sk-to-chat')?.addEventListener('click', () => {
     const text = $('#sk-prompt')?.value || '';
     state.draft.prompt_content = text;
@@ -984,11 +1113,12 @@ function taskIdListHtml() {
   const selected = t.selectedId;
   const body =
     rows.length === 0
-      ? '<tr><td colspan="6" class="px-3 py-8 text-center text-sm text-muted">No Task ID records yet. Click <b>Seed Task Center</b> or <b>Refresh list</b>.</td></tr>'
+      ? '<tr><td colspan="7" class="px-3 py-8 text-center text-sm text-muted">No Task ID records yet. Click <b>Seed Task Center</b> or <b>Refresh list</b>.</td></tr>'
       : rows
           .map((r) => {
             const id = String(r.task_id || '');
             const active = selected && String(selected) === id;
+            const capLabel = r.capability || r.cap_id || r.cap_name || '—';
             return (
               '<tr data-tid-row="' +
               esc(id) +
@@ -1006,6 +1136,14 @@ function taskIdListHtml() {
               '</td>' +
               '<td class="px-3 py-2 text-sm">' +
               esc(r.module || '') +
+              '</td>' +
+              '<td class="px-3 py-2 text-sm">' +
+              '<div class="font-medium text-ink mono text-xs">' +
+              esc(capLabel) +
+              '</div>' +
+              (r.feature_tag
+                ? '<div class="mt-0.5 text-[10px] text-muted mono">' + esc(r.feature_tag) + '</div>'
+                : '') +
               '</td>' +
               '<td class="px-3 py-2 text-sm">' +
               esc(r.task_name || r.title || '') +
@@ -1030,7 +1168,7 @@ function taskIdListHtml() {
     '<div><h2 class="text-lg font-semibold">Task ID records</h2>' +
     '<p class="text-sm text-muted">Root <span class="mono font-medium text-ink">' +
     esc(t.root || '10') +
-    '</span> · click a row for detail · source <span class="mono">agent.db / dev_task</span></p></div>' +
+    '</span> · Module → <b>Capability</b> → Worker · click row for detail</p></div>' +
     '<div class="flex flex-wrap gap-2">' +
     '<button id="tid-refresh" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">Refresh list</button>' +
     '<button id="tid-seed-tc" type="button" class="rounded-xl bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-600">Seed Task Center</button>' +
@@ -1046,6 +1184,7 @@ function taskIdListHtml() {
     '<th class="px-3 py-2 font-semibold">Task ID</th>' +
     '<th class="px-3 py-2 font-semibold">channel</th>' +
     '<th class="px-3 py-2 font-semibold">module</th>' +
+    '<th class="px-3 py-2 font-semibold">Capability</th>' +
     '<th class="px-3 py-2 font-semibold">task name</th>' +
     '<th class="px-3 py-2 font-semibold">status</th>' +
     '</tr></thead><tbody id="tid-table-body">' +
@@ -1063,6 +1202,57 @@ function fieldCard(label, value) {
     '<div class="mt-1 break-all text-sm font-medium text-ink mono">' +
     esc(value) +
     '</div></div>'
+  );
+}
+
+function taskIdWorkersHtml(workers) {
+  const list = Array.isArray(workers) ? workers : [];
+  if (!list.length) {
+    return (
+      '<div class="rounded-2xl border border-line bg-panel p-4 shadow-panel">' +
+      '<h3 class="text-sm font-semibold">Workers (executors under Capability)</h3>' +
+      '<p class="mt-2 text-sm text-muted">No worker catalog rows for this capability yet. Capability defines the goal; Workers implement it with fallback_order.</p></div>'
+    );
+  }
+  const rows = list
+    .slice()
+    .sort((a, b) => Number(a.fallback_order || 0) - Number(b.fallback_order || 0))
+    .map(
+      (w) =>
+        '<tr class="border-t border-line">' +
+        '<td class="px-3 py-1.5 mono text-xs font-medium">' +
+        esc(w.worker_id || '') +
+        '</td>' +
+        '<td class="px-3 py-1.5 text-xs mono">' +
+        esc(w.worker_type || '') +
+        '</td>' +
+        '<td class="px-3 py-1.5 text-sm">' +
+        esc(w.description || '') +
+        '</td>' +
+        '<td class="px-3 py-1.5 text-xs text-center mono">' +
+        esc(w.fallback_order ?? '') +
+        '</td>' +
+        '<td class="px-3 py-1.5"><span class="rounded-full px-2 py-0.5 text-xs ' +
+        taskIdStatusClass(w.status) +
+        '">' +
+        esc(w.status || '') +
+        '</span></td>' +
+        '<td class="px-3 py-1.5 text-xs mono break-all">' +
+        esc(w.physical_file_path || '') +
+        '</td></tr>'
+    )
+    .join('');
+  return (
+    '<div class="rounded-2xl border border-line bg-panel p-4 shadow-panel">' +
+    '<h3 class="text-sm font-semibold">Workers (executors under Capability)</h3>' +
+    '<p class="mt-1 text-xs text-muted">Capability = goal/spec · Worker = how to achieve it · try by fallback_order</p>' +
+    '<div class="mt-2 overflow-auto rounded-xl border border-line">' +
+    '<table class="min-w-full text-left"><thead class="bg-soft/80 text-[11px] uppercase text-muted"><tr>' +
+    '<th class="px-3 py-2">worker_id</th><th class="px-3 py-2">type</th><th class="px-3 py-2">description</th>' +
+    '<th class="px-3 py-2">order</th><th class="px-3 py-2">status</th><th class="px-3 py-2">path</th>' +
+    '</tr></thead><tbody>' +
+    rows +
+    '</tbody></table></div></div>'
   );
 }
 
@@ -1113,7 +1303,7 @@ function taskIdDetailHtml() {
     esc(r.title || r.task_name || '') +
     '</p></div>' +
     '<div class="flex flex-wrap gap-2">' +
-    '<button id="tid-goto-list" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">Back to list</button>' +
+    '<button id="tid-goto-list" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">Back</button>' +
     '<button id="tid-reload-one" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">Reload</button>' +
     '</div></div>' +
     '<div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 text-sm">' +
@@ -1122,11 +1312,19 @@ function taskIdDetailHtml() {
     fieldCard('Status', r.status || '') +
     fieldCard('channel', r.channel || r.channel_code || '') +
     fieldCard('module', r.module || r.module_code || '') +
+    fieldCard('Capability', r.capability || r.cap_id || '') +
+    fieldCard('cap_id', r.cap_id || '') +
+    fieldCard('feature_tag', r.feature_tag || '') +
     fieldCard('task name', r.task_name || '') +
     fieldCard('item type', r.item_type || '') +
     fieldCard('db id', r.db_id || '') +
     fieldCard('parent', r.parent_task_id || '—') +
-    '</div></div>' +
+    '</div>' +
+    (r.cap_description
+      ? '<p class="mt-3 text-sm text-muted">' + esc(r.cap_description) + '</p>'
+      : '') +
+    '</div>' +
+    taskIdWorkersHtml(r.workers || []) +
     '<div class="rounded-2xl border border-line bg-panel p-4 shadow-panel">' +
     '<h3 class="text-sm font-semibold">Payload</h3>' +
     '<pre class="mono mt-2 max-h-56 overflow-auto rounded-xl border border-line bg-soft/60 p-3 text-xs whitespace-pre-wrap">' +
@@ -1363,6 +1561,172 @@ function bindTaskIdCodingPanel(autoLoad = true) {
   }
 }
 
+function levelBadge(level, kind) {
+  const lv = String(level || kind || 'info').toLowerCase();
+  if (lv === 'alert' || lv.includes('down') || lv.includes('fail')) {
+    return '<span class="inline-flex items-center rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700">ALERT</span>';
+  }
+  if (lv === 'warn' || lv.includes('restart')) {
+    return '<span class="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">WARN</span>';
+  }
+  if (lv === 'ok' || lv.includes('ready') || lv.includes('recover') || lv.includes('up')) {
+    return '<span class="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">OK</span>';
+  }
+  return '<span class="inline-flex items-center rounded-full bg-soft px-2 py-0.5 text-[11px] font-medium text-muted">INFO</span>';
+}
+
+function watchdogHtml() {
+  const w = state.watchdog || {};
+  const events = w.events || [];
+  const selected =
+    events.find((e) => e.id === w.selectedId) ||
+    events[0] ||
+    null;
+  if (selected && !w.selectedId) state.watchdog.selectedId = selected.id;
+  const shot = (selected && selected.screenshot) || {};
+  const detail = (selected && selected.detail) || {};
+  const logTail = (w.logTail || []).slice().reverse().join('\n') || '(no log yet)';
+
+  const eventRows = events.length
+    ? events
+        .map((ev) => {
+          const active = selected && ev.id === selected.id;
+          const hasShot = !!(ev.screenshot && ev.screenshot.ok && ev.screenshot.url);
+          return (
+            '<button type="button" data-wd-id="' +
+            esc(ev.id) +
+            '" class="w-full border-b border-line px-3 py-2.5 text-left transition hover:bg-soft/80 ' +
+            (active ? 'bg-accent-soft/70' : '') +
+            '"><div class="flex items-center justify-between gap-2">' +
+            levelBadge(ev.level, ev.kind) +
+            '<span class="text-[11px] mono text-muted">' +
+            esc(ev.local_time || ev.ts || '') +
+            '</span></div><div class="mt-1 text-sm font-medium text-ink">' +
+            esc(ev.kind || 'event') +
+            (hasShot ? ' · 📷' : '') +
+            '</div><div class="mt-0.5 line-clamp-2 text-xs text-muted">' +
+            esc(ev.message || '') +
+            '</div></button>'
+          );
+        })
+        .join('')
+    : '<div class="p-4 text-sm text-muted">No watchdog events yet. Alerts appear when mouse_spot_helper goes down / restarts.</div>';
+
+  const helperPid =
+    w.helperPid ||
+    (detail && detail.helper_pid) ||
+    (selected && selected.detail && selected.detail.helper_pid) ||
+    null;
+  const st = state.status || {};
+  const llmOn = !!st.ollamaOk;
+  const modelLabel = st.modelPresent ? st.model || 'model ok' : 'model missing';
+
+  const scopeCard =
+    '<div class="rounded-2xl border border-line bg-panel p-4 shadow-panel">' +
+    '<div class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">What watchdog monitors</div>' +
+    '<div class="grid gap-3 sm:grid-cols-3">' +
+    '<div class="rounded-xl border border-line bg-soft/50 p-3">' +
+    '<div class="text-xs font-semibold text-ink">1. mouse_spot_helper</div>' +
+    '<div class="mt-1 text-xs text-muted">Primary keep-alive. Probes <span class="mono">:18765</span> every ~15s. If down → restart + alert + screenshot.</div>' +
+    '<div class="mt-2">' +
+    pill(!!st.helperOk, 'mouse_spot_helper ON', 'mouse_spot_helper OFF') +
+    '</div></div>' +
+    '<div class="rounded-xl border border-line bg-soft/50 p-3">' +
+    '<div class="text-xs font-semibold text-ink">2. LLM / Ollama</div>' +
+    '<div class="mt-1 text-xs text-muted">Observed only when helper is up (status summary). <strong>Not restarted</strong> by watchdog if LLM is OFF.</div>' +
+    '<div class="mt-2 flex flex-wrap gap-1.5">' +
+    pill(llmOn, 'LLM ON', 'LLM OFF') +
+    '<span class="rounded-full bg-soft px-2.5 py-1 text-xs mono text-muted">' +
+    esc(modelLabel) +
+    '</span></div></div>' +
+    '<div class="rounded-xl border border-line bg-soft/50 p-3">' +
+    '<div class="text-xs font-semibold text-ink">3. Process IDs</div>' +
+    '<div class="mt-1 space-y-1 text-xs mono text-muted">' +
+    '<div><span class="font-semibold text-ink">watchdog pid</span> ' +
+    esc(w.pid || '—') +
+    ' <span class="text-[11px]">(helper_watchdog.py)</span></div>' +
+    '<div><span class="font-semibold text-ink">helper pid</span> ' +
+    esc(helperPid || '—') +
+    ' <span class="text-[11px]">(mouse_spot_helper.py)</span></div>' +
+    '</div></div></div></div>';
+
+  const detailBlock = selected
+    ? '<div class="space-y-3">' +
+      '<div class="flex flex-wrap items-center gap-2">' +
+      levelBadge(selected.level, selected.kind) +
+      '<span class="text-sm font-semibold text-ink">' +
+      esc(selected.kind || '') +
+      '</span><span class="text-xs mono text-muted">' +
+      esc(selected.local_time || selected.ts || '') +
+      '</span></div>' +
+      '<p class="text-sm text-ink">' +
+      esc(selected.message || '') +
+      '</p>' +
+      '<pre class="max-h-40 overflow-auto rounded-xl border border-line bg-soft/70 p-3 text-xs mono text-muted">' +
+      esc(JSON.stringify(detail, null, 2)) +
+      '</pre>' +
+      (shot.ok && shot.url
+        ? '<div><div class="mb-1 text-xs font-medium text-muted">Desktop screenshot at alert</div>' +
+          '<a href="' +
+          esc(shot.url) +
+          '" target="_blank" rel="noopener" class="block overflow-hidden rounded-xl border border-line bg-soft">' +
+          '<img src="' +
+          esc(shot.url) +
+          '" alt="watchdog screenshot" class="max-h-[420px] w-full object-contain bg-black/5" />' +
+          '</a><div class="mt-1 text-[11px] text-muted mono">' +
+          esc(shot.path || shot.url) +
+          (shot.bytes ? ' · ' + esc(shot.bytes) + ' bytes' : '') +
+          '</div></div>'
+        : shot && shot.error
+          ? '<div class="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Screenshot failed: ' +
+            esc(shot.error) +
+            '</div>'
+          : '<div class="rounded-xl border border-line bg-soft/60 p-3 text-sm text-muted">No screenshot for this event.</div>') +
+      '</div>'
+    : '<div class="text-sm text-muted">Select an event to see why the watchdog alerted and the desktop screenshot.</div>';
+
+  return (
+    '<div class="mx-auto flex max-w-6xl flex-col gap-4">' +
+    '<div class="flex flex-wrap items-end justify-between gap-3">' +
+    '<div><h2 class="text-lg font-semibold">Watchdog</h2>' +
+    '<p class="text-sm text-muted">Keep-alive for <span class="mono">mouse_spot_helper :18765</span> · LLM status is reported, not restarted · screenshot evidence</p></div>' +
+    '<div class="flex flex-wrap items-center gap-2">' +
+    pill(!!w.running, 'Watchdog ON', 'Watchdog OFF') +
+    pill(!!st.helperOk, 'mouse_spot_helper ON', 'mouse_spot_helper OFF') +
+    pill(llmOn, 'LLM ON', 'LLM OFF') +
+    (w.pid
+      ? '<span class="rounded-full bg-soft px-2.5 py-1 text-xs mono text-muted" title="helper_watchdog.py process id">watchdog pid ' +
+        esc(w.pid) +
+        '</span>'
+      : '') +
+    (helperPid
+      ? '<span class="rounded-full bg-soft px-2.5 py-1 text-xs mono text-muted" title="mouse_spot_helper.py process id">helper pid ' +
+        esc(helperPid) +
+        '</span>'
+      : '') +
+    '<button id="btn-wd-refresh" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">Refresh</button>' +
+    '</div></div>' +
+    (w.msg ? '<div class="text-sm text-muted">' + esc(w.msg) + '</div>' : '') +
+    scopeCard +
+    '<div class="grid gap-4 lg:grid-cols-5">' +
+    '<div class="lg:col-span-2 overflow-hidden rounded-2xl border border-line bg-panel shadow-panel">' +
+    '<div class="border-b border-line px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted">Events</div>' +
+    '<div id="wd-event-list" class="max-h-[560px] overflow-auto">' +
+    eventRows +
+    '</div></div>' +
+    '<div class="lg:col-span-3 rounded-2xl border border-line bg-panel p-4 shadow-panel">' +
+    '<div class="mb-3 text-xs font-semibold uppercase tracking-wide text-muted">Selected alert</div>' +
+    detailBlock +
+    '</div></div>' +
+    '<div class="rounded-2xl border border-line bg-panel p-4 shadow-panel">' +
+    '<div class="mb-2 flex items-center justify-between"><div class="text-xs font-semibold uppercase tracking-wide text-muted">helper_watchdog.log (tail)</div>' +
+    '<span class="text-[11px] text-muted">auto-refresh with page</span></div>' +
+    '<pre class="max-h-56 overflow-auto rounded-xl border border-line bg-soft/70 p-3 text-xs mono leading-relaxed text-ink">' +
+    esc(logTail) +
+    '</pre></div></div>'
+  );
+}
+
 function workspaceHtml() {
   if (state.nav === 'watchdog') return watchdogHtml();
   if (state.nav === 'task-id-coding') return taskIdCodingHtml();
@@ -1399,14 +1763,15 @@ function workspaceHtml() {
     '"><div class="grid gap-3 sm:grid-cols-2">' +
     '<label class="block text-xs font-medium text-muted">task_id<input id="f-task-id" class="mt-1 w-full rounded-xl border border-line bg-canvas px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-accent" /></label>' +
     '<label class="block text-xs font-medium text-muted">writer<input id="f-writer" class="mt-1 w-full rounded-xl border border-line bg-canvas px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-accent" /></label>' +
-    '<label class="block text-xs font-medium text-muted">session_id<input id="f-session" class="mt-1 w-full rounded-xl border border-line bg-canvas px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-accent" /></label>' +
+    '<label class="block text-xs font-medium text-muted">session_id <span class="font-normal text-muted">(IDE session · empty until IDE works)</span><input id="f-session" class="mt-1 w-full rounded-xl border border-line bg-canvas px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-accent" placeholder="No IDE session yet" /></label>' +
     '<label class="block text-xs font-medium text-muted">status<select id="f-status" class="mt-1 w-full rounded-xl border border-line bg-canvas px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-accent"><option value="draft">draft</option><option value="ready">ready</option><option value="running">running</option><option value="done">done</option><option value="error">error</option></select></label>' +
-    '</div><label class="mt-3 block text-xs font-medium text-muted">context<input id="f-context" class="mt-1 w-full rounded-xl border border-line bg-canvas px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-accent" /></label></section>' +
+    '</div><p class="mt-2 text-[11px] text-muted">session_id = VS Code / Cursor / Work Buddy / Codex session. New tasks leave it blank; after IDE work, paste reply and Apply IDs.</p>' +
+    '<label class="mt-3 block text-xs font-medium text-muted">context<input id="f-context" class="mt-1 w-full rounded-xl border border-line bg-canvas px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-accent" /></label></section>' +
     '<section class="rounded-2xl border border-line bg-panel p-4 shadow-panel ' +
     (state.tab === 'result' ? 'hidden' : '') +
-    '"><div class="mb-2 flex items-center justify-between"><h3 class="text-sm font-semibold">Prompt</h3><span class="text-[11px] text-muted mono">monospace</span></div>' +
+    '"><div class="mb-2 flex flex-wrap items-center justify-between gap-2"><h3 class="text-sm font-semibold">Prompt</h3><div class="flex flex-wrap items-center gap-2"><label class="text-[11px] text-muted">IDE target<select id="f-ide-target" class="ml-1 rounded-lg border border-line bg-canvas px-2 py-1 text-xs"><option>Visual Studio Code</option><option>Cursor</option><option>Work Buddy</option><option>Codex</option></select></label><span class="text-[11px] text-muted mono">monospace</span></div></div>' +
     '<textarea id="f-prompt" rows="12" placeholder="Paste prompt here…" class="mono w-full resize-y rounded-xl border border-line bg-canvas px-3 py-2 text-sm leading-relaxed outline-none focus:ring-2 focus:ring-accent"></textarea>' +
-    '<div class="mt-3 flex flex-wrap gap-2"><button id="btn-improve" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">Improve</button><button id="btn-analyze" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">Analyze</button><button id="btn-apply" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">Apply to chat</button><button id="btn-copy" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">Copy result</button></div></section>' +
+    '<div class="mt-3 flex flex-wrap gap-2"><button id="btn-from-template" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">From IDE template</button><button id="btn-improve" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">Improve</button><button id="btn-analyze" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">Analyze</button><button id="btn-apply-ids" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft" title="Parse session_id/task_id/writer from reply">Apply IDs from reply</button><button id="btn-apply" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">Apply to chat</button><button id="btn-copy" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">Copy result</button></div></section>' +
     '<section class="rounded-2xl border border-line bg-panel p-4 shadow-panel ' +
     (state.tab === 'chat' ? 'hidden' : '') +
     '"><div class="mb-2 flex items-center justify-between"><h3 class="text-sm font-semibold">Result</h3><span class="text-[11px] text-muted">readonly</span></div>' +
@@ -1483,6 +1848,12 @@ async function refreshWatchdog(selectedKeep = true) {
     state.watchdog.lastEvent = wd.last_event || (data.events && data.events[0]) || null;
     state.watchdog.events = data.events || [];
     state.watchdog.logTail = data.log_tail || [];
+    const last = state.watchdog.lastEvent || {};
+    const lastDetail = last.detail || {};
+    const fromEvents = (state.watchdog.events || [])
+      .map((e) => (e && e.detail && e.detail.helper_pid) || null)
+      .find((p) => p);
+    state.watchdog.helperPid = lastDetail.helper_pid || fromEvents || state.watchdog.helperPid || null;
     if (prevSelected && state.watchdog.events.some((e) => e.id === prevSelected)) {
       state.watchdog.selectedId = prevSelected;
     } else if (!state.watchdog.selectedId && state.watchdog.events[0]) {
@@ -1541,7 +1912,7 @@ async function refreshAll() {
     state.status.helperOk = false;
     state.status.ollamaOk = false;
     state.status.modelPresent = false;
-    state.status.text = 'Helper offline';
+    state.status.text = 'mouse_spot_helper offline';
     state.watchdog.running = false;
   }
 
@@ -1707,6 +2078,136 @@ function bind() {
     toast('Applied to prompt');
   });
 
+  $('#btn-from-template')?.addEventListener('click', async () => {
+    readFormIntoDraft();
+    const d = state.draft;
+    const ide = $('#f-ide-target')?.value || 'Visual Studio Code';
+    try {
+      const res = await fetch('/api/prompt/from-template', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          template_id: 'ide_work',
+          goal: d.prompt_content || d.context || d.name || 'Complete this coding task',
+          context: d.context || '',
+          ide_target: ide,
+          writer: d.writer,
+          task_id: d.task_id,
+          session_id: d.session_id || '',
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.ok === false) throw new Error(data.error || 'template failed');
+      const prompt = data.prompt || data.improved_prompt || '';
+      if ($('#f-prompt')) $('#f-prompt').value = prompt;
+      state.draft.prompt_content = prompt;
+      if ($('#f-result')) {
+        $('#f-result').value =
+          (data.hint || 'Created from IDE template') +
+          '\n\n' +
+          (data.trailer || formatIdentityTrailer(data));
+      }
+      state.draft.result_content = $('#f-result')?.value || '';
+      toast('Prompt from IDE template');
+    } catch (err) {
+      toast(String(err.message || err));
+    }
+  });
+
+  $('#btn-apply-ids')?.addEventListener('click', async () => {
+    const text = ($('#f-result')?.value || $('#f-prompt')?.value || '').trim();
+    if (!text) return toast('No reply/prompt to parse');
+    try {
+      const res = await fetch('/api/prompt/apply-ids', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.ok === false) throw new Error(data.error || 'parse failed');
+      const idn = data.identity || data;
+      if (idn.session_id && $('#f-session')) $('#f-session').value = idn.session_id;
+      if (idn.task_id && $('#f-task-id')) $('#f-task-id').value = idn.task_id;
+      if (idn.writer && $('#f-writer')) $('#f-writer').value = idn.writer;
+      readFormIntoDraft();
+      toast(
+        'Applied IDs · session=' +
+          (idn.session_id || '(empty)') +
+          ' · task=' +
+          (idn.task_id || '(empty)') +
+          ' · writer=' +
+          (idn.writer || '(empty)')
+      );
+    } catch (err) {
+      toast(String(err.message || err));
+    }
+  });
+
+  $('#btn-from-template')?.addEventListener('click', async () => {
+    readFormIntoDraft();
+    const d = state.draft;
+    const ide = $('#f-ide-target')?.value || 'Visual Studio Code';
+    try {
+      const res = await fetch('/api/prompt/from-template', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          template_id: 'ide_work',
+          goal: d.prompt_content || d.context || d.name || 'Complete this coding task',
+          context: d.context || '',
+          ide_target: ide,
+          writer: d.writer,
+          task_id: d.task_id,
+          session_id: d.session_id || '',
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.ok === false) throw new Error(data.error || 'template failed');
+      const prompt = data.prompt || data.improved_prompt || '';
+      if ($('#f-prompt')) $('#f-prompt').value = prompt;
+      state.draft.prompt_content = prompt;
+      if ($('#f-result')) {
+        $('#f-result').value =
+          (data.hint || 'Created from IDE template') +
+          '\n\n' +
+          (data.trailer || formatIdentityTrailer(data));
+      }
+      state.draft.result_content = $('#f-result')?.value || '';
+      toast('Prompt from IDE template');
+    } catch (err) {
+      toast(String(err.message || err));
+    }
+  });
+
+  $('#btn-apply-ids')?.addEventListener('click', async () => {
+    const text = ($('#f-result')?.value || $('#f-prompt')?.value || '').trim();
+    if (!text) return toast('No reply/prompt to parse');
+    try {
+      const res = await fetch('/api/prompt/apply-ids', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.ok === false) throw new Error(data.error || 'parse failed');
+      const idn = data.identity || data;
+      if (idn.session_id && $('#f-session')) $('#f-session').value = idn.session_id;
+      if (idn.task_id && $('#f-task-id')) $('#f-task-id').value = idn.task_id;
+      if (idn.writer && $('#f-writer')) $('#f-writer').value = idn.writer;
+      readFormIntoDraft();
+      toast(
+        'Applied IDs · session=' +
+          (idn.session_id || '(empty)') +
+          ' · task=' +
+          (idn.task_id || '(empty)') +
+          ' · writer=' +
+          (idn.writer || '(empty)')
+      );
+    } catch (err) {
+      toast(String(err.message || err));
+    }
+  });
+
   $('#btn-improve')?.addEventListener('click', async () => {
     readFormIntoDraft();
     const d = state.draft;
@@ -1720,23 +2221,24 @@ function bind() {
           task_id: d.task_id,
           session_id: d.session_id,
           context: d.context,
+          require_session: false,
         }),
       });
       const data = await res.json();
-      const out = data.improved || data.result || data.text || data.error || JSON.stringify(data, null, 2);
-      if ($('#f-result')) $('#f-result').value = typeof out === 'string' ? out : JSON.stringify(out, null, 2);
-      state.draft.result_content = $('#f-result').value;
-  if (state.nav === 'watchdog') {
-    bindWatchdogPanel();
-    refreshWatchdog(true).then(() => {
-      const body = $('#workspace-body');
-      if (body && state.nav === 'watchdog') {
-        body.innerHTML = watchdogHtml();
-        bindWatchdogPanel();
+      let out =
+        data.improved_prompt ||
+        data.improved ||
+        data.result ||
+        data.text ||
+        data.error ||
+        JSON.stringify(data, null, 2);
+      if (typeof out !== 'string') out = JSON.stringify(out, null, 2);
+      const trailer = data.trailer || formatIdentityTrailer(data.identity || data);
+      if (trailer && !String(out).includes('session_id:')) {
+        out = String(out).replace(/\s*$/, '') + '\n\n' + trailer;
       }
-      renderStatusPills();
-    });
-  }
+      if ($('#f-result')) $('#f-result').value = out;
+      state.draft.result_content = $('#f-result')?.value || '';
       state.draft.status = data.ok === false ? 'error' : 'done';
       if ($('#f-status')) $('#f-status').value = state.draft.status;
       state.tab = 'result';
@@ -1762,15 +2264,18 @@ function bind() {
           task_id: d.task_id,
           session_id: d.session_id,
           context: d.context,
+          require_session: false,
         }),
       });
       const data = await res.json();
-      const out = data.notes || data.analysis || data.result || data.error || data;
-      if ($('#f-result')) $('#f-result').value = typeof out === 'string' ? out : JSON.stringify(out, null, 2);
+      let out = data.notes || data.analysis || data.result || data.error || data;
+      if (typeof out !== 'string') out = JSON.stringify(out, null, 2);
+      const trailer = data.trailer || formatIdentityTrailer(data.identity || data);
+      if (trailer && !String(out).includes('session_id:')) {
+        out = String(out).replace(/\s*$/, '') + '\n\n' + trailer;
+      }
+      if ($('#f-result')) $('#f-result').value = out;
       state.draft.result_content = $('#f-result')?.value || '';
-  if (state.nav === 'task-id-coding') {
-    bindTaskIdCodingPanel();
-  }
       state.draft.status = data.ok === false ? 'error' : 'done';
       state.tab = 'result';
       mount(false);

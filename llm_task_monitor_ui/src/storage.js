@@ -4,11 +4,17 @@ function uid() {
   return `r_${Math.random().toString(16).slice(2)}${Date.now().toString(16)}`;
 }
 
+/**
+ * Local draft record.
+ * session_id = IDE session id (VS Code / Cursor / Work Buddy / Codex).
+ * New tasks leave session_id empty until an IDE works the task.
+ */
 export function createBlankRecord(partial = {}) {
   return {
     id: partial.id || uid(),
     task_id: partial.task_id || '',
     writer: partial.writer || '',
+    // Never invent session_id on create
     session_id: partial.session_id || '',
     context: partial.context || '',
     prompt_content: partial.prompt_content || '',
@@ -17,6 +23,22 @@ export function createBlankRecord(partial = {}) {
     name: partial.name || '',
     updated_at: partial.updated_at || new Date().toISOString(),
   };
+}
+
+/** Append identity trailer for Result display. */
+export function formatIdentityTrailer({ session_id = '', task_id = '', writer = '' } = {}) {
+  return (
+    '---\n' +
+    'session_id: ' +
+    (session_id || '') +
+    '\n' +
+    'task_id: ' +
+    (task_id || '') +
+    '\n' +
+    'writer: ' +
+    (writer || '') +
+    '\n'
+  );
 }
 
 export function listRecords() {

@@ -62,6 +62,7 @@ from skill_prompt_ext import (
     seed_task_center_skill_root,
     skill_tc_item_lines,
     test_gold_suite,
+    upsert_skill_case,
 )
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -159,27 +160,51 @@ def check_ollama_status() -> dict[str, Any]:
 def _pid_alive(pid: int) -> bool:
     if pid <= 0:
         return False
-    try:
-        os.kill(pid, 0)
-    except OSError:
-        return False
-    except Exception:
-        return False
     if sys.platform == "win32":
         try:
             import ctypes
 
+            # SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION covers more PIDs than query-only.
             PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+            SYNCHRONIZE = 0x00100000
             handle = ctypes.windll.kernel32.OpenProcess(
-                PROCESS_QUERY_LIMITED_INFORMATION, False, int(pid)
+                PROCESS_QUERY_LIMITED_INFORMATION | SYNCHRONIZE, False, int(pid)
             )
             if handle:
                 ctypes.windll.kernel32.CloseHandle(handle)
                 return True
-            return False
+            # Fallback: exit-code probe via OpenProcess(PROCESS_QUERY_INFORMATION)
+            PROCESS_QUERY_INFORMATION = 0x0400
+            handle = ctypes.windll.kernel32.OpenProcess(
+                PROCESS_QUERY_INFORMATION, False, int(pid)
+            )
+            if handle:
+                ctypes.windll.kernel32.CloseHandle(handle)
+                return True
         except Exception:
-            return True
-    return True
+            pass
+        try:
+            # Last resort: tasklist match
+            import subprocess
+
+            out = subprocess.check_output(
+                ["tasklist", "/FI", f"PID eq {int(pid)}", "/FO", "CSV", "/NH"],
+                stderr=subprocess.DEVNULL,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+            )
+            return str(pid) in out and "No tasks" not in out and "没有" not in out
+        except Exception:
+            return False
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+    except Exception:
+        return False
 
 
 def _read_watchdog_pid() -> int | None:
@@ -386,38 +411,177 @@ def prompt_has_ids(
     }
 
 
+# session_id = IDE session id (VS Code / Cursor / Work Buddy / Codex).
+# New tasks leave it empty until an IDE actually works the task.
+IDE_TARGETS = (
+    "Visual Studio Code",
+    "Cursor",
+    "Work Buddy",
+    "Codex",
+)
+
+IDE_WORK_PROMPT_TEMPLATE = """You are working this task inside an IDE agent session.
+
+## Goal
+{{goal}}
+
+## Context
+{{context}}
+
+## IDE target family
+Prefer one of: Visual Studio Code | Cursor | Work Buddy | Codex
+Current target: {{ide_target}}
+
+## Rules
+1. Do the work in the IDE session that owns this request.
+2. session_id means the IDE chat/session id (not invented locally).
+3. New tasks start with empty session_id — fill it only after IDE work begins.
+4. When you finish (or when asked), end your reply with the identity block exactly.
+
+## Identity block (required at end of your reply)
+---
+session_id: <IDE session id>
+task_id: {{task_id}}
+writer: {{writer}}
+---
+"""
+
+
+def identity_trio_dict(
+    *,
+    writer: str | None = None,
+    task_id: str | int | None = None,
+    session_id: str | None = None,
+) -> dict[str, str]:
+    return {
+        "writer": str(writer or "").strip(),
+        "task_id": str(task_id or "").strip(),
+        "session_id": str(session_id or "").strip(),
+    }
+
+
+def identity_trailer(
+    *,
+    writer: str | None = None,
+    task_id: str | int | None = None,
+    session_id: str | None = None,
+) -> str:
+    """Human-readable identity block for result text / prompt footers."""
+    trio = identity_trio_dict(writer=writer, task_id=task_id, session_id=session_id)
+    return (
+        "---\n"
+        f"session_id: {trio['session_id']}\n"
+        f"task_id: {trio['task_id']}\n"
+        f"writer: {trio['writer']}\n"
+    )
+
+
+def request_session_instruction(
+    *,
+    writer: str = "",
+    task_id: str = "",
+    session_id: str = "",
+) -> str:
+    """Injected when session_id is empty: ask IDE agent to return it in the reply."""
+    if str(session_id or "").strip():
+        return ""
+    return (
+        "\n\n## IDE session_id request\n"
+        "This task has no session_id yet (normal for new tasks).\n"
+        "When you work this task in VS Code / Cursor / Work Buddy / Codex, "
+        "return your IDE session id in the final identity block:\n"
+        f"{identity_trailer(writer=writer, task_id=task_id, session_id='')}"
+    )
+
+
 def ensure_prompt_id_footer(
     text: str,
     *,
     writer: str,
     task_id: str,
     session_id: str,
+    request_session_if_empty: bool = True,
 ) -> str:
-    """Append canonical ID block if any required marker is missing."""
-    check = prompt_has_ids(text, writer=writer, task_id=task_id, session_id=session_id)
-    if check["ok"]:
-        # Still normalize values if markers exist but differ — keep text, ensure footer values match.
-        found = check["found"]
-        if (
-            (found.get("writer") or writer) == writer
-            and str(found.get("task_id") or task_id) == str(task_id)
-            and (found.get("session_id") or session_id) == session_id
-        ):
-            return text.rstrip() + "\n"
-    footer = (
-        "\n\n---\n"
-        f"writer: {writer}\n"
-        f"task_id: {task_id}\n"
-        f"session_id: {session_id}\n"
-    )
+    """Append canonical ID block. Empty session_id is allowed for new tasks."""
+    writer = str(writer or "").strip()
+    task_id = str(task_id or "").strip()
+    session_id = str(session_id or "").strip()
+    check = prompt_has_ids(text, writer=writer or None, task_id=task_id or None, session_id=session_id or None)
+    found = check.get("found") or {}
+    # Require writer/task markers when provided; session may stay empty.
+    need_footer = False
+    if writer and (found.get("writer") or "") != writer:
+        need_footer = True
+    if task_id and str(found.get("task_id") or "") != str(task_id):
+        need_footer = True
+    if session_id and (found.get("session_id") or "") != session_id:
+        need_footer = True
+    if not found.get("writer") and writer:
+        need_footer = True
+    if not found.get("task_id") and task_id:
+        need_footer = True
+    if session_id and not found.get("session_id"):
+        need_footer = True
+    if not need_footer and (writer or task_id or session_id):
+        # Has matching markers (session may be intentionally absent).
+        base = (text or "").rstrip()
+        if request_session_if_empty and not session_id and not found.get("session_id"):
+            if "IDE session_id request" not in base:
+                base = base + request_session_instruction(
+                    writer=writer, task_id=task_id, session_id=session_id
+                )
+        return base + "\n"
+
+    footer = "\n\n" + identity_trailer(writer=writer, task_id=task_id, session_id=session_id)
     base = (text or "").rstrip()
     # Strip an existing trailing --- id block to avoid duplicates.
     base = re.sub(
-        r"(?s)\n---\s*\n(?:writer|task_id|session_id)\s*:.*\Z",
+        r"(?s)\n---\s*\n(?:session_id|writer|task_id)\s*:.*\Z",
         "",
         base,
     ).rstrip()
-    return base + footer
+    base = re.sub(
+        r"(?s)\n## IDE session_id request\n.*\Z",
+        "",
+        base,
+    ).rstrip()
+    out = base + footer
+    if request_session_if_empty and not session_id:
+        out = out.rstrip() + request_session_instruction(
+            writer=writer, task_id=task_id, session_id=session_id
+        )
+    return out.rstrip() + "\n"
+
+
+def render_ide_work_prompt(
+    *,
+    goal: str = "",
+    context: str = "",
+    ide_target: str = "Visual Studio Code",
+    writer: str = "",
+    task_id: str = "",
+    session_id: str = "",
+) -> str:
+    """Build a task prompt from the IDE work template (prompt-create-from-template)."""
+    target = (ide_target or "Visual Studio Code").strip() or "Visual Studio Code"
+    text = IDE_WORK_PROMPT_TEMPLATE
+    mapping = {
+        "goal": (goal or "").strip() or "(describe the coding goal)",
+        "context": (context or "").strip() or "(optional context)",
+        "ide_target": target,
+        "task_id": str(task_id or "").strip(),
+        "writer": str(writer or "").strip(),
+        "session_id": str(session_id or "").strip(),
+    }
+    for key, val in mapping.items():
+        text = text.replace("{{" + key + "}}", val)
+    return ensure_prompt_id_footer(
+        text,
+        writer=mapping["writer"],
+        task_id=mapping["task_id"],
+        session_id=mapping["session_id"],
+        request_session_if_empty=True,
+    )
 
 
 def context_completeness(
@@ -425,14 +589,24 @@ def context_completeness(
     task_id: str | int | None,
     writer: str | None,
     session_id: str | None,
+    require_session: bool = True,
 ) -> dict[str, Any]:
+    """Identity trio check. session_id optional when require_session=False (new / pre-IDE tasks)."""
     fields = {
         "task_id": bool(str(task_id or "").strip()),
         "writer": bool(str(writer or "").strip()),
         "session_id": bool(str(session_id or "").strip()),
     }
-    missing = [k for k, ok in fields.items() if not ok]
-    return {"ok": not missing, "fields": fields, "missing": missing}
+    required = ["task_id", "writer"] + (["session_id"] if require_session else [])
+    missing = [k for k in required if not fields[k]]
+    return {
+        "ok": not missing,
+        "fields": fields,
+        "missing": missing,
+        "require_session": require_session,
+        "session_empty_ok": not require_session,
+        "session_id_meaning": "IDE session id (VS Code / Cursor / Work Buddy / Codex)",
+    }
 
 
 
@@ -1976,7 +2150,7 @@ LLM_TASKS_HTML = """<!DOCTYPE html>
                 const modelPill = ol.model_present
                   ? `<span class="pill ok">Model ${ol.model || ''}</span>`
                   : `<span class="pill warn">Model missing ${ol.model || ''}</span>`;
-                const helperPill = `<span class="pill ok">Helper ON</span>`;
+                const helperPill = `<span class="pill ok">mouse_spot_helper ON</span>`;
                 document.getElementById('statusLine').innerHTML =
                   `${helperPill}${ollamaPill}${modelPill}` +
                   ` <span style="color:#9cdcfe">${ol.base_url || ''}</span>` +
@@ -2815,6 +2989,95 @@ def api_task_center_task(task_id: int) -> Any:
     })
 
 
+@app.route("/api/prompt/templates", methods=["GET"])
+def api_prompt_templates() -> Any:
+    """List built-in prompt-create templates (IDE work + identity trailer)."""
+    return jsonify({
+        "ok": True,
+        "templates": [
+            {
+                "id": "ide_work",
+                "name": "IDE work prompt",
+                "description": (
+                    "Create a coding-agent prompt for VS Code / Cursor / Work Buddy / Codex. "
+                    "session_id stays empty until IDE works the task; reply must return identity trio."
+                ),
+                "ide_targets": list(IDE_TARGETS),
+                "placeholders": ["goal", "context", "ide_target", "task_id", "writer", "session_id"],
+            }
+        ],
+        "session_id_meaning": "IDE session id (VS Code / Cursor / Work Buddy / Codex)",
+        "new_task_rule": "session_id empty until IDE works the task",
+    })
+
+
+@app.route("/api/prompt/from-template", methods=["POST"])
+def api_prompt_from_template() -> Any:
+    """Create prompt text from a template (default: ide_work)."""
+    data = request.get_json(silent=True) or {}
+    template_id = str(data.get("template_id") or data.get("template") or "ide_work").strip()
+    writer = str(data.get("writer") or "").strip()
+    task_id = str(data.get("task_id") or "").strip()
+    # New tasks: never invent session_id
+    session_id = str(data.get("session_id") or "").strip()
+    if template_id not in ("ide_work", "ide", "default"):
+        return jsonify({"ok": False, "error": f"unknown template_id: {template_id}"}), 400
+    prompt = render_ide_work_prompt(
+        goal=str(data.get("goal") or data.get("prompt") or ""),
+        context=str(data.get("context") or ""),
+        ide_target=str(data.get("ide_target") or data.get("target") or "Visual Studio Code"),
+        writer=writer,
+        task_id=task_id,
+        session_id=session_id,
+    )
+    trio = identity_trio_dict(writer=writer, task_id=task_id, session_id=session_id)
+    return jsonify({
+        "ok": True,
+        "template_id": "ide_work",
+        "prompt": prompt,
+        "improved_prompt": prompt,
+        "result": prompt,
+        "identity": trio,
+        "writer": trio["writer"],
+        "task_id": trio["task_id"],
+        "session_id": trio["session_id"],
+        "session_empty": not bool(trio["session_id"]),
+        "hint": (
+            "session_id empty is normal for new tasks; after IDE work, paste the agent reply "
+            "and use Apply IDs from reply."
+        ),
+    })
+
+
+@app.route("/api/prompt/apply-ids", methods=["POST"])
+def api_prompt_apply_ids() -> Any:
+    """Parse identity trio from agent reply text (session_id / task_id / writer)."""
+    data = request.get_json(silent=True) or {}
+    text = str(data.get("text") or data.get("reply") or data.get("prompt") or "")
+    if not text.strip():
+        return jsonify({"ok": False, "error": "text/reply required"}), 400
+    found = extract_prompt_ids(text)
+    trio = identity_trio_dict(
+        writer=found.get("writer") or data.get("writer"),
+        task_id=found.get("task_id") or data.get("task_id"),
+        session_id=found.get("session_id") or data.get("session_id"),
+    )
+    return jsonify({
+        "ok": True,
+        "found": found,
+        "identity": trio,
+        "writer": trio["writer"],
+        "task_id": trio["task_id"],
+        "session_id": trio["session_id"],
+        "applied": {
+            "writer": bool(trio["writer"]),
+            "task_id": bool(trio["task_id"]),
+            "session_id": bool(trio["session_id"]),
+        },
+        "trailer": identity_trailer(**trio),
+    })
+
+
 @app.route("/api/prompt/improve", methods=["POST"])
 def api_prompt_improve() -> Any:
     data = request.get_json(silent=True) or {}
@@ -2826,14 +3089,33 @@ def api_prompt_improve() -> Any:
     writer = str(data.get("writer") or "").strip()
     session_id = str(data.get("session_id") or "").strip()
     model = str(data.get("model") or DEFAULT_TEXT_MODEL).strip() or DEFAULT_TEXT_MODEL
+    # Soft gate: session_id optional for new tasks / request-in-reply mode
+    require_session = bool(data.get("require_session", False))
+    if "require_session" not in data and str(data.get("mode") or "").strip().lower() in (
+        "strict",
+        "full_trio",
+    ):
+        require_session = True
 
-    ctx = context_completeness(task_id=task_id, writer=writer, session_id=session_id)
+    ctx = context_completeness(
+        task_id=task_id,
+        writer=writer,
+        session_id=session_id,
+        require_session=require_session,
+    )
     if not ctx["ok"]:
         return jsonify({
             "ok": False,
             "error": "missing required context: " + ", ".join(ctx["missing"]),
             "missing": ctx["missing"],
             "context": ctx,
+            "writer": writer,
+            "task_id": task_id,
+            "session_id": session_id,
+            "hint": (
+                "task_id and writer are required. session_id may stay empty until IDE works "
+                "the task; improved prompt will ask the agent to return it."
+            ),
         }), 400
     if not prompt.strip():
         return jsonify({"ok": False, "error": "prompt is required"}), 400
@@ -2860,18 +3142,29 @@ def api_prompt_improve() -> Any:
         "error": None,
     })
 
+    session_rule = (
+        f"session_id: {session_id}\n"
+        if session_id
+        else (
+            "session_id: \n"
+            "(leave session_id empty if unknown; add an instruction that the IDE agent must "
+            "return session_id / task_id / writer at the end of its reply)\n"
+        )
+    )
     system = (
-        "You improve user prompts for coding agents. "
+        "You improve user prompts for coding agents (VS Code / Cursor / Work Buddy / Codex). "
         "Rewrite for clarity and actionability. "
-        "You MUST keep or add these exact identity lines in the improved prompt:\n"
+        "You MUST keep or add these identity lines at the end of the improved prompt:\n"
         f"writer: {writer}\n"
         f"task_id: {task_id}\n"
-        f"session_id: {session_id}\n"
+        f"{session_rule}"
+        "session_id means the IDE chat/session id. Do not invent a fake session_id. "
         "Return ONLY the improved prompt text. No markdown fences. No commentary."
     )
     user_msg = (
         "Improve the following prompt. Preserve intent. "
-        "Ensure the three identity lines above appear verbatim.\n\n"
+        "Ensure identity lines appear. If session_id is empty, instruct the agent to return "
+        "session_id, task_id, and writer at the end of the reply.\n\n"
         f"--- ORIGINAL PROMPT ---\n{prompt}\n--- END ---"
     )
     result = complete_text(user_msg, model=model, system=system, format_json=False)
@@ -2894,6 +3187,9 @@ def api_prompt_improve() -> Any:
             "reason": result.summary,
             "run_id": run_id,
             "model": model,
+            "writer": writer,
+            "task_id": task_id,
+            "session_id": session_id,
         }), 502
 
     improved = (result.raw_text or "").strip()
@@ -2902,11 +3198,19 @@ def api_prompt_improve() -> Any:
         improved = re.sub(r"^```[a-zA-Z0-9_-]*\n?", "", improved)
         improved = re.sub(r"\n?```$", "", improved).strip()
     improved = ensure_prompt_id_footer(
-        improved, writer=writer, task_id=task_id, session_id=session_id
+        improved,
+        writer=writer,
+        task_id=task_id,
+        session_id=session_id,
+        request_session_if_empty=True,
     )
+    # Soft ids check: writer+task required; session optional when empty
     ids_check = prompt_has_ids(
-        improved, writer=writer, task_id=task_id, session_id=session_id
+        improved, writer=writer, task_id=task_id, session_id=session_id or None
     )
+    soft_ok = bool(ids_check.get("writer")) and bool(ids_check.get("task_id"))
+    if session_id:
+        soft_ok = soft_ok and bool(ids_check.get("session_id"))
     update_llm_task(run_id, {
         "status": "done",
         "ended_at": ended,
@@ -2914,18 +3218,28 @@ def api_prompt_improve() -> Any:
         "prompt_tokens": result.prompt_tokens,
         "completion_tokens": result.completion_tokens,
         "total_tokens": result.total_tokens,
-        "result": "SUCCESS" if ids_check["ok"] else "FAIL",
-        "reason": "improved" if ids_check["ok"] else ("missing ids: " + ",".join(ids_check["missing"])),
+        "result": "SUCCESS" if soft_ok else "FAIL",
+        "reason": (
+            "improved"
+            if soft_ok
+            else ("missing ids: " + ",".join(ids_check.get("missing") or []))
+        ),
         "error": None,
     })
+    trailer = identity_trailer(writer=writer, task_id=task_id, session_id=session_id)
     return jsonify({
         "ok": True,
         "improved_prompt": improved,
-        "prompt_ids_ok": ids_check["ok"],
+        "improved": improved,
+        "result": improved,
+        "prompt_ids_ok": soft_ok,
         "prompt_ids": ids_check,
+        "context": ctx,
+        "identity": identity_trio_dict(writer=writer, task_id=task_id, session_id=session_id),
         "writer": writer,
         "task_id": task_id,
         "session_id": session_id,
+        "trailer": trailer,
         "model": model,
         "run_id": run_id,
         "prompt_tokens": result.prompt_tokens,
@@ -2943,17 +3257,30 @@ def api_prompt_analyze() -> Any:
     writer = str(data.get("writer") or "").strip() or None
     session_id = str(data.get("session_id") or "").strip() or None
     model = str(data.get("model") or DEFAULT_TEXT_MODEL).strip() or DEFAULT_TEXT_MODEL
+    require_session = bool(data.get("require_session", False))
 
     if not prompt.strip():
         return jsonify({"ok": False, "error": "prompt is required"}), 400
 
-    ctx = context_completeness(task_id=task_id, writer=writer, session_id=session_id)
+    ctx = context_completeness(
+        task_id=task_id,
+        writer=writer,
+        session_id=session_id,
+        require_session=require_session,
+    )
     prompt_ids = prompt_has_ids(
         prompt,
         writer=writer,
         task_id=task_id,
         session_id=session_id,
     )
+    # Soft: empty session is OK for new tasks
+    soft_ids_ok = bool(prompt_ids.get("writer")) and bool(prompt_ids.get("task_id"))
+    if session_id:
+        soft_ids_ok = soft_ids_ok and bool(prompt_ids.get("session_id"))
+    elif not require_session:
+        # session missing in prompt is expected
+        pass
 
     run_id = "t_" + uuid.uuid4().hex[:12]
     started = _utc_now_iso()
@@ -2978,10 +3305,12 @@ def api_prompt_analyze() -> Any:
     })
 
     system = (
-        "You review prompts for coding agents. Return ONLY JSON with keys: "
+        "You review prompts for coding agents (VS Code / Cursor / Work Buddy / Codex). "
+        "Return ONLY JSON with keys: "
         "notes (string), score (number 0..1), suggestions (array of short strings). "
-        "Focus on clarity, missing constraints, ambiguity, and whether identity "
-        "fields writer/task_id/session_id are present and consistent."
+        "Focus on clarity, missing constraints, ambiguity, and identity fields. "
+        "session_id is the IDE session id; empty session_id is OK for brand-new tasks "
+        "that no IDE has worked yet — suggest requesting it in the agent reply."
     )
     user_msg = (
         "Analyze this prompt.\n"
@@ -3009,7 +3338,7 @@ def api_prompt_analyze() -> Any:
         elif isinstance(raw_s, str) and raw_s.strip():
             suggestions = [raw_s.strip()]
 
-    overall_ok = bool(prompt_ids.get("ok")) and bool(ctx.get("ok"))
+    overall_ok = soft_ids_ok and bool(ctx.get("ok"))
     status = "done" if not result.error else "error"
     update_llm_task(run_id, {
         "status": status,
@@ -3023,16 +3352,27 @@ def api_prompt_analyze() -> Any:
         "error": result.error,
     })
 
+    trio = identity_trio_dict(writer=writer, task_id=task_id, session_id=session_id)
+    trailer = identity_trailer(**trio)
+    notes_out = notes or ""
+    if notes_out and not notes_out.rstrip().endswith(trio["task_id"] or "task_id"):
+        notes_out = (notes_out.rstrip() + "\n\n" + trailer).strip()
+    elif not notes_out:
+        notes_out = trailer
+
     payload = {
         "ok": True,
         "run_id": run_id,
         "model": model,
         "context_ok": ctx["ok"],
         "context": ctx,
-        "prompt_ids_ok": prompt_ids["ok"],
+        "prompt_ids_ok": soft_ids_ok,
         "prompt_ids": prompt_ids,
-        "missing": sorted(set(ctx["missing"] + prompt_ids["missing"])),
-        "notes": notes,
+        "missing": sorted(set(ctx["missing"] + [
+            m for m in (prompt_ids.get("missing") or [])
+            if require_session or m != "session_id"
+        ])),
+        "notes": notes_out,
         "score": score,
         "suggestions": suggestions,
         "llm_error": result.error,
@@ -3040,9 +3380,12 @@ def api_prompt_analyze() -> Any:
         "completion_tokens": result.completion_tokens,
         "total_tokens": result.total_tokens,
         "duration_ms": result.duration_ms,
-        "writer": writer,
-        "task_id": task_id,
-        "session_id": session_id,
+        "identity": trio,
+        "writer": trio["writer"] or writer,
+        "task_id": trio["task_id"] or task_id,
+        "session_id": trio["session_id"] or session_id,
+        "trailer": trailer,
+        "result": notes_out,
     }
     if result.error:
         # Still return checklist; surface model failure.
@@ -3118,8 +3461,10 @@ def api_skills_task_record_one(task_id: str) -> Any:
         return jsonify({"ok": False, "error": f"{type(e).__name__}: {e}"}), 500
 
 
-@app.route("/api/skills", methods=["GET"])
-def api_skills_list() -> Any:
+@app.route("/api/skills", methods=["GET", "POST"])
+def api_skills_list_or_create() -> Any:
+    if request.method == "POST":
+        return api_skills_create()
     skill_key = (request.args.get("skill") or request.args.get("skill_key") or "").strip() or None
     try:
         if AGENT_DB_PATH.is_file():
@@ -3130,7 +3475,11 @@ def api_skills_list() -> Any:
         rows = list_skills(skill_key=skill_key)
         # slim list for UI
         items = []
+        keys_seen: list[str] = []
         for r in rows:
+            sk = str(r.get("skill_key") or "")
+            if sk and sk not in keys_seen:
+                keys_seen.append(sk)
             items.append({
                 "id": r.get("id"),
                 "skill_key": r.get("skill_key"),
@@ -3143,7 +3492,105 @@ def api_skills_list() -> Any:
                 "notes": r.get("notes"),
                 "updated_at": r.get("updated_at"),
             })
-        return jsonify({"ok": True, "skills": items, "count": len(items)})
+        return jsonify({
+            "ok": True,
+            "skills": items,
+            "skill_keys": keys_seen,
+            "count": len(items),
+            "ide_targets": list(IDE_TARGETS),
+        })
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"{type(e).__name__}: {e}"}), 500
+
+
+def api_skills_create() -> Any:
+    """Register a new skill template (draft version). Enables + New template in SSOT UI."""
+    data = request.get_json(silent=True) or {}
+    skill_key = str(data.get("skill_key") or data.get("skill") or "").strip()
+    if not skill_key:
+        return jsonify({"ok": False, "error": "skill_key required"}), 400
+    if not re.match(r"^[a-zA-Z][a-zA-Z0-9_]{1,63}$", skill_key):
+        return jsonify({
+            "ok": False,
+            "error": "skill_key must be 2–64 chars: letter then letters/digits/underscore",
+        }), 400
+    version_label = str(data.get("version_label") or data.get("version") or "v1_draft").strip()
+    from_skill = str(data.get("from_skill") or data.get("clone_from") or "").strip()
+    from_version = str(data.get("from_version") or "").strip() or None
+    prompt_text = str(data.get("prompt_text") or data.get("prompt") or "").strip()
+    notes = data.get("notes")
+    parser = str(data.get("parser") or "result_yes_no").strip() or "result_yes_no"
+    writer = str(data.get("writer") or "").strip()
+    task_id = str(data.get("task_id") or "").strip()
+    session_id = str(data.get("session_id") or "").strip()
+
+    if not prompt_text and from_skill:
+        try:
+            if from_version:
+                from skill_prompt import get_skill_version
+                src = get_skill_version(from_skill, from_version)
+            else:
+                src = get_active_skill(from_skill, db_path=AGENT_DB_PATH)
+            if src and src.get("prompt_text"):
+                prompt_text = str(src.get("prompt_text") or "")
+                parser = str(src.get("parser") or parser)
+        except Exception:
+            pass
+    if not prompt_text:
+        # Minimal IDE-oriented starter template
+        prompt_text = (
+            "You are a visual inspector for IDE targets "
+            "(Visual Studio Code / Cursor / Work Buddy / Codex).\n"
+            "1. Red crosshair (+) = captured mouse point.\n"
+            "2. Target = {{target_name}}.\n"
+            "3. PASS only if crosshair is on the target icon pixels.\n"
+            "4. Intended action (context only): {{target_action}}\n"
+            "5. Output exactly:\n"
+            "Result: [YES / NO]\n"
+            "Reason: 1 short sentence.\n"
+        )
+    try:
+        if not AGENT_DB_PATH.is_file():
+            return jsonify({"ok": False, "error": "agent.db missing — run create_db.py --migrate"}), 500
+        conn = skill_db_connect(AGENT_DB_PATH)
+        try:
+            ensure_skill_tables(conn)
+            existing = list_skills(skill_key=skill_key)
+            if any(str(r.get("version_label")) == version_label for r in existing):
+                return jsonify({
+                    "ok": False,
+                    "error": f"version already exists: {skill_key}/{version_label}",
+                    "skill_key": skill_key,
+                }), 409
+            row = upsert_skill_prompt(
+                conn,
+                skill_key=skill_key,
+                version_label=version_label,
+                prompt_text=prompt_text,
+                prompt_key=str(data.get("prompt_key") or "main"),
+                status=str(data.get("status") or "draft"),
+                parser=parser,
+                output_schema=str(data.get("output_schema") or parser),
+                model_default=str(data.get("model_default") or DEFAULT_VISION_MODEL),
+                hard_rules=data.get("hard_rules") if isinstance(data.get("hard_rules"), list) else None,
+                source=str(data.get("source") or "ssot_ui_create"),
+                notes=str(notes) if notes else f"created via POST /api/skills; clone={from_skill or '-'}",
+                activate=bool(data.get("activate")),
+                commit=True,
+            )
+        finally:
+            conn.close()
+        trio = identity_trio_dict(writer=writer, task_id=task_id, session_id=session_id)
+        return jsonify({
+            "ok": True,
+            "created": True,
+            "skill_key": skill_key,
+            "skill": row,
+            "identity": trio,
+            "writer": trio["writer"],
+            "task_id": trio["task_id"],
+            "session_id": trio["session_id"],
+        })
     except Exception as e:
         return jsonify({"ok": False, "error": f"{type(e).__name__}: {e}"}), 500
 
@@ -3209,11 +3656,26 @@ def api_skills_draft(skill_key: str) -> Any:
     version_label = str(data.get("version_label") or data.get("version") or "").strip()
     if not version_label:
         version_label = f"draft_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
+    # Clone from existing template/version when prompt empty
+    from_version = str(data.get("from_version") or data.get("clone_version") or "").strip() or None
     if not prompt_text.strip():
-        return jsonify({"ok": False, "error": "prompt_text required"}), 400
+        try:
+            if from_version:
+                from skill_prompt import get_skill_version
+                src = get_skill_version(skill_key, from_version)
+            else:
+                src = get_active_skill(skill_key, db_path=AGENT_DB_PATH)
+            if src and src.get("prompt_text"):
+                prompt_text = str(src.get("prompt_text") or "")
+        except Exception:
+            pass
+    if not prompt_text.strip():
+        return jsonify({"ok": False, "error": "prompt_text required (or from_version to clone)"}), 400
     activate = bool(data.get("activate"))
     status = "active" if activate else str(data.get("status") or "draft")
     task_id = data.get("task_id")
+    writer = str(data.get("writer") or "").strip()
+    session_id = str(data.get("session_id") or "").strip()
     try:
         task_id_i = int(task_id) if task_id not in (None, "") else None
     except (TypeError, ValueError):
@@ -3243,7 +3705,22 @@ def api_skills_draft(skill_key: str) -> Any:
             )
         finally:
             conn.close()
-        return jsonify({"ok": True, "skill": row})
+        trio = identity_trio_dict(
+            writer=writer,
+            task_id=task_id if task_id not in (None, "") else "",
+            session_id=session_id,
+        )
+        return jsonify({
+            "ok": True,
+            "skill": row,
+            "skill_key": skill_key,
+            "version_label": version_label,
+            "identity": trio,
+            "writer": trio["writer"],
+            "task_id": trio["task_id"],
+            "session_id": trio["session_id"],
+            "trailer": identity_trailer(**trio),
+        })
     except Exception as e:
         return jsonify({"ok": False, "error": f"{type(e).__name__}: {e}"}), 500
 
@@ -3357,7 +3834,22 @@ def api_skills_test(skill_key: str) -> Any:
             "model": out.get("model"),
             "error": None,
         })
+        writer = str(data.get("writer") or "").strip()
+        session_id = str(data.get("session_id") or "").strip()
+        task_id_ctx = str(data.get("task_id") or "").strip()
+        trio = identity_trio_dict(
+            writer=writer, task_id=task_id_ctx, session_id=session_id
+        )
         out["llm_task_id"] = run_id
+        out["identity"] = trio
+        out["writer"] = trio["writer"]
+        out["task_id"] = trio["task_id"] or run_id
+        out["session_id"] = trio["session_id"]
+        out["trailer"] = identity_trailer(
+            writer=trio["writer"],
+            task_id=trio["task_id"] or run_id,
+            session_id=trio["session_id"],
+        )
         return jsonify(out)
     except FileNotFoundError as e:
         update_llm_task(run_id, {
@@ -3387,8 +3879,10 @@ def api_skills_test_latest(skill_key: str) -> Any:
     return jsonify({"ok": True, "latest_test": dict(row)})
 
 
-@app.route("/api/skills/<skill_key>/cases", methods=["GET"])
-def api_skills_cases_list(skill_key: str) -> Any:
+@app.route("/api/skills/<skill_key>/cases", methods=["GET", "POST"])
+def api_skills_cases(skill_key: str) -> Any:
+    if request.method == "POST":
+        return api_skills_cases_create(skill_key)
     status = (request.args.get("status") or "active").strip() or None
     if status and status.lower() == "all":
         status = None
@@ -3402,9 +3896,72 @@ def api_skills_cases_list(skill_key: str) -> Any:
             "status": status or "all",
             "cases": cases,
             "count": len(cases),
+            "ide_targets": list(IDE_TARGETS),
         })
     except Exception as e:
         return jsonify({"ok": False, "error": f"{type(e).__name__}: {e}"}), 500
+
+
+def api_skills_cases_create(skill_key: str) -> Any:
+    """Add a gold/catalog case (IDE targets: VS Code / Cursor / Work Buddy / Codex)."""
+    data = request.get_json(silent=True) or {}
+    target_name = str(data.get("target_name") or data.get("target") or "").strip()
+    case_key = str(data.get("case_key") or "").strip()
+    if not case_key:
+        base = re.sub(r"[^a-zA-Z0-9]+", "_", target_name or "case").strip("_").lower() or "case"
+        case_key = f"{skill_key}_{base}"[:64]
+    expected = str(data.get("expected") or "NO").strip().upper() or "NO"
+    image_path = data.get("image_path") or str(SCREENSHOT_PATH)
+    writer = str(data.get("writer") or "").strip()
+    task_id = str(data.get("task_id") or "").strip()
+    session_id = str(data.get("session_id") or "").strip()
+    try:
+        if not AGENT_DB_PATH.is_file():
+            return jsonify({"ok": False, "error": "agent.db missing"}), 500
+        row = upsert_skill_case(
+            case_key=case_key,
+            skill_key=skill_key,
+            image_path=image_path,
+            vision_ref=data.get("vision_ref"),
+            target_name=target_name or None,
+            target_action=str(data.get("target_action") or data.get("action") or ""),
+            expected=expected,
+            expected_reason=data.get("expected_reason"),
+            notes=data.get("notes") or (
+                "IDE catalog target" if target_name in IDE_TARGETS else None
+            ),
+            source=str(data.get("source") or "ssot_ui"),
+            labeler=writer or data.get("labeler"),
+            status=str(data.get("status") or "active"),
+            db_path=AGENT_DB_PATH,
+            commit=True,
+        )
+        trio = identity_trio_dict(writer=writer, task_id=task_id, session_id=session_id)
+        return jsonify({
+            "ok": True,
+            "case": row,
+            "skill_key": skill_key,
+            "identity": trio,
+            "writer": trio["writer"],
+            "task_id": trio["task_id"],
+            "session_id": trio["session_id"],
+            "trailer": identity_trailer(**trio),
+        })
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"{type(e).__name__}: {e}"}), 500
+
+
+@app.route("/api/health")
+def api_health() -> Any:
+    """Lightweight liveness for helper_watchdog (no Ollama / DB work)."""
+    return jsonify(
+        {
+            "ok": True,
+            "service": "mouse_spot_helper",
+            "pid": os.getpid(),
+            "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z",
+        }
+    )
 
 
 @app.route("/api/system-status")
@@ -3523,6 +4080,16 @@ def api_skills_improve_draft(skill_key: str) -> Any:
         # Law: improve never activates — strip any accidental activate flags
         out["draft_only"] = True
         out["activated"] = False
+        trio = identity_trio_dict(
+            writer=str(data.get("writer") or "").strip(),
+            task_id=str(data.get("task_id") or "").strip(),
+            session_id=str(data.get("session_id") or "").strip(),
+        )
+        out["identity"] = trio
+        out["writer"] = trio["writer"]
+        out["task_id"] = trio["task_id"]
+        out["session_id"] = trio["session_id"]
+        out["trailer"] = identity_trailer(**trio)
         status = 200 if out.get("ok") else 400
         return jsonify(out), status
     except Exception as e:
@@ -3651,6 +4218,10 @@ def api_analyze() -> Any:
     target_id = data.get("target_id") or active_target_id
     target_name = data.get("target_name")
     model = data.get("model") or DEFAULT_VISION_MODEL
+    writer = str(data.get("writer") or "").strip()
+    session_id = str(data.get("session_id") or "").strip()
+    # Optional Task Center / draft task id (separate from runtime t_<hex>)
+    ctx_task_id = str(data.get("task_id") or data.get("context_task_id") or "").strip()
 
     if not SCREENSHOT_PATH.is_file():
         return jsonify({"result": "FAIL", "reason": "No screenshot available. Capture first."}), 400
@@ -3713,6 +4284,9 @@ def api_analyze() -> Any:
         "target_name": target_name,
         "skill_key": skill_key,
         "skill_version": skill_version,
+        "writer": writer or None,
+        "session_id": session_id or None,
+        "context_task_id": ctx_task_id or None,
         "x": x,
         "y": y,
         "error": None,
@@ -3730,6 +4304,12 @@ def api_analyze() -> Any:
     )
     wall_ms = int((time.perf_counter() - t0) * 1000)
     ended_at = _utc_now_iso()
+    trio = identity_trio_dict(
+        writer=writer,
+        task_id=ctx_task_id or task_id,
+        session_id=session_id,
+    )
+    trailer = identity_trailer(**trio)
 
     if result.error:
         update_llm_task(task_id, {
@@ -3750,6 +4330,11 @@ def api_analyze() -> Any:
             "result": "FAIL",
             "reason": f"LLM error: {result.error}",
             "task_id": task_id,
+            "context_task_id": ctx_task_id or None,
+            "identity": trio,
+            "writer": trio["writer"],
+            "session_id": trio["session_id"],
+            "trailer": trailer,
             "model": result.model or model,
             "skill_key": skill_key,
             "skill_version": skill_version,
@@ -3839,6 +4424,11 @@ def api_analyze() -> Any:
         "confidence": confidence,
         "model": result.model or model,
         "task_id": task_id,
+        "context_task_id": ctx_task_id or None,
+        "identity": trio,
+        "writer": trio["writer"],
+        "session_id": trio["session_id"],
+        "trailer": trailer,
         "skill_key": skill_key,
         "skill_version": skill_version,
         "parser": parser_name,
@@ -3928,6 +4518,89 @@ def create_desktop_shortcut(url: str) -> Path | None:
     return main_lnk if main_lnk.is_file() else None
 
 
+HELPER_MUTEX_NAME = r"Local\AgentSystemMouseSpotHelper_v1"
+_helper_mutex_handle = None
+
+
+def _write_helper_pid() -> None:
+    path = BASE_DIR / "mouse_spot_helper.pid"
+    try:
+        path.write_text(str(os.getpid()), encoding="utf-8")
+    except Exception:
+        pass
+
+
+def _clear_helper_pid() -> None:
+    path = BASE_DIR / "mouse_spot_helper.pid"
+    try:
+        if path.is_file():
+            cur = path.read_text(encoding="utf-8").strip()
+            if cur == str(os.getpid()):
+                path.unlink(missing_ok=True)
+    except Exception:
+        pass
+
+
+def _release_helper_mutex() -> None:
+    global _helper_mutex_handle
+    if _helper_mutex_handle is None:
+        return
+    if sys.platform == "win32":
+        try:
+            import ctypes
+
+            ctypes.windll.kernel32.ReleaseMutex(_helper_mutex_handle)
+            ctypes.windll.kernel32.CloseHandle(_helper_mutex_handle)
+        except Exception:
+            pass
+    _helper_mutex_handle = None
+
+
+def _acquire_helper_single_instance() -> bool:
+    """Only one mouse_spot_helper may own port 18765 / serve traffic."""
+    global _helper_mutex_handle
+    pid_path = BASE_DIR / "mouse_spot_helper.pid"
+
+    if sys.platform == "win32":
+        try:
+            import ctypes
+
+            kernel32 = ctypes.windll.kernel32
+            ERROR_ALREADY_EXISTS = 183
+            WAIT_OBJECT_0 = 0
+            WAIT_ABANDONED = 128
+            WAIT_TIMEOUT = 258
+            kernel32.SetLastError(0)
+            handle = kernel32.CreateMutexW(None, False, HELPER_MUTEX_NAME)
+            last_err = int(kernel32.GetLastError() or 0)
+            if handle:
+                wait = int(kernel32.WaitForSingleObject(handle, 0))
+                if wait in (WAIT_OBJECT_0, WAIT_ABANDONED):
+                    _helper_mutex_handle = handle
+                elif wait == WAIT_TIMEOUT or last_err == ERROR_ALREADY_EXISTS:
+                    kernel32.CloseHandle(handle)
+                    print("Another mouse_spot_helper already running (mutex). Exit.")
+                    return False
+                else:
+                    kernel32.CloseHandle(handle)
+        except Exception as e:
+            print(f"WARNING: helper mutex failed: {e}")
+
+    # PID-file fallback / stale cleanup
+    try:
+        if pid_path.is_file():
+            old = int(pid_path.read_text(encoding="utf-8").strip() or "0")
+        else:
+            old = 0
+    except Exception:
+        old = 0
+    if old and old != os.getpid() and _pid_alive(old):
+        if _helper_mutex_handle is None:
+            print(f"Another mouse_spot_helper already running (pid={old}). Exit.")
+            return False
+    return True
+
+
 def main(argv: list[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     no_browser = (
@@ -3939,6 +4612,20 @@ def main(argv: list[str] | None = None) -> int:
     url = f"http://{host}:{port}/"
     tasks_url = f"http://{host}:{port}/llm-tasks"
 
+    if not _acquire_helper_single_instance():
+        return 0
+
+    _write_helper_pid()
+    atexit_registered = False
+    try:
+        import atexit as _atexit
+
+        _atexit.register(_clear_helper_pid)
+        _atexit.register(_release_helper_mutex)
+        atexit_registered = True
+    except Exception:
+        atexit_registered = False
+
     threading.Thread(target=hotkey_listener, daemon=True).start()
 
     shortcut = create_desktop_shortcut(url)
@@ -3946,12 +4633,18 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Desktop shortcut: {shortcut}")
     print(f"Open: {url}")
     print(f"LLM tasks: {tasks_url}")
+    print(f"pid={os.getpid()} health={url}api/health")
     if no_browser:
         print("Browser open skipped (--no-browser / HELPER_NO_BROWSER).")
     else:
         webbrowser.open(url)
 
-    app.run(host=host, port=port, debug=False, use_reloader=False)
+    try:
+        app.run(host=host, port=port, debug=False, use_reloader=False, threaded=True)
+    finally:
+        if not atexit_registered:
+            _clear_helper_pid()
+            _release_helper_mutex()
     return 0
 
 
