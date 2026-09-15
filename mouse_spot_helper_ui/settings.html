@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mouse Spot Helper — Settings</title>
+  <link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+  <div id="app" style="max-width: 520px;">
+    <div class="panel" style="text-align: left;">
+      <h1 style="text-align: center;");>Settings</h1>
+      <div id="targetList"></div>
+      <div style="display: flex; gap: 0.5em; margin-top: 1em;">
+        <input type="text" id="newName" placeholder="New target name" style="flex: 1; padding: 0.5em;">
+        <button id="addBtn">+ Add</button>
+      </div>
+      <div style="text-align: center; margin-top: 1em;">
+        <button class="secondary" onclick="window.close()">Close</button>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="/src/settings.js"></script>
+</body>
+</html>

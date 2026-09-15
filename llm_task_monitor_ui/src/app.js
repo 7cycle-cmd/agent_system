@@ -1,0 +1,1753 @@
+import {
+  createBlankRecord,
+  deleteRecord,
+  listRecords,
+  upsertRecord,
+} from './storage.js';
+
+const NAV = [
+  { id: 'task-center', label: 'Task Center' },
+  { id: 'watchdog', label: 'Watchdog' },
+  { id: 'task-id-coding', label: 'Task ID Coding' },
+  { id: 'skill-ssot', label: 'Skill Prompt SSOT' },
+  { id: 'test-lib', label: 'Test Case Library' },
+  { id: 'assets', label: 'Asset Registry' },
+];
+
+const TABS = [
+  { id: 'analyze', label: 'Prompt Analyze' },
+  { id: 'chat', label: 'Chat Box' },
+  { id: 'result', label: 'Result Output' },
+  { id: 'report', label: 'Task Report' },
+];
+
+const state = {
+  nav: 'task-center',
+  tab: 'analyze',
+  leftOpen: true,
+  rightOpen: true,
+  query: '',
+  catalogMode: 'server',
+  selectedId: null,
+  selectedServerId: null,
+  draft: createBlankRecord(),
+  status: {
+    helperOk: false,
+    ollamaOk: false,
+    modelPresent: false,
+    model: '',
+    computerId: '',
+    computerName: '',
+    baseUrl: '',
+    text: 'Checking…',
+  },
+  report: {
+    tasks: [],
+    totals: { count: 0, prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+    by_model: [],
+    models: [],
+  },
+  skill: {
+    skillKey: 'mouse_spot_verify',
+    version: '',
+    active: null,
+    versions: [],
+    latestTest: null,
+    casesCount: null,
+    msg: '',
+    log: '(Seed / Reload / Test output)',
+  },
+  watchdog: {
+    running: false,
+    pid: null,
+    lastEvent: null,
+    events: [],
+    logTail: [],
+    selectedId: null,
+    msg: '',
+  },
+  taskId: {
+    root: '10',
+    tab: 'list', // list | rule | generate | detail
+    input: `F:
+skill_prompt_load
+skill_prompt_render
+mouse_spot_verify
+skill_prompt_test_100
+skill_prompt_promote
+
+A:
+GET /api/skills
+GET /api/skills/:id
+POST /api/skills/:id/test
+POST /api/skills/:id/activate
+POST /api/analyze
+
+T:
+skill_prompt_ssot
+skill_prompt_case
+skill_prompt_test_run
+skill_prompt_inference
+
+D:
+skill_key
+version_label
+prompt_text
+
+J:
+skill_prompt_regression_100
+
+E:
+skill_prompt_promoted
+mouse_spot_verify_done`,
+    output: '',
+    msg: '',
+    seededLines: [],
+    records: [],
+    selectedId: null,
+    selected: null,
+    dims: [],
+  },
+};
+
+const TASK_ID_TABS = [
+  { id: 'list', label: 'Task List' },
+  { id: 'detail', label: 'Task Detail' },
+  { id: 'rule', label: 'Coding Rule' },
+  { id: 'generate', label: 'Generate IDs' },
+];
+
+function $(sel, root = document) {
+  return root.querySelector(sel);
+}
+
+function toast(msg) {
+  const el = $('#toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.remove('opacity-0');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => el.classList.add('opacity-0'), 1800);
+}
+
+function esc(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&' + 'amp;')
+    .replace(/</g, '&' + 'lt;')
+    .replace(/>/g, '&' + 'gt;')
+    .replace(/"/g, '&' + 'quot;');
+}
+
+function fmtDuration(startedAt, endedAt, durationMs) {
+  if (durationMs != null && !Number.isNaN(Number(durationMs))) {
+    const ms = Number(durationMs);
+    if (ms < 1000) return ms + ' ms';
+    return (ms / 1000).toFixed(1) + ' s';
+  }
+  if (!startedAt || !endedAt) return '—';
+  try {
+    const ms = new Date(endedAt).getTime() - new Date(startedAt).getTime();
+    if (Number.isNaN(ms)) return '—';
+    if (ms < 1000) return ms + ' ms';
+    return (ms / 1000).toFixed(1) + ' s';
+  } catch {
+    return '—';
+  }
+}
+
+function filteredLocal() {
+  const q = state.query.trim().toLowerCase();
+  const all = listRecords();
+  if (!q) return all;
+  return all.filter((r) =>
+    [r.id, r.name, r.task_id, r.writer, r.session_id, r.status, r.prompt_content]
+      .join(' ')
+      .toLowerCase()
+      .includes(q)
+  );
+}
+
+function filteredServer() {
+  const q = state.query.trim().toLowerCase();
+  const all = state.report.tasks || [];
+  if (!q) return all;
+  return all.filter((t) =>
+    [t.id, t.task, t.model, t.model_label, t.status, t.result, t.writer, t.task_id, t.session_id, t.reason, t.target_name]
+      .join(' ')
+      .toLowerCase()
+      .includes(q)
+  );
+}
+
+function readFormIntoDraft() {
+  state.draft = {
+    ...state.draft,
+    task_id: $('#f-task-id')?.value || '',
+    writer: $('#f-writer')?.value || '',
+    session_id: $('#f-session')?.value || '',
+    context: $('#f-context')?.value || '',
+    prompt_content: $('#f-prompt')?.value || '',
+    result_content: $('#f-result')?.value || '',
+    status: $('#f-status')?.value || state.draft.status || 'draft',
+  };
+}
+
+function fillForm(rec, animate = true) {
+  state.draft = createBlankRecord(rec);
+  state.selectedId = rec.id;
+  state.selectedServerId = null;
+  const box = $('#workspace-body');
+  if (box && animate) {
+    box.classList.remove('fade-swap');
+    void box.offsetWidth;
+    box.classList.add('fade-swap');
+  }
+  if ($('#f-task-id')) $('#f-task-id').value = rec.task_id || '';
+  if ($('#f-writer')) $('#f-writer').value = rec.writer || '';
+  if ($('#f-session')) $('#f-session').value = rec.session_id || '';
+  if ($('#f-context')) $('#f-context').value = rec.context || '';
+  if ($('#f-prompt')) $('#f-prompt').value = rec.prompt_content || '';
+  if ($('#f-result')) $('#f-result').value = rec.result_content || '';
+  if ($('#f-status')) $('#f-status').value = rec.status || 'draft';
+  renderRightList();
+  renderStatusPills();
+}
+
+function loadServerTaskIntoWorkspace(task) {
+  const rec = createBlankRecord({
+    id: state.draft.id || undefined,
+    task_id: String(task.task_id || task.id || ''),
+    writer: task.writer || '',
+    session_id: task.session_id || '',
+    context: [task.task, task.target_name, task.model_label || task.model].filter(Boolean).join(' · '),
+    prompt_content: state.draft.prompt_content || '',
+    result_content: task.reason || task.error || task.result || '',
+    status: String(task.status || task.result || 'done').toLowerCase(),
+    name: task.task || task.id || 'Server task',
+  });
+  state.selectedServerId = task.id;
+  state.selectedId = null;
+  state.catalogMode = 'server';
+  state.tab = 'report';
+  state.draft = rec;
+  mount(false);
+  if ($('#f-result')) $('#f-result').value = rec.result_content || '';
+  toast('Loaded ' + task.id);
+}
+
+function pill(ok, onLabel, offLabel) {
+  if (ok) {
+    return '<span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100">' + onLabel + '</span>';
+  }
+  return '<span class="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700 ring-1 ring-rose-100">' + offLabel + '</span>';
+}
+
+function renderStatusPills() {
+  const host = $('#status-pills');
+  if (!host) return;
+  const s = state.status;
+  const wd = state.watchdog || {};
+  const last = wd.lastEvent || {};
+  const alertish = String(last.level || '') === 'alert' || String(last.kind || '').includes('down') || String(last.kind || '').includes('failed');
+  host.innerHTML = [
+    pill(s.helperOk, 'Helper ON', 'Helper OFF'),
+    pill(!!wd.running, 'Watchdog ON', 'Watchdog OFF'),
+    pill(s.ollamaOk, 'LLM ON', 'LLM OFF'),
+    s.modelPresent
+      ? '<span class="inline-flex items-center rounded-full bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent">' + esc(s.model || 'model') + '</span>'
+      : '<span class="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">Model missing</span>',
+    alertish && last.message
+      ? '<span class="inline-flex max-w-[280px] items-center truncate rounded-full bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700 ring-1 ring-rose-100" title="' +
+        esc(last.message) +
+        '">⚠ ' +
+        esc(last.kind || 'alert') +
+        '</span>'
+      : '',
+    s.computerId
+      ? '<span class="hidden sm:inline-flex items-center rounded-full bg-soft px-2.5 py-1 text-xs font-medium text-muted">' + esc(s.computerId) + '</span>'
+      : '',
+  ].join('');
+  const line = $('#status-line');
+  if (line) line.textContent = s.text;
+}
+
+function badge(status) {
+  const s = String(status || 'draft').toLowerCase();
+  const map = {
+    draft: 'bg-soft text-muted',
+    ready: 'bg-accent-soft text-accent',
+    done: 'bg-emerald-50 text-emerald-700',
+    success: 'bg-emerald-50 text-emerald-700',
+    error: 'bg-rose-50 text-rose-700',
+    fail: 'bg-rose-50 text-rose-700',
+    running: 'bg-amber-50 text-amber-700',
+  };
+  const cls = map[s] || map.draft;
+  return '<span class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ' + cls + '">' + esc(status || 'draft') + '</span>';
+}
+
+function renderRightList() {
+  const host = $('#record-list');
+  if (!host) return;
+
+  const modeBar =
+    '<div class="flex gap-1 border-b border-line p-2">' +
+    '<button type="button" data-catalog="server" class="flex-1 rounded-lg px-2 py-1.5 text-xs font-medium transition ' +
+    (state.catalogMode === 'server' ? 'bg-accent text-white' : 'text-muted hover:bg-soft') +
+    '">Server tasks</button>' +
+    '<button type="button" data-catalog="local" class="flex-1 rounded-lg px-2 py-1.5 text-xs font-medium transition ' +
+    (state.catalogMode === 'local' ? 'bg-accent text-white' : 'text-muted hover:bg-soft') +
+    '">Local drafts</button></div>';
+
+  if (state.catalogMode === 'local') {
+    const rows = filteredLocal();
+    host.innerHTML =
+      modeBar +
+      (rows.length
+        ? rows
+            .map((r) => {
+              const active = r.id === state.selectedId;
+              return (
+                '<button type="button" data-local-id="' +
+                esc(r.id) +
+                '" class="w-full text-left px-3 py-2.5 border-b border-line/80 transition hover:bg-soft/80 ' +
+                (active ? 'bg-accent-soft border-l-2 border-l-accent' : 'border-l-2 border-l-transparent') +
+                '"><div class="flex items-center justify-between gap-2"><span class="text-[11px] mono text-muted truncate">' +
+                esc(r.id) +
+                '</span>' +
+                badge(r.status) +
+                '</div><div class="mt-0.5 text-sm font-medium text-ink truncate">' +
+                esc(r.name || r.task_id || 'Untitled') +
+                '</div></button>'
+              );
+            })
+            .join('')
+        : '<div class="p-4 text-sm text-muted">No local drafts. Click <b>New</b>.</div>');
+    return;
+  }
+
+  const rows = filteredServer();
+  host.innerHTML =
+    modeBar +
+    (rows.length
+      ? rows
+          .map((t) => {
+            const active = t.id === state.selectedServerId;
+            const title = t.task || t.model_label || t.id;
+            const sub = [t.model_label || t.model, t.writer, t.task_id].filter(Boolean).join(' · ');
+            return (
+              '<button type="button" data-server-id="' +
+              esc(t.id) +
+              '" class="w-full text-left px-3 py-2.5 border-b border-line/80 transition hover:bg-soft/80 ' +
+              (active ? 'bg-accent-soft border-l-2 border-l-accent' : 'border-l-2 border-l-transparent') +
+              '"><div class="flex items-center justify-between gap-2"><span class="text-[11px] mono text-muted truncate">' +
+              esc(t.id) +
+              '</span>' +
+              badge(t.result || t.status) +
+              '</div><div class="mt-0.5 text-sm font-medium text-ink truncate">' +
+              esc(title) +
+              '</div><div class="mt-0.5 text-[11px] text-muted truncate">' +
+              esc(sub) +
+              '</div><div class="mt-1 flex gap-2 text-[11px] mono text-muted"><span title="Prompt tokens">in ' +
+              esc(t.prompt_tokens ?? 0) +
+              '</span><span title="Output tokens">out ' +
+              esc(t.completion_tokens ?? 0) +
+              '</span><span title="Total tokens">Σ ' +
+              esc(t.total_tokens ?? 0) +
+              '</span></div></button>'
+            );
+          })
+          .join('')
+      : '<div class="p-4 text-sm text-muted">No server tasks yet. Run Analyze / Improve first.</div>');
+}
+
+function reportHtml() {
+  const t = state.report.totals || {};
+  const tasks = state.report.tasks || [];
+  const byModel = state.report.by_model || [];
+
+  return (
+    '<div class="mx-auto flex max-w-5xl flex-col gap-4">' +
+    '<div class="flex flex-wrap items-end justify-between gap-2"><div><h2 class="text-lg font-semibold">Task Report</h2><p class="text-sm text-muted">Live history from helper · Refresh / auto 5s</p></div>' +
+    '<button id="btn-clear-server" type="button" class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-sm text-rose-700 hover:bg-rose-100">Clear server history</button></div>' +
+    '<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">' +
+    '<div class="rounded-2xl border border-line bg-panel p-4 shadow-panel"><div class="text-xs font-medium text-muted">Tasks</div><div class="mt-1 text-2xl font-semibold text-ink">' +
+    esc(t.count || 0) +
+    '</div></div>' +
+    '<div class="rounded-2xl border border-line bg-panel p-4 shadow-panel" title="Tokens sent to the model"><div class="text-xs font-medium text-muted">Prompt tok</div><div class="mt-1 text-2xl font-semibold text-ink">' +
+    esc(t.prompt_tokens || 0) +
+    '</div></div>' +
+    '<div class="rounded-2xl border border-line bg-panel p-4 shadow-panel" title="Tokens generated by the model"><div class="text-xs font-medium text-muted">Out tok</div><div class="mt-1 text-2xl font-semibold text-ink">' +
+    esc(t.completion_tokens || 0) +
+    '</div></div>' +
+    '<div class="rounded-2xl border border-line bg-panel p-4 shadow-panel" title="Prompt + Output"><div class="text-xs font-medium text-muted">Total tok</div><div class="mt-1 text-2xl font-semibold text-accent">' +
+    esc(t.total_tokens || 0) +
+    '</div></div></div>' +
+    '<div class="grid gap-3 sm:grid-cols-2">' +
+    (byModel
+      .map(
+        (m) =>
+          '<div class="rounded-2xl border border-line bg-panel p-4 shadow-panel"><div class="font-medium text-ink">' +
+          esc(m.label || m.model) +
+          '</div><div class="mt-1 text-xs text-muted mono">' +
+          esc(m.model) +
+          '</div><div class="mt-2 text-sm text-muted">tasks ' +
+          esc(m.count || 0) +
+          ' · Σ ' +
+          esc(m.total_tokens || 0) +
+          '</div><div class="text-xs text-muted">in ' +
+          esc(m.prompt_tokens || 0) +
+          ' / out ' +
+          esc(m.completion_tokens || 0) +
+          '</div></div>'
+      )
+      .join('') ||
+      '<div class="rounded-2xl border border-line bg-panel p-4 text-sm text-muted shadow-panel">No model stats yet.</div>') +
+    '</div>' +
+    '<div class="overflow-hidden rounded-2xl border border-line bg-panel shadow-panel"><div class="overflow-auto"><table class="min-w-full text-left text-sm"><thead class="bg-soft/80 text-xs uppercase tracking-wide text-muted"><tr>' +
+    '<th class="px-3 py-2 font-semibold">Duration</th><th class="px-3 py-2 font-semibold">Model</th><th class="px-3 py-2 font-semibold">Task</th><th class="px-3 py-2 font-semibold">Status</th><th class="px-3 py-2 font-semibold">Result</th>' +
+    '<th class="px-3 py-2 font-semibold" title="Prompt tokens">Prompt</th><th class="px-3 py-2 font-semibold" title="Output tokens">Out</th><th class="px-3 py-2 font-semibold" title="Total tokens">Total</th><th class="px-3 py-2 font-semibold">Detail</th>' +
+    '</tr></thead><tbody>' +
+    (tasks.length
+      ? tasks
+          .map((row) => {
+            const active = row.id === state.selectedServerId;
+            return (
+              '<tr data-report-id="' +
+              esc(row.id) +
+              '" class="border-t border-line cursor-pointer transition hover:bg-soft/70 ' +
+              (active ? 'bg-accent-soft/60' : '') +
+              '"><td class="px-3 py-2 mono text-xs">' +
+              esc(fmtDuration(row.started_at, row.ended_at, row.duration_ms)) +
+              '</td><td class="px-3 py-2">' +
+              esc(row.model_label || row.model || '—') +
+              '</td><td class="px-3 py-2">' +
+              esc(row.task || '—') +
+              '</td><td class="px-3 py-2">' +
+              badge(row.status) +
+              '</td><td class="px-3 py-2">' +
+              badge(row.result || '—') +
+              '</td><td class="px-3 py-2 mono text-xs" title="Prompt tokens: sent to model">' +
+              esc(row.prompt_tokens ?? 0) +
+              '</td><td class="px-3 py-2 mono text-xs" title="Output tokens: model reply">' +
+              esc(row.completion_tokens ?? 0) +
+              '</td><td class="px-3 py-2 mono text-xs font-semibold" title="Total = Prompt + Out">' +
+              esc(row.total_tokens ?? 0) +
+              '</td><td class="px-3 py-2 max-w-[220px] truncate text-xs text-muted" title="' +
+              esc(row.reason || row.error || '') +
+              '">' +
+              esc(row.reason || row.error || '—') +
+              '</td></tr>'
+            );
+          })
+          .join('')
+      : '<tr><td colspan="9" class="px-3 py-8 text-center text-muted">No LLM tasks yet.</td></tr>') +
+    '</tbody></table></div></div></div>'
+  );
+}
+
+function skillHtml() {
+  const s = state.skill;
+  const a = s.active || {};
+  const verOpts =
+    '<option value="">active</option>' +
+    (s.versions || [])
+      .map((v) => {
+        const lab = v.version_label || '';
+        const sel = lab && lab === s.version ? ' selected' : '';
+        return (
+          '<option value="' +
+          esc(lab) +
+          '"' +
+          sel +
+          '>' +
+          esc(lab) +
+          (v.status ? ' · ' + esc(v.status) : '') +
+          '</option>'
+        );
+      })
+      .join('');
+  const gate = s.latestTest
+    ? s.latestTest.pass_gate
+      ? 'PASS'
+      : 'FAIL'
+    : '—';
+  const acc =
+    s.latestTest && s.latestTest.accuracy_pct != null
+      ? String(s.latestTest.accuracy_pct) + '%'
+      : '—';
+  return (
+    '<div class="mx-auto flex max-w-4xl flex-col gap-4">' +
+    '<div class="rounded-2xl border border-line bg-panel p-4 shadow-panel">' +
+    '<div class="flex flex-wrap items-start justify-between gap-3">' +
+    '<div><h2 class="text-lg font-semibold">Skill Prompt SSOT</h2>' +
+    '<p class="mt-1 text-sm text-muted">Versioned verify prompt · gold cases · Task Center 10.x · improve→draft only</p></div>' +
+    '<div class="flex flex-wrap gap-2 text-xs">' +
+    '<span class="rounded-full bg-soft px-2.5 py-1 mono">' +
+    esc(a.skill_key || s.skillKey) +
+    '</span>' +
+    '<span class="rounded-full bg-accent-soft px-2.5 py-1 text-accent mono">' +
+    esc(a.version_label || '—') +
+    '</span>' +
+    '<span class="rounded-full bg-soft px-2.5 py-1">' +
+    esc(a.status || '—') +
+    '</span>' +
+    '<span class="rounded-full bg-soft px-2.5 py-1">parser ' +
+    esc(a.parser || 'result_yes_no') +
+    '</span>' +
+    (s.casesCount != null
+      ? '<span class="rounded-full bg-soft px-2.5 py-1">gold ' + esc(s.casesCount) + '</span>'
+      : '') +
+    '<span class="rounded-full ' +
+    (gate === 'PASS' ? 'bg-emerald-50 text-emerald-700' : gate === 'FAIL' ? 'bg-rose-50 text-rose-700' : 'bg-soft') +
+    ' px-2.5 py-1">gate ' +
+    esc(gate) +
+    ' · acc ' +
+    esc(acc) +
+    '</span></div></div>' +
+    '<div class="mt-4 flex flex-wrap items-end gap-2">' +
+    '<label class="text-xs font-medium text-muted">Skill<select id="sk-pick" class="ml-1 rounded-xl border border-line bg-canvas px-2 py-1.5 text-sm"><option value="mouse_spot_verify">mouse_spot_verify</option></select></label>' +
+    '<label class="text-xs font-medium text-muted">Version<select id="sk-ver" class="ml-1 min-w-[140px] rounded-xl border border-line bg-canvas px-2 py-1.5 text-sm">' +
+    verOpts +
+    '</select></label>' +
+    '<button id="sk-reload" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">Reload</button>' +
+    '<button id="sk-seed" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">Seed v1</button>' +
+    '<button id="sk-seed-all" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft" title="prompt + gold + Task Center">Seed all</button>' +
+    '<button id="sk-task-lines" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">Task IDs</button>' +
+    '</div>' +
+    '<label class="mt-4 block text-xs font-medium text-muted">Active / draft prompt template' +
+    '<textarea id="sk-prompt" rows="10" class="mono mt-1 w-full resize-y rounded-xl border border-line bg-canvas px-3 py-2 text-sm leading-relaxed outline-none focus:ring-2 focus:ring-accent" placeholder="{{target_name}} {{target_action}}">' +
+    esc(a.prompt_text || '') +
+    '</textarea></label>' +
+    '<div class="mt-3 flex flex-wrap items-end gap-2">' +
+    '<label class="text-xs font-medium text-muted">target<input id="sk-target" value="Visual Studio Code" class="ml-1 w-40 rounded-xl border border-line bg-canvas px-2 py-1.5 text-sm" /></label>' +
+    '<label class="text-xs font-medium text-muted">action<input id="sk-action" value="" placeholder="optional" class="ml-1 w-28 rounded-xl border border-line bg-canvas px-2 py-1.5 text-sm" /></label>' +
+    '<label class="text-xs font-medium text-muted">expected<select id="sk-expected" class="ml-1 rounded-xl border border-line bg-canvas px-2 py-1.5 text-sm"><option value="NO" selected>NO</option><option value="YES">YES</option></select></label>' +
+    '<label class="text-xs font-medium text-muted">runs<select id="sk-runs" class="ml-1 rounded-xl border border-line bg-canvas px-2 py-1.5 text-sm"><option value="1">1</option><option value="5">5</option><option value="10" selected>10</option><option value="20">20</option><option value="100">100</option></select></label>' +
+    '</div>' +
+    '<div class="mt-3 flex flex-wrap gap-2">' +
+    '<button id="sk-save-draft" type="button" class="rounded-xl bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-600">Save draft</button>' +
+    '<button id="sk-improve-draft" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft" title="LLM improve → draft only">Improve→draft</button>' +
+    '<button id="sk-test" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">Run proof test</button>' +
+    '<button id="sk-test-gold" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">Test gold</button>' +
+    '<button id="sk-promote" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">Promote active</button>' +
+    '<button id="sk-to-chat" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">To chat box</button>' +
+    '<button id="sk-from-chat" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">From chat</button>' +
+    '</div>' +
+    '<div id="sk-msg" class="mt-2 text-sm text-muted">' +
+    esc(s.msg || '') +
+    '</div>' +
+    '<pre id="sk-log" class="mono mt-3 max-h-64 overflow-auto rounded-xl border border-line bg-soft/80 p-3 text-xs leading-relaxed whitespace-pre-wrap">' +
+    esc(s.log || '') +
+    '</pre></div></div>'
+  );
+}
+
+function setSkillMsg(msg, isErr) {
+  state.skill.msg = msg || '';
+  const el = $('#sk-msg');
+  if (el) {
+    el.textContent = msg || '';
+    el.className = 'mt-2 text-sm ' + (isErr ? 'text-rose-700' : 'text-muted');
+  }
+  if (msg) toast(msg);
+}
+
+function setSkillLog(obj) {
+  const text = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
+  state.skill.log = text;
+  const el = $('#sk-log');
+  if (el) el.textContent = text;
+}
+
+async function loadSkillPanel() {
+  const skill = $('#sk-pick')?.value || state.skill.skillKey || 'mouse_spot_verify';
+  const version = $('#sk-ver')?.value || state.skill.version || '';
+  state.skill.skillKey = skill;
+  state.skill.version = version;
+  try {
+    const q = version ? '?version=' + encodeURIComponent(version) : '';
+    const res = await fetch('/api/skills/' + encodeURIComponent(skill) + q);
+    const data = await res.json();
+    if (!res.ok || data.ok === false) throw new Error(data.error || 'load failed');
+    state.skill.active = data.active || null;
+    state.skill.versions = data.versions || [];
+    state.skill.latestTest = data.latest_test || null;
+    if ($('#sk-prompt') && data.active && data.active.prompt_text != null) {
+      $('#sk-prompt').value = data.active.prompt_text;
+    }
+    try {
+      const cr = await fetch(
+        '/api/skills/' + encodeURIComponent(skill) + '/cases'
+      );
+      const cd = await cr.json();
+      if (cr.ok && cd.ok) state.skill.casesCount = cd.count;
+    } catch {
+      /* ignore */
+    }
+    setSkillMsg(
+      'Loaded ' + ((data.active && data.active.version_label) || skill)
+    );
+    if (data.latest_test) setSkillLog(data.latest_test);
+    // refresh version select without full remount when possible
+    const ver = $('#sk-ver');
+    if (ver) {
+      const cur = version;
+      ver.innerHTML =
+        '<option value="">active</option>' +
+        (state.skill.versions || [])
+          .map((v) => {
+            const lab = v.version_label || '';
+            return (
+              '<option value="' +
+              esc(lab) +
+              '"' +
+              (lab === cur ? ' selected' : '') +
+              '>' +
+              esc(lab) +
+              (v.status ? ' · ' + esc(v.status) : '') +
+              '</option>'
+            );
+          })
+          .join('');
+    }
+  } catch (e) {
+    setSkillMsg(String(e.message || e), true);
+  }
+}
+
+function bindSkillPanel() {
+  $('#sk-reload')?.addEventListener('click', () => loadSkillPanel());
+  $('#sk-pick')?.addEventListener('change', () => {
+    state.skill.version = '';
+    if ($('#sk-ver')) $('#sk-ver').value = '';
+    loadSkillPanel();
+  });
+  $('#sk-ver')?.addEventListener('change', () => {
+    state.skill.version = $('#sk-ver')?.value || '';
+    loadSkillPanel();
+  });
+
+  $('#sk-seed')?.addEventListener('click', async () => {
+    setSkillMsg('Seeding…');
+    try {
+      const res = await fetch('/api/skills/seed', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok && !data.ok && !data.seeded) throw new Error(data.error || 'seed failed');
+      setSkillLog(data);
+      setSkillMsg('Seeded v1_strict');
+      await loadSkillPanel();
+    } catch (e) {
+      setSkillMsg(String(e.message || e), true);
+    }
+  });
+
+  $('#sk-seed-all')?.addEventListener('click', async () => {
+    setSkillMsg('Seeding all (prompt + gold + Task Center)…');
+    try {
+      const res = await fetch('/api/skills/seed-all', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'seed-all failed');
+      setSkillLog(data);
+      const nGold = (data.gold && data.gold.seeded) || 0;
+      setSkillMsg('Seed all ok · gold ' + nGold);
+      await loadSkillPanel();
+    } catch (e) {
+      setSkillMsg(String(e.message || e), true);
+    }
+  });
+
+  $('#sk-task-lines')?.addEventListener('click', async () => {
+    setSkillMsg('Loading Task IDs…');
+    try {
+      const res = await fetch('/api/skills/task-lines');
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'task-lines failed');
+      setSkillLog('Root ' + (data.root || 10) + '\n' + (data.lines || []).join('\n'));
+      setSkillMsg('Task IDs · ' + (data.lines || []).length + ' items');
+    } catch (e) {
+      setSkillMsg(String(e.message || e), true);
+    }
+  });
+
+  $('#sk-save-draft')?.addEventListener('click', async () => {
+    const skill = $('#sk-pick')?.value || 'mouse_spot_verify';
+    const prompt_text = $('#sk-prompt')?.value || '';
+    if (!prompt_text.trim()) return setSkillMsg('Prompt empty', true);
+    let version_label = $('#sk-ver')?.value || '';
+    const activeLab = state.skill.active && state.skill.active.version_label;
+    if (!version_label || version_label === activeLab) {
+      version_label = 'draft_' + new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 14);
+    }
+    setSkillMsg('Saving ' + version_label + '…');
+    try {
+      const res = await fetch('/api/skills/' + encodeURIComponent(skill) + '/draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt_text,
+          version_label,
+          parser: 'result_yes_no',
+          source: 'llm_tasks_spa',
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'save failed');
+      setSkillLog(data.skill || data);
+      state.skill.version = version_label;
+      setSkillMsg('Saved draft ' + version_label);
+      await loadSkillPanel();
+    } catch (e) {
+      setSkillMsg(String(e.message || e), true);
+    }
+  });
+
+  $('#sk-improve-draft')?.addEventListener('click', async () => {
+    const skill = $('#sk-pick')?.value || 'mouse_spot_verify';
+    const prompt_text = ($('#sk-prompt')?.value || $('#f-prompt')?.value || '').trim();
+    const btn = $('#sk-improve-draft');
+    if (btn) btn.disabled = true;
+    setSkillMsg('Improving → draft only (never auto-promote)…');
+    try {
+      const body = { source: 'llm_tasks_spa' };
+      if (prompt_text) body.prompt_text = prompt_text;
+      const res = await fetch(
+        '/api/skills/' + encodeURIComponent(skill) + '/improve-draft',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'improve failed');
+      setSkillLog(data);
+      const ver = data.version_label || (data.row && data.row.version_label) || '';
+      if (data.row && data.row.prompt_text && $('#sk-prompt')) {
+        $('#sk-prompt').value = data.row.prompt_text;
+      }
+      if (ver) state.skill.version = ver;
+      setSkillMsg('Draft saved ' + ver + ' · promote still gated');
+      await loadSkillPanel();
+    } catch (e) {
+      setSkillMsg(String(e.message || e), true);
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  });
+
+  $('#sk-test')?.addEventListener('click', async () => {
+    const skill = $('#sk-pick')?.value || 'mouse_spot_verify';
+    const version =
+      $('#sk-ver')?.value ||
+      (state.skill.active && state.skill.active.version_label) ||
+      null;
+    const runs = parseInt($('#sk-runs')?.value || '10', 10);
+    const expected = $('#sk-expected')?.value || 'NO';
+    const target_name = $('#sk-target')?.value || 'Visual Studio Code';
+    const target_action = $('#sk-action')?.value || '';
+    const btn = $('#sk-test');
+    if (btn) btn.disabled = true;
+    setSkillMsg('Running ' + runs + '-time proof test…');
+    setSkillLog('Testing…');
+    try {
+      const res = await fetch('/api/skills/' + encodeURIComponent(skill) + '/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          version_label: version,
+          runs,
+          expected,
+          target_name,
+          target_action,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok && data.yes == null) throw new Error(data.error || 'test failed');
+      setSkillLog(data);
+      setSkillMsg(
+        'Done · Yes ' +
+          data.yes +
+          ' · No ' +
+          data.no +
+          ' · acc ' +
+          data.accuracy_pct +
+          '% · gate ' +
+          (data.pass_gate ? 'PASS' : 'FAIL'),
+        !data.pass_gate
+      );
+      await refreshAll();
+    } catch (e) {
+      setSkillMsg(String(e.message || e), true);
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  });
+
+  $('#sk-test-gold')?.addEventListener('click', async () => {
+    const skill = $('#sk-pick')?.value || 'mouse_spot_verify';
+    const version =
+      $('#sk-ver')?.value ||
+      (state.skill.active && state.skill.active.version_label) ||
+      null;
+    const runs = parseInt($('#sk-runs')?.value || '1', 10);
+    const btn = $('#sk-test-gold');
+    if (btn) btn.disabled = true;
+    setSkillMsg('Running gold suite…');
+    try {
+      const res = await fetch(
+        '/api/skills/' + encodeURIComponent(skill) + '/test-gold',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ version_label: version, runs_per_case: runs }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok && data.ok == null) throw new Error(data.error || 'test-gold failed');
+      setSkillLog(data);
+      setSkillMsg(
+        'Gold · pass ' +
+          (data.cases_passed || 0) +
+          '/' +
+          (data.cases_total || 0),
+        !data.ok
+      );
+      await refreshAll();
+    } catch (e) {
+      setSkillMsg(String(e.message || e), true);
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  });
+
+  $('#sk-promote')?.addEventListener('click', async () => {
+    const skill = $('#sk-pick')?.value || 'mouse_spot_verify';
+    const version =
+      $('#sk-ver')?.value ||
+      (state.skill.active && state.skill.active.version_label);
+    if (!version) return setSkillMsg('Pick a version to promote', true);
+    if (!confirm('Promote ' + version + ' to active?\nRequires pass_gate unless you force after.')) return;
+    setSkillMsg('Promoting ' + version + '…');
+    try {
+      let res = await fetch(
+        '/api/skills/' + encodeURIComponent(skill) + '/activate',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ version_label: version, require_pass_gate: true }),
+        }
+      );
+      let data = await res.json();
+      if (!res.ok || !data.ok) {
+        if (!confirm((data.error || 'blocked') + '\n\nForce promote anyway?')) {
+          setSkillMsg(data.error || 'blocked', true);
+          return;
+        }
+        res = await fetch(
+          '/api/skills/' + encodeURIComponent(skill) + '/activate',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              version_label: version,
+              force: true,
+              require_pass_gate: false,
+            }),
+          }
+        );
+        data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.error || 'force failed');
+      }
+      setSkillLog(data.active || data);
+      state.skill.version = '';
+      setSkillMsg('Active → ' + version);
+      await loadSkillPanel();
+    } catch (e) {
+      setSkillMsg(String(e.message || e), true);
+    }
+  });
+
+  $('#sk-to-chat')?.addEventListener('click', () => {
+    const text = $('#sk-prompt')?.value || '';
+    state.draft.prompt_content = text;
+    state.nav = 'task-center';
+    state.tab = 'chat';
+    mount(false);
+    toast('Copied skill prompt → chat');
+  });
+
+  $('#sk-from-chat')?.addEventListener('click', () => {
+    const text = state.draft.prompt_content || $('#f-prompt')?.value || '';
+    if ($('#sk-prompt')) $('#sk-prompt').value = text;
+    setSkillMsg('Loaded chat → skill editor');
+  });
+}
+
+
+const TASK_ID_TYPE_ORDER = ['F', 'A', 'T', 'D', 'J', 'E'];
+const TASK_ID_TYPE_LABEL = {
+  F: 'Function',
+  A: 'API',
+  T: 'Table',
+  D: 'Field',
+  J: 'Job',
+  E: 'Event',
+};
+
+const TASK_ID_RULE_TEXT =
+  'Task ID coding rule\n' +
+  'Format: {RootTaskId}.{GlobalSequenceNumber}\n' +
+  'RootTaskId = main task number (e.g. 10).\n' +
+  'Within one RootTaskId, F/A/T/D/J/E share ONE continuous global sequence.\n' +
+  'Sequence never resets when type changes.\n' +
+  '\n' +
+  'Types: F=Function  A=API  T=Table  D=Field  J=Job  E=Event\n' +
+  '\n' +
+  'Rules:\n' +
+  '1. Do NOT restart sequence when type changes.\n' +
+  '2. Each line: {Root}.{seq} + item name.\n' +
+  '3. Item type is metadata only; ID carries root + global seq.\n' +
+  '4. Never renumber after delete — keep orphaned/skipped numbers.\n';
+
+function parseGroupedTaskItems(text) {
+  const groups = { F: [], A: [], T: [], D: [], J: [], E: [] };
+  let cur = null;
+  const lines = String(text || '').split(/\r?\n/);
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line || line.startsWith('#') || line.startsWith('//')) continue;
+    const header = line.match(/^(F|A|T|D|J|E)\s*(?:[=:：\-].*)?$/i);
+    if (header) {
+      cur = header[1].toUpperCase();
+      continue;
+    }
+    const prefixed = line.match(/^(F|A|T|D|J|E)\s*[:：\-]\s*(.+)$/i);
+    if (prefixed) {
+      cur = prefixed[1].toUpperCase();
+      const name = prefixed[2].trim();
+      if (name) groups[cur].push(name);
+      continue;
+    }
+    if (!cur) continue;
+    // strip optional already-numbered prefix like 10.3 name
+    const name = line.replace(/^\d+\.\d+\s+/, '').trim();
+    if (name) groups[cur].push(name);
+  }
+  return groups;
+}
+
+function generateTaskIdList(root, groupedText) {
+  const rootId = String(root || '10').trim() || '10';
+  const groups = parseGroupedTaskItems(groupedText);
+  const items = [];
+  let seq = 0;
+  const counts = {};
+  for (const t of TASK_ID_TYPE_ORDER) {
+    const names = groups[t] || [];
+    counts[t] = names.length;
+    for (const name of names) {
+      seq += 1;
+      items.push({
+        id: rootId + '.' + seq,
+        seq,
+        type: t,
+        type_label: TASK_ID_TYPE_LABEL[t] || t,
+        name,
+        line: rootId + '.' + seq + '  ' + name,
+      });
+    }
+  }
+  return {
+    ok: true,
+    root: rootId,
+    count: items.length,
+    counts,
+    items,
+    lines: items.map((x) => x.line),
+    text: items.map((x) => x.line).join('\n'),
+    rule: TASK_ID_RULE_TEXT,
+  };
+}
+
+function taskIdCodingHtml() {
+  const t = state.taskId || {};
+  const out = t.output || '(Generate to see {Root}.{seq} list)';
+  const seeded =
+    (t.seededLines && t.seededLines.length
+      ? t.seededLines.join('\n')
+      : '(Load seeded root-10 lines from helper)');
+  return (
+    '<div class="mx-auto flex max-w-5xl flex-col gap-4">' +
+    '<div class="rounded-2xl border border-line bg-panel p-4 shadow-panel">' +
+    '<div class="flex flex-wrap items-start justify-between gap-3">' +
+    '<div><h2 class="text-lg font-semibold">Task ID Coding</h2>' +
+    '<p class="mt-1 text-sm text-muted">Rule: <span class="mono font-semibold text-ink">{RootTaskId}.{GlobalSequenceNumber}</span> · one continuous counter across F/A/T/D/J/E · never renumber</p></div>' +
+    '<div class="flex flex-wrap gap-2 text-xs">' +
+    '<span class="rounded-full bg-accent-soft px-2.5 py-1 text-accent mono">F Function</span>' +
+    '<span class="rounded-full bg-soft px-2.5 py-1 mono">A API</span>' +
+    '<span class="rounded-full bg-soft px-2.5 py-1 mono">T Table</span>' +
+    '<span class="rounded-full bg-soft px-2.5 py-1 mono">D Field</span>' +
+    '<span class="rounded-full bg-soft px-2.5 py-1 mono">J Job</span>' +
+    '<span class="rounded-full bg-soft px-2.5 py-1 mono">E Event</span>' +
+    '</div></div>' +
+    '<div class="mt-4 grid gap-3 lg:grid-cols-2">' +
+    '<div class="rounded-xl border border-line bg-soft/50 p-3 text-sm leading-relaxed text-ink">' +
+    '<div class="text-xs font-semibold uppercase tracking-wide text-muted">Law</div>' +
+    '<ol class="mt-2 list-decimal space-y-1 pl-4 text-sm text-muted">' +
+    '<li>Do <b>not</b> restart sequence when type changes.</li>' +
+    '<li>Each line: <span class="mono">{Root}.{seq}</span> + item name.</li>' +
+    '<li>Type is metadata only; ID carries root + global seq.</li>' +
+    '<li>Assigned IDs are stable — deletes leave gaps, no renumber.</li>' +
+    '</ol>' +
+    '<pre class="mono mt-3 max-h-40 overflow-auto rounded-lg border border-line bg-canvas p-2 text-[11px] text-muted whitespace-pre-wrap">' +
+    esc(TASK_ID_RULE_TEXT) +
+    '</pre></div>' +
+    '<div class="rounded-xl border border-line bg-soft/50 p-3">' +
+    '<div class="text-xs font-semibold uppercase tracking-wide text-muted">Seeded Skill root 10 (from helper)</div>' +
+    '<pre id="tid-seeded" class="mono mt-2 max-h-48 overflow-auto rounded-lg border border-line bg-canvas p-2 text-xs whitespace-pre-wrap">' +
+    esc(seeded) +
+    '</pre>' +
+    '<div class="mt-2 flex flex-wrap gap-2">' +
+    '<button id="tid-load-seeded" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">Load seeded 10.x</button>' +
+    '<button id="tid-seed-tc" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">Seed Task Center</button>' +
+    '</div></div></div>' +
+    '<div class="mt-4 grid gap-4 lg:grid-cols-2">' +
+    '<div>' +
+    '<div class="mb-2 flex flex-wrap items-end gap-2">' +
+    '<label class="text-xs font-medium text-muted">RootTaskId' +
+    '<input id="tid-root" value="' +
+    esc(t.root || '10') +
+    '" class="ml-1 w-24 rounded-xl border border-line bg-canvas px-2 py-1.5 text-sm mono" /></label>' +
+    '<button id="tid-generate" type="button" class="rounded-xl bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-600">Generate list</button>' +
+    '<button id="tid-copy" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">Copy output</button>' +
+    '<button id="tid-to-chat" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">To chat box</button>' +
+    '</div>' +
+    '<label class="block text-xs font-medium text-muted">Grouped input (by type)' +
+    '<textarea id="tid-input" rows="16" class="mono mt-1 w-full resize-y rounded-xl border border-line bg-canvas px-3 py-2 text-sm leading-relaxed outline-none focus:ring-2 focus:ring-accent" placeholder="F:\\nfn_a\\nfn_b\\n\\nA:\\napi_x">' +
+    esc(t.input || '') +
+    '</textarea></label>' +
+    '<p class="mt-1 text-[11px] text-muted">Headers: <span class="mono">F:</span> <span class="mono">A:</span> <span class="mono">T:</span> <span class="mono">D:</span> <span class="mono">J:</span> <span class="mono">E:</span> then one name per line.</p>' +
+    '</div>' +
+    '<div>' +
+    '<div class="mb-2 flex items-center justify-between"><label class="text-xs font-medium text-muted">Numbered output</label>' +
+    '<span id="tid-msg" class="text-xs text-muted">' +
+    esc(t.msg || '') +
+    '</span></div>' +
+    '<textarea id="tid-output" rows="18" readonly class="mono w-full resize-y rounded-xl border border-line bg-soft/80 px-3 py-2 text-sm leading-relaxed outline-none">' +
+    esc(out) +
+    '</textarea></div></div></div></div>'
+  );
+}
+
+function setTaskIdMsg(msg, isErr) {
+  state.taskId.msg = msg || '';
+  const el = $('#tid-msg');
+  if (el) {
+    el.textContent = msg || '';
+    el.className = 'text-xs ' + (isErr ? 'text-rose-700' : 'text-muted');
+  }
+  if (msg) toast(msg);
+}
+
+async function loadTaskIdSeeded(opts = {}) {
+  const quiet = !!opts.quiet;
+  if (!quiet) setTaskIdMsg('Loading seeded lines…');
+  try {
+    const res = await fetch('/api/skills/task-lines');
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || 'task-lines failed');
+    const lines = data.lines || [];
+    state.taskId.seededLines = lines;
+    state.taskId.root = String(data.root || state.taskId.root || '10');
+    state.taskId.output = lines.join('\n');
+    if ($('#tid-root')) $('#tid-root').value = state.taskId.root;
+    if ($('#tid-seeded')) {
+      $('#tid-seeded').textContent =
+        lines.length
+          ? lines.join('\n')
+          : '(no seeded 10.x rows — click Seed Task Center)';
+    }
+    if ($('#tid-output')) $('#tid-output').value = state.taskId.output;
+    const msg =
+      'DB records: ' +
+      lines.length +
+      ' lines · root ' +
+      state.taskId.root +
+      ' · agent.db dev_task task_label 10 / 10.1–10.20';
+    setTaskIdMsg(msg);
+    return data;
+  } catch (e) {
+    setTaskIdMsg(String(e.message || e), true);
+    return null;
+  }
+}
+
+function bindTaskIdCodingPanel() {
+  const syncFields = () => {
+    if ($('#tid-root')) state.taskId.root = $('#tid-root').value || '10';
+    if ($('#tid-input')) state.taskId.input = $('#tid-input').value || '';
+    if ($('#tid-output')) state.taskId.output = $('#tid-output').value || '';
+  };
+
+  $('#tid-generate')?.addEventListener('click', () => {
+    syncFields();
+    const result = generateTaskIdList(state.taskId.root, state.taskId.input);
+    state.taskId.output = result.text || '';
+    if ($('#tid-output')) $('#tid-output').value = state.taskId.output;
+    const c = result.counts || {};
+    setTaskIdMsg(
+      'Root ' +
+        result.root +
+        ' · ' +
+        result.count +
+        ' items · F' +
+        (c.F || 0) +
+        ' A' +
+        (c.A || 0) +
+        ' T' +
+        (c.T || 0) +
+        ' D' +
+        (c.D || 0) +
+        ' J' +
+        (c.J || 0) +
+        ' E' +
+        (c.E || 0)
+    );
+  });
+
+  $('#tid-copy')?.addEventListener('click', async () => {
+    const text = $('#tid-output')?.value || state.taskId.output || '';
+    if (!text.trim()) return setTaskIdMsg('Nothing to copy', true);
+    try {
+      await navigator.clipboard.writeText(text);
+      setTaskIdMsg('Copied numbered list');
+    } catch {
+      setTaskIdMsg('Copy failed', true);
+    }
+  });
+
+  $('#tid-to-chat')?.addEventListener('click', () => {
+    const text = $('#tid-output')?.value || state.taskId.output || '';
+    if (!text.trim()) return setTaskIdMsg('Generate first', true);
+    state.draft.prompt_content = text;
+    state.nav = 'task-center';
+    state.tab = 'chat';
+    mount(false);
+    toast('Task ID list → chat box');
+  });
+
+  $('#tid-load-seeded')?.addEventListener('click', () => {
+    loadTaskIdSeeded();
+  });
+
+  $('#tid-seed-tc')?.addEventListener('click', async () => {
+    setTaskIdMsg('Seeding Task Center root 10…');
+    try {
+      const res = await fetch('/api/skills/seed-tasks', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'seed-tasks failed');
+      const lines = data.lines || [];
+      state.taskId.seededLines = lines;
+      state.taskId.output = lines.join('\n');
+      if ($('#tid-seeded')) {
+        $('#tid-seeded').textContent =
+          lines.join('\n') || JSON.stringify(data, null, 2);
+      }
+      if ($('#tid-output')) $('#tid-output').value = state.taskId.output;
+      setTaskIdMsg(
+        'Task Center seeded · created ' +
+          (data.created_tasks || 0) +
+          ' · updated ' +
+          (data.updated_tasks || 0) +
+          ' · lines ' +
+          lines.length
+      );
+    } catch (e) {
+      setTaskIdMsg(String(e.message || e), true);
+    }
+  });
+
+  // Auto-show DB records when opening this panel
+  loadTaskIdSeeded({ quiet: true });
+}
+
+function levelBadge(level, kind) {
+  const lv = String(level || kind || 'info').toLowerCase();
+  if (lv === 'alert' || lv.includes('down') || lv.includes('fail')) {
+    return '<span class="inline-flex items-center rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700">ALERT</span>';
+  }
+  if (lv === 'warn' || lv.includes('restart')) {
+    return '<span class="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">WARN</span>';
+  }
+  if (lv === 'ok' || lv.includes('ready') || lv.includes('recover') || lv.includes('up')) {
+    return '<span class="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">OK</span>';
+  }
+  return '<span class="inline-flex items-center rounded-full bg-soft px-2 py-0.5 text-[11px] font-medium text-muted">INFO</span>';
+}
+
+function watchdogHtml() {
+  const w = state.watchdog || {};
+  const events = w.events || [];
+  const selected =
+    events.find((e) => e.id === w.selectedId) ||
+    events[0] ||
+    null;
+  if (selected && !w.selectedId) state.watchdog.selectedId = selected.id;
+  const shot = (selected && selected.screenshot) || {};
+  const detail = (selected && selected.detail) || {};
+  const logTail = (w.logTail || []).slice().reverse().join('\n') || '(no log yet)';
+
+  const eventRows = events.length
+    ? events
+        .map((ev) => {
+          const active = selected && ev.id === selected.id;
+          const hasShot = !!(ev.screenshot && ev.screenshot.ok && ev.screenshot.url);
+          return (
+            '<button type="button" data-wd-id="' +
+            esc(ev.id) +
+            '" class="w-full border-b border-line px-3 py-2.5 text-left transition hover:bg-soft/80 ' +
+            (active ? 'bg-accent-soft/70' : '') +
+            '"><div class="flex items-center justify-between gap-2">' +
+            levelBadge(ev.level, ev.kind) +
+            '<span class="text-[11px] mono text-muted">' +
+            esc(ev.local_time || ev.ts || '') +
+            '</span></div><div class="mt-1 text-sm font-medium text-ink">' +
+            esc(ev.kind || 'event') +
+            (hasShot ? ' · 📷' : '') +
+            '</div><div class="mt-0.5 line-clamp-2 text-xs text-muted">' +
+            esc(ev.message || '') +
+            '</div></button>'
+          );
+        })
+        .join('')
+    : '<div class="p-4 text-sm text-muted">No watchdog events yet. Alerts appear when helper goes down / restarts.</div>';
+
+  const detailBlock = selected
+    ? '<div class="space-y-3">' +
+      '<div class="flex flex-wrap items-center gap-2">' +
+      levelBadge(selected.level, selected.kind) +
+      '<span class="text-sm font-semibold text-ink">' +
+      esc(selected.kind || '') +
+      '</span><span class="text-xs mono text-muted">' +
+      esc(selected.local_time || selected.ts || '') +
+      '</span></div>' +
+      '<p class="text-sm text-ink">' +
+      esc(selected.message || '') +
+      '</p>' +
+      '<pre class="max-h-40 overflow-auto rounded-xl border border-line bg-soft/70 p-3 text-xs mono text-muted">' +
+      esc(JSON.stringify(detail, null, 2)) +
+      '</pre>' +
+      (shot.ok && shot.url
+        ? '<div><div class="mb-1 text-xs font-medium text-muted">Desktop screenshot at alert</div>' +
+          '<a href="' +
+          esc(shot.url) +
+          '" target="_blank" rel="noopener" class="block overflow-hidden rounded-xl border border-line bg-soft">' +
+          '<img src="' +
+          esc(shot.url) +
+          '" alt="watchdog screenshot" class="max-h-[420px] w-full object-contain bg-black/5" />' +
+          '</a><div class="mt-1 text-[11px] text-muted mono">' +
+          esc(shot.path || shot.url) +
+          (shot.bytes ? ' · ' + esc(shot.bytes) + ' bytes' : '') +
+          '</div></div>'
+        : shot && shot.error
+          ? '<div class="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Screenshot failed: ' +
+            esc(shot.error) +
+            '</div>'
+          : '<div class="rounded-xl border border-line bg-soft/60 p-3 text-sm text-muted">No screenshot for this event.</div>') +
+      '</div>'
+    : '<div class="text-sm text-muted">Select an event to see why the watchdog alerted and the desktop screenshot.</div>';
+
+  return (
+    '<div class="mx-auto flex max-w-6xl flex-col gap-4">' +
+    '<div class="flex flex-wrap items-end justify-between gap-3">' +
+    '<div><h2 class="text-lg font-semibold">Watchdog</h2>' +
+    '<p class="text-sm text-muted">Keep-alive for helper :18765 · why it alerted · desktop screenshot evidence</p></div>' +
+    '<div class="flex flex-wrap items-center gap-2">' +
+    pill(!!w.running, 'Watchdog ON', 'Watchdog OFF') +
+    pill(!!state.status.helperOk, 'Helper ON', 'Helper OFF') +
+    (w.pid
+      ? '<span class="rounded-full bg-soft px-2.5 py-1 text-xs mono text-muted">pid ' + esc(w.pid) + '</span>'
+      : '') +
+    '<button id="btn-wd-refresh" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">Refresh</button>' +
+    '</div></div>' +
+    (w.msg ? '<div class="text-sm text-muted">' + esc(w.msg) + '</div>' : '') +
+    '<div class="grid gap-4 lg:grid-cols-5">' +
+    '<div class="lg:col-span-2 overflow-hidden rounded-2xl border border-line bg-panel shadow-panel">' +
+    '<div class="border-b border-line px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted">Events</div>' +
+    '<div id="wd-event-list" class="max-h-[560px] overflow-auto">' +
+    eventRows +
+    '</div></div>' +
+    '<div class="lg:col-span-3 rounded-2xl border border-line bg-panel p-4 shadow-panel">' +
+    '<div class="mb-3 text-xs font-semibold uppercase tracking-wide text-muted">Selected alert</div>' +
+    detailBlock +
+    '</div></div>' +
+    '<div class="rounded-2xl border border-line bg-panel p-4 shadow-panel">' +
+    '<div class="mb-2 flex items-center justify-between"><div class="text-xs font-semibold uppercase tracking-wide text-muted">helper_watchdog.log (tail)</div>' +
+    '<span class="text-[11px] text-muted">auto-refresh with page</span></div>' +
+    '<pre class="max-h-56 overflow-auto rounded-xl border border-line bg-soft/70 p-3 text-xs mono leading-relaxed text-ink">' +
+    esc(logTail) +
+    '</pre></div></div>'
+  );
+}
+
+function workspaceHtml() {
+  if (state.nav === 'watchdog') return watchdogHtml();
+  if (state.nav === 'task-id-coding') return taskIdCodingHtml();
+  if (state.nav === 'skill-ssot') return skillHtml();
+  if (state.nav !== 'task-center') {
+    const label = NAV.find((n) => n.id === state.nav)?.label || state.nav;
+    return (
+      '<div class="rounded-2xl border border-line bg-panel p-8 shadow-panel"><h2 class="text-lg font-semibold">' +
+      esc(label) +
+      '</h2><p class="mt-2 text-sm text-muted">Placeholder panel — connect helper APIs in a follow-up.</p></div>'
+    );
+  }
+
+  if (state.tab === 'report') return reportHtml();
+
+  const tabHint =
+    state.tab === 'chat'
+      ? 'Chat Box focuses the prompt area for iterative edits.'
+      : state.tab === 'result'
+        ? 'Result Output shows the latest analysis / improve output.'
+        : 'Prompt Analyze holds task metadata and actions.';
+
+  return (
+    '<div class="mx-auto flex max-w-4xl flex-col gap-4">' +
+    '<div class="flex flex-wrap items-center justify-between gap-2"><p class="text-sm text-muted">' +
+    tabHint +
+    '</p><div class="flex flex-wrap gap-2">' +
+    '<button id="btn-new" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">New</button>' +
+    '<button id="btn-save" type="button" class="rounded-xl bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-600">Save</button>' +
+    '<button id="btn-delete" type="button" class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-sm text-rose-700 hover:bg-rose-100">Delete</button>' +
+    '</div></div>' +
+    '<section class="rounded-2xl border border-line bg-panel p-4 shadow-panel ' +
+    (state.tab === 'result' ? 'hidden' : '') +
+    '"><div class="grid gap-3 sm:grid-cols-2">' +
+    '<label class="block text-xs font-medium text-muted">task_id<input id="f-task-id" class="mt-1 w-full rounded-xl border border-line bg-canvas px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-accent" /></label>' +
+    '<label class="block text-xs font-medium text-muted">writer<input id="f-writer" class="mt-1 w-full rounded-xl border border-line bg-canvas px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-accent" /></label>' +
+    '<label class="block text-xs font-medium text-muted">session_id<input id="f-session" class="mt-1 w-full rounded-xl border border-line bg-canvas px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-accent" /></label>' +
+    '<label class="block text-xs font-medium text-muted">status<select id="f-status" class="mt-1 w-full rounded-xl border border-line bg-canvas px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-accent"><option value="draft">draft</option><option value="ready">ready</option><option value="running">running</option><option value="done">done</option><option value="error">error</option></select></label>' +
+    '</div><label class="mt-3 block text-xs font-medium text-muted">context<input id="f-context" class="mt-1 w-full rounded-xl border border-line bg-canvas px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-accent" /></label></section>' +
+    '<section class="rounded-2xl border border-line bg-panel p-4 shadow-panel ' +
+    (state.tab === 'result' ? 'hidden' : '') +
+    '"><div class="mb-2 flex items-center justify-between"><h3 class="text-sm font-semibold">Prompt</h3><span class="text-[11px] text-muted mono">monospace</span></div>' +
+    '<textarea id="f-prompt" rows="12" placeholder="Paste prompt here…" class="mono w-full resize-y rounded-xl border border-line bg-canvas px-3 py-2 text-sm leading-relaxed outline-none focus:ring-2 focus:ring-accent"></textarea>' +
+    '<div class="mt-3 flex flex-wrap gap-2"><button id="btn-improve" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">Improve</button><button id="btn-analyze" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">Analyze</button><button id="btn-apply" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">Apply to chat</button><button id="btn-copy" type="button" class="rounded-xl border border-line bg-panel px-3 py-1.5 text-sm hover:bg-soft">Copy result</button></div></section>' +
+    '<section class="rounded-2xl border border-line bg-panel p-4 shadow-panel ' +
+    (state.tab === 'chat' ? 'hidden' : '') +
+    '"><div class="mb-2 flex items-center justify-between"><h3 class="text-sm font-semibold">Result</h3><span class="text-[11px] text-muted">readonly</span></div>' +
+    '<textarea id="f-result" rows="10" readonly class="mono w-full resize-y rounded-xl border border-line bg-soft/80 px-3 py-2 text-sm leading-relaxed text-ink outline-none"></textarea></section></div>'
+  );
+}
+
+function shell() {
+  return (
+    '<div class="min-h-screen flex flex-col"><header class="sticky top-0 z-20 border-b border-line bg-panel/95 backdrop-blur-sm"><div class="mx-auto flex max-w-[1600px] flex-col gap-2 px-3 py-2.5 sm:px-4">' +
+    '<div class="flex items-center gap-3"><button id="btn-left" type="button" class="rounded-lg border border-line px-2.5 py-1.5 text-sm text-muted hover:bg-soft lg:hidden">Menu</button>' +
+    '<div class="flex min-w-0 flex-1 items-center gap-3"><h1 class="truncate text-base font-semibold tracking-tight sm:text-lg">LLM Task Monitor</h1></div>' +
+    '<button id="btn-refresh" type="button" class="rounded-lg border border-line bg-panel px-3 py-1.5 text-sm font-medium text-ink shadow-panel hover:bg-soft">Refresh</button>' +
+    '<button id="btn-right" type="button" class="rounded-lg border border-line px-2.5 py-1.5 text-sm text-muted hover:bg-soft lg:hidden">Catalog</button></div>' +
+    '<div class="flex flex-wrap items-center gap-2"><div id="status-pills" class="flex flex-wrap items-center gap-2"></div><div id="status-line" class="text-xs text-muted"></div></div></div></header>' +
+    '<div class="mx-auto flex w-full max-w-[1600px] flex-1 overflow-hidden">' +
+    '<aside id="left-nav" class="' +
+    (state.leftOpen ? '' : 'hidden') +
+    ' w-56 shrink-0 border-r border-line bg-panel lg:block"><nav class="flex h-full flex-col gap-1 p-3"><div class="mb-2 px-2 text-[11px] font-semibold uppercase tracking-wide text-muted">Navigate</div>' +
+    NAV.map(
+      (n) =>
+        '<button type="button" data-nav="' +
+        n.id +
+        '" class="nav-item rounded-xl px-3 py-2 text-left text-sm transition hover:bg-soft ' +
+        (state.nav === n.id ? 'bg-accent-soft font-medium text-accent' : 'text-ink') +
+        '">' +
+        n.label +
+        '</button>'
+    ).join('') +
+    '<div class="mt-auto rounded-xl border border-line bg-soft/60 p-3 text-xs text-muted">Light mode · server catalog + local drafts</div></nav></aside>' +
+    '<main class="flex min-w-0 flex-1 flex-col bg-canvas"><div class="border-b border-line bg-panel px-3 py-2 sm:px-4"><div class="flex flex-wrap gap-1">' +
+    TABS.map(
+      (t) =>
+        '<button type="button" data-tab="' +
+        t.id +
+        '" class="tab-btn rounded-lg px-3 py-1.5 text-sm transition ' +
+        (state.tab === t.id ? 'bg-accent text-white' : 'text-muted hover:bg-soft') +
+        '">' +
+        t.label +
+        '</button>'
+    ).join('') +
+    '</div></div><div id="workspace-body" class="fade-swap flex-1 overflow-auto p-3 sm:p-4">' +
+    workspaceHtml() +
+    '</div></main>' +
+    '<aside id="right-list" class="' +
+    (state.rightOpen ? 'flex' : 'hidden') +
+    ' w-80 shrink-0 flex-col border-l border-line bg-panel lg:flex"><div class="border-b border-line p-3"><div class="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted">Catalog</div>' +
+    '<input id="search" type="search" placeholder="Search catalog…" class="w-full rounded-xl border border-line bg-canvas px-3 py-2 text-sm outline-none ring-accent focus:ring-2" value="' +
+    esc(state.query) +
+    '" /></div><div id="record-list" class="flex-1 overflow-auto"></div></aside></div>' +
+    '<div id="toast" class="pointer-events-none fixed bottom-4 right-4 rounded-xl bg-ink px-3 py-2 text-sm text-white opacity-0 shadow-panel transition"></div></div>'
+  );
+}
+
+async function refreshWatchdog(selectedKeep = true) {
+  try {
+    const res = await fetch('/api/watchdog/events?limit=80');
+    const data = await res.json();
+    const wd = data.watchdog || {};
+    const prevSelected = selectedKeep ? state.watchdog.selectedId : null;
+    state.watchdog.running = !!(wd.running || wd.ok);
+    state.watchdog.pid = wd.pid || null;
+    state.watchdog.lastEvent = wd.last_event || (data.events && data.events[0]) || null;
+    state.watchdog.events = data.events || [];
+    state.watchdog.logTail = data.log_tail || [];
+    if (prevSelected && state.watchdog.events.some((e) => e.id === prevSelected)) {
+      state.watchdog.selectedId = prevSelected;
+    } else if (!state.watchdog.selectedId && state.watchdog.events[0]) {
+      state.watchdog.selectedId = state.watchdog.events[0].id;
+    }
+    state.watchdog.msg = '';
+  } catch (e) {
+    state.watchdog.running = false;
+    state.watchdog.msg = 'Watchdog API unavailable: ' + (e.message || e);
+  }
+}
+
+function bindWatchdogPanel() {
+  $('#btn-wd-refresh')?.addEventListener('click', async () => {
+    await refreshWatchdog(true);
+    const body = $('#workspace-body');
+    if (body && state.nav === 'watchdog') {
+      body.innerHTML = watchdogHtml();
+      bindWatchdogPanel();
+    }
+    renderStatusPills();
+    toast('Watchdog refreshed');
+  });
+  $('#wd-event-list')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-wd-id]');
+    if (!btn) return;
+    state.watchdog.selectedId = btn.getAttribute('data-wd-id');
+    const body = $('#workspace-body');
+    if (body) {
+      body.innerHTML = watchdogHtml();
+      bindWatchdogPanel();
+    }
+  });
+}
+
+async function refreshAll() {
+  try {
+    const res = await fetch('/api/system-status');
+    const data = await res.json();
+    const ol = data.ollama || {};
+    const idn = data.identity || {};
+    const helper = data.helper || {};
+    const wd = data.watchdog || helper.watchdog || {};
+    state.status.helperOk = !!(data.ok || helper.ok);
+    state.status.ollamaOk = !!ol.ok;
+    state.status.modelPresent = !!ol.model_present;
+    state.status.model = ol.model || '';
+    state.status.computerId = idn.computer_id || '';
+    state.status.computerName = idn.computer_name || '';
+    state.status.baseUrl = ol.base_url || '';
+    state.status.text = (idn.computer_name || '-') + ' · ' + (idn.computer_id || '-') + ' · ' + (ol.base_url || '');
+    state.watchdog.running = !!(wd.running || wd.ok);
+    state.watchdog.pid = wd.pid || state.watchdog.pid;
+    state.watchdog.lastEvent = wd.last_event || state.watchdog.lastEvent;
+  } catch {
+    state.status.helperOk = false;
+    state.status.ollamaOk = false;
+    state.status.modelPresent = false;
+    state.status.text = 'Helper offline';
+    state.watchdog.running = false;
+  }
+
+  try {
+    const res = await fetch('/api/llm-tasks?limit=200');
+    const data = await res.json();
+    state.report.tasks = data.tasks || [];
+    state.report.totals = data.totals || state.report.totals;
+    state.report.by_model = data.by_model || [];
+    state.report.models = data.models || [];
+  } catch {
+    /* keep previous */
+  }
+
+  if (state.nav === 'watchdog') {
+    await refreshWatchdog(true);
+  }
+
+  renderStatusPills();
+  renderRightList();
+  if (state.tab === 'report' && state.nav === 'task-center') {
+    const body = $('#workspace-body');
+    if (body) body.innerHTML = reportHtml();
+    bindReportOnly();
+  }
+  if (state.nav === 'watchdog') {
+    const body = $('#workspace-body');
+    if (body) {
+      body.innerHTML = watchdogHtml();
+      bindWatchdogPanel();
+    }
+  }
+}
+
+function bindReportOnly() {
+  $('#btn-clear-server')?.addEventListener('click', async () => {
+    if (!confirm('Clear all server LLM task history?')) return;
+    await fetch('/api/llm-tasks/clear', { method: 'POST' });
+    await refreshAll();
+    toast('Server history cleared');
+  });
+  document.querySelectorAll('[data-report-id]').forEach((tr) => {
+    tr.addEventListener('click', () => {
+      const id = tr.getAttribute('data-report-id');
+      const task = state.report.tasks.find((x) => x.id === id);
+      if (task) loadServerTaskIntoWorkspace(task);
+    });
+  });
+}
+
+function bind() {
+  $('#btn-left')?.addEventListener('click', () => {
+    state.leftOpen = !state.leftOpen;
+    $('#left-nav')?.classList.toggle('hidden', !state.leftOpen);
+  });
+  $('#btn-right')?.addEventListener('click', () => {
+    state.rightOpen = !state.rightOpen;
+    const el = $('#right-list');
+    if (!el) return;
+    el.classList.toggle('hidden', !state.rightOpen);
+    el.classList.toggle('flex', state.rightOpen);
+  });
+  $('#btn-refresh')?.addEventListener('click', async () => {
+    await refreshAll();
+    toast('Refreshed');
+  });
+
+  document.querySelectorAll('[data-nav]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      readFormIntoDraft();
+      state.nav = btn.getAttribute('data-nav');
+      mount(false);
+    });
+  });
+  document.querySelectorAll('[data-tab]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      readFormIntoDraft();
+      state.tab = btn.getAttribute('data-tab');
+      mount(false);
+    });
+  });
+
+  $('#search')?.addEventListener('input', (e) => {
+    state.query = e.target.value;
+    renderRightList();
+  });
+
+  $('#record-list')?.addEventListener('click', (e) => {
+    const cat = e.target.closest('[data-catalog]');
+    if (cat) {
+      state.catalogMode = cat.getAttribute('data-catalog');
+      renderRightList();
+      return;
+    }
+    const local = e.target.closest('[data-local-id]');
+    if (local) {
+      const id = local.getAttribute('data-local-id');
+      const rec = listRecords().find((r) => r.id === id);
+      if (rec) {
+        state.tab = 'analyze';
+        state.catalogMode = 'local';
+        fillForm(rec, true);
+        mount(false);
+      }
+      return;
+    }
+    const server = e.target.closest('[data-server-id]');
+    if (server) {
+      const id = server.getAttribute('data-server-id');
+      const task = state.report.tasks.find((t) => t.id === id);
+      if (task) loadServerTaskIntoWorkspace(task);
+    }
+  });
+
+  $('#btn-new')?.addEventListener('click', () => {
+    const rec = createBlankRecord({ status: 'draft', name: 'New record' });
+    state.tab = 'analyze';
+    state.catalogMode = 'local';
+    fillForm(rec, true);
+    mount(false);
+    toast('New draft');
+  });
+
+  $('#btn-save')?.addEventListener('click', () => {
+    readFormIntoDraft();
+    const saved = upsertRecord(state.draft);
+    state.draft = saved;
+    state.selectedId = saved.id;
+    state.catalogMode = 'local';
+    renderRightList();
+    toast('Saved to LocalStorage');
+  });
+
+  $('#btn-delete')?.addEventListener('click', () => {
+    const id = state.selectedId || state.draft.id;
+    if (!id) return;
+    if (!confirm('Delete this local record?')) return;
+    deleteRecord(id);
+    const next = listRecords()[0] || createBlankRecord({ name: 'New record' });
+    fillForm(next, true);
+    mount(false);
+    toast('Deleted');
+  });
+
+  $('#btn-copy')?.addEventListener('click', async () => {
+    const text = $('#f-result')?.value || '';
+    try {
+      await navigator.clipboard.writeText(text);
+      toast('Result copied');
+    } catch {
+      toast('Copy failed');
+    }
+  });
+
+  $('#btn-apply')?.addEventListener('click', () => {
+    const r = $('#f-result')?.value || '';
+    if (!r) return toast('No result to apply');
+    const p = $('#f-prompt');
+    if (p) p.value = r;
+    state.tab = 'chat';
+    readFormIntoDraft();
+    mount(false);
+    toast('Applied to prompt');
+  });
+
+  $('#btn-improve')?.addEventListener('click', async () => {
+    readFormIntoDraft();
+    const d = state.draft;
+    try {
+      const res = await fetch('/api/prompt/improve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: d.prompt_content,
+          writer: d.writer,
+          task_id: d.task_id,
+          session_id: d.session_id,
+          context: d.context,
+        }),
+      });
+      const data = await res.json();
+      const out = data.improved || data.result || data.text || data.error || JSON.stringify(data, null, 2);
+      if ($('#f-result')) $('#f-result').value = typeof out === 'string' ? out : JSON.stringify(out, null, 2);
+      state.draft.result_content = $('#f-result').value;
+  if (state.nav === 'watchdog') {
+    bindWatchdogPanel();
+    refreshWatchdog(true).then(() => {
+      const body = $('#workspace-body');
+      if (body && state.nav === 'watchdog') {
+        body.innerHTML = watchdogHtml();
+        bindWatchdogPanel();
+      }
+      renderStatusPills();
+    });
+  }
+      state.draft.status = data.ok === false ? 'error' : 'done';
+      if ($('#f-status')) $('#f-status').value = state.draft.status;
+      state.tab = 'result';
+      mount(false);
+      await refreshAll();
+      toast(data.ok === false ? 'Improve error' : 'Improved');
+    } catch (err) {
+      if ($('#f-result')) $('#f-result').value = String(err);
+      toast('Improve failed');
+    }
+  });
+
+  $('#btn-analyze')?.addEventListener('click', async () => {
+    readFormIntoDraft();
+    const d = state.draft;
+    try {
+      const res = await fetch('/api/prompt/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: d.prompt_content,
+          writer: d.writer,
+          task_id: d.task_id,
+          session_id: d.session_id,
+          context: d.context,
+        }),
+      });
+      const data = await res.json();
+      const out = data.notes || data.analysis || data.result || data.error || data;
+      if ($('#f-result')) $('#f-result').value = typeof out === 'string' ? out : JSON.stringify(out, null, 2);
+      state.draft.result_content = $('#f-result')?.value || '';
+  if (state.nav === 'task-id-coding') {
+    bindTaskIdCodingPanel();
+  }
+      state.draft.status = data.ok === false ? 'error' : 'done';
+      state.tab = 'result';
+      mount(false);
+      await refreshAll();
+      toast(data.ok === false ? 'Analyze error' : 'Analyzed');
+    } catch (err) {
+      if ($('#f-result')) $('#f-result').value = String(err);
+      toast('Analyze failed');
+    }
+  });
+
+  bindReportOnly();
+}
+
+function mount(fromBoot = true) {
+  const app = document.getElementById('app');
+  const keepDraft = { ...state.draft };
+  app.innerHTML = shell();
+  bind();
+  renderStatusPills();
+  renderRightList();
+  if (state.nav === 'task-center' && state.tab !== 'report') {
+    fillForm(keepDraft, fromBoot);
+  }
+  if (state.nav === 'skill-ssot') {
+    bindSkillPanel();
+    loadSkillPanel();
+  }
+  if (state.nav === 'watchdog') {
+    bindWatchdogPanel();
+    refreshWatchdog(true).then(() => {
+      const body = $('#workspace-body');
+      if (body && state.nav === 'watchdog') {
+        body.innerHTML = watchdogHtml();
+        bindWatchdogPanel();
+      }
+      renderStatusPills();
+    });
+  }
+  refreshAll();
+}
+
+export function startApp() {
+  if (!listRecords().length) {
+    upsertRecord(
+      createBlankRecord({
+        name: 'Sample record',
+        task_id: '',
+        writer: '',
+        status: 'draft',
+        prompt_content: '',
+        result_content: '',
+      })
+    );
+  }
+  const first = listRecords()[0];
+  state.draft = createBlankRecord(first);
+  state.selectedId = first.id;
+  mount(true);
+  setInterval(() => {
+    refreshAll();
+  }, 5000);
+}

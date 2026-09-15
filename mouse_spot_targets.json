@@ -1,0 +1,20 @@
+[
+  {
+    "id": "doubao",
+    "name": "豆包 AI",
+    "image": "/target-image/doubao",
+    "action": ""
+  },
+  {
+    "id": "t_1789456489577",
+    "name": "VS code",
+    "image": "/target-image/t_1789456489577",
+    "action": ""
+  },
+  {
+    "id": "t_1789464392591",
+    "name": "VS code",
+    "image": "",
+    "action": ""
+  }
+]
