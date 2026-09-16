@@ -1,0 +1,67 @@
+{
+  "task_id": "resync_ingest_task_log_cli_db",
+  "checklist_id": "qc.resync_ingest_task_log_cli_db.v1",
+  "delta": "Option B",
+  "files_modified": [
+    {
+      "path": "qc_evidence/.ingested_tasks.json",
+      "action": "update_via_remove_then_cli"
+    },
+    {
+      "path": "agent.db",
+      "action": "delete_insert_task_run_logs_ingest_task_log_cli"
+    },
+    {
+      "path": "qc_evidence/ingest_logs/ingest_20260916T103312Z.json",
+      "action": "cli_create"
+    },
+    {
+      "path": "qc_evidence/plan_resync_ingest_task_log_cli_db.md",
+      "action": "create"
+    },
+    {
+      "path": "qc_evidence/plan_resync_ingest_task_log_cli_db.json",
+      "action": "create"
+    },
+    {
+      "path": "qc_evidence/agent_log_resync_ingest_task_log_cli_db.md",
+      "action": "create"
+    },
+    {
+      "path": "qc_evidence/agent_log_resync_ingest_task_log_cli_db.json",
+      "action": "create"
+    }
+  ],
+  "commands": [
+    {
+      "cmd": "read qc_report_ingest_task_log_cli.json final_verdict",
+      "result": "PASS"
+    },
+    {
+      "cmd": "SELECT before",
+      "result": "ingest_task_log_cli final_verdict FAIL"
+    },
+    {
+      "cmd": "remove ingest_task_log_cli from marker; DELETE row; ingest_task_log.py --scan",
+      "result": "scan exit 0; imported ingest_task_log_cli with candidate final_verdict PASS"
+    },
+    {
+      "cmd": "SELECT after",
+      "result": "final_verdict PASS; count 1; LOST_other_ids []"
+    },
+    {
+      "cmd": "hash plan/agent_log parent",
+      "result": "HASH_MATCH True"
+    },
+    {
+      "cmd": "git diff ingest_task_log.py render_task_view.py",
+      "result": "empty"
+    }
+  ],
+  "diff_snippets": [
+    "BEFORE_row FAIL -> AFTER_row PASS",
+    "scan imported: ingest_task_log_cli, reqc_ingest_task_log_cli",
+    "parent plan/agent_log hashes unchanged"
+  ],
+  "notes": "Option B re-insert via existing --scan. No script source edits. No final_verdict from AGENT. Side effect: reqc_ingest_task_log_cli also imported as new complete triple."
+}

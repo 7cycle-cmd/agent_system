@@ -1,0 +1,69 @@
+{
+  "ok": true,
+  "result": "PASS",
+  "halted_at": null,
+  "executed_count": 3,
+  "pass_count": 3,
+  "fail_count": 0,
+  "required_tags": [
+    "tc.4.0",
+    "tc.4.1",
+    "tc.4.2"
+  ],
+  "results": [
+    {
+      "case_ref_tag": "tc.4.0",
+      "case_title": "enqueue — pending row with payload and priority",
+      "result": "PASS",
+      "expected_ok": true,
+      "actual_ok": true,
+      "expected_errors": [],
+      "actual_errors": [],
+      "reasons": [],
+      "detail": {
+        "task_id": "tq_3c9e679c322b",
+        "status": "pending",
+        "priority": 10
+      }
+    },
+    {
+      "case_ref_tag": "tc.4.1",
+      "case_title": "poll — claim pending to running",
+      "result": "PASS",
+      "expected_ok": true,
+      "actual_ok": true,
+      "expected_errors": [],
+      "actual_errors": [],
+      "reasons": [],
+      "detail": {
+        "task_id": "tq_cd6528d87ba6",
+        "status": "running",
+        "started_at": "2026-09-16 09:09:58",
+        "extras_drained": 0
+      }
+    },
+    {
+      "case_ref_tag": "tc.4.2",
+      "case_title": "update_status — done + verdict + trace_id link",
+      "result": "PASS",
+      "expected_ok": true,
+      "actual_ok": true,
+      "expected_errors": [],
+      "actual_errors": [],
+      "reasons": [],
+      "detail": {
+        "task_id": "tq_d375187a3ab5",
+        "status": "done",
+        "verdict": "PASS",
+        "trace_id": "atr_tq_tdd_link",
+        "finished_at": "2026-09-16 09:09:58"
+      }
+    }
+  ],
+  "started_at": "2026-09-16T09:09:58.649351+00:00",
+  "finished_at": "2026-09-16T09:09:58.696561+00:00",
+  "source": "test_case_registry",
+  "queue_table": "validate_task_queue",
+  "note": "tc.4.* task_queue unit suite; table=validate_task_queue (not legacy task_queue); validate_new_task not invoked here",
+  "report_path": "C:\\projects\\agent_system\\qc_evidence\\task_queue_run.json"
+}

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Task view — qc_evidence</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #1a2332;
+      --text: #e7ecf3;
+      --muted: #8b9bb4;
+      --border: #2c3a4f;
+      --pass: #1b7f4e;
+      --pass-bg: #143d2a;
+      --fail: #c62828;
+      --fail-bg: #3d1515;
+      --link: #6cb6ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+      padding: 1.5rem;
+    }
+    h1 { font-size: 1.35rem; margin: 0 0 0.25rem; }
+    .sub { color: var(--muted); margin-bottom: 1.25rem; font-size: 0.9rem; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      font-size: 0.9rem;
+    }
+    th, td {
+      border-bottom: 1px solid var(--border);
+      padding: 0.65rem 0.75rem;
+      vertical-align: top;
+      text-align: left;
+    }
+    th {
+      background: #121a26;
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    tr:last-child td { border-bottom: none; }
+    code {
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: 0.85em;
+    }
+    a { color: var(--link); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .verdict-pass {
+      color: #7dffa6;
+      background: var(--pass-bg);
+      font-weight: 700;
+    }
+    .verdict-fail {
+      color: #ff8a80;
+      background: var(--fail-bg);
+      font-weight: 700;
+    }
+    .verdict-other { color: var(--muted); }
+    .ingested-yes { color: #7dffa6; }
+    .ingested-no { color: var(--muted); }
+    .muted { color: var(--muted); }
+    .file-list { margin: 0; padding-left: 1.1rem; }
+    .file-list li { margin: 0.1rem 0; }
+    .badge-incomplete, .badge-error {
+      display: inline-block;
+      font-size: 0.7rem;
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+      margin-left: 0.35rem;
+      font-weight: 600;
+    }
+    .badge-incomplete { background: #3d3420; color: #ffcc66; }
+    .badge-error { background: var(--fail-bg); color: #ff8a80; }
+    .arts { white-space: normal; max-width: 18rem; }
+  </style>
+</head>
+<body>
+  <h1>Task view</h1>
+  <p class="sub">Static index of <code>qc_evidence/</code> plan / agent_log / qc_report triples. 7 task(s) from qc_evidence JSON groups. No server required.</p>
+  <table>
+    <thead>
+      <tr>
+        <th>task_id</th>
+        <th>final_verdict</th>
+        <th>ingested</th>
+        <th>modified files</th>
+        <th>QC summary</th>
+        <th>artifacts</th>
+      </tr>
+    </thead>
+    <tbody>
+
+        <tr>
+          <td class="tid"><code>fix_ingest_agent_log_artifacts</code> <span class="badge-incomplete">incomplete triple</span></td>
+          <td class="verdict-pass">PASS</td>
+          <td class="ingested-no">no</td>
+          <td class="files"><span class="muted">—</span></td>
+          <td class="qc">12 items (P:12)</td>
+          <td class="arts"><a href="qc_evidence/qc_report_fix_ingest_agent_log_artifacts.json">qc_report.json</a> · <a href="qc_evidence/qc_report_fix_ingest_agent_log_artifacts.md">qc_report.md</a></td>
+        </tr>
+
+        <tr>
+          <td class="tid"><code>ingest_task_log_cli</code></td>
+          <td class="verdict-pass">PASS</td>
+          <td class="ingested-yes">yes</td>
+          <td class="files"><ul class="file-list"><li><code>ingest_task_log.py</code></li><li><code>qc_evidence/.ingested_tasks.json</code></li><li><code>qc_evidence/plan_ingest_task_log_cli.json</code></li><li><code>qc_evidence/agent_log_ingest_task_log_cli.md</code></li><li><code>qc_evidence/agent_log_ingest_task_log_cli.json</code></li></ul></td>
+          <td class="qc">20 items (P:20)</td>
+          <td class="arts"><a href="qc_evidence/plan_ingest_task_log_cli.json">plan.json</a> · <a href="qc_evidence/agent_log_ingest_task_log_cli.json">agent_log.json</a> · <a href="qc_evidence/agent_log_ingest_task_log_cli.md">agent_log.md</a> · <a href="qc_evidence/qc_report_ingest_task_log_cli.json">qc_report.json</a> · <a href="qc_evidence/qc_report_ingest_task_log_cli.md">qc_report.md</a></td>
+        </tr>
+
+        <tr>
+          <td class="tid"><code>json_artifacts_protocol</code></td>
+          <td class="verdict-pass">PASS</td>
+          <td class="ingested-yes">yes</td>
+          <td class="files"><ul class="file-list"><li><code>docs/plan_ide_execution_worker.md</code></li><li><code>docs/snippets/template_plan.md</code></li><li><code>docs/snippets/template_agent_execution_log.md</code></li><li><code>docs/snippets/template_qc_report.md</code></li><li><code>.github/copilot-instructions.md</code></li><li><code>qc_evidence/plan_json_artifacts_protocol.json</code></li><li><code>qc_evidence/plan_json_artifacts_protocol.md</code></li><li><code>qc_evidence/agent_log_json_artifacts_protocol.md</code></li><li><code>qc_evidence/agent_log_json_artifacts_protocol.json</code></li></ul></td>
+          <td class="qc">20 items (P:20)</td>
+          <td class="arts"><a href="qc_evidence/plan_json_artifacts_protocol.json">plan.json</a> · <a href="qc_evidence/plan_json_artifacts_protocol.md">plan.md</a> · <a href="qc_evidence/agent_log_json_artifacts_protocol.json">agent_log.json</a> · <a href="qc_evidence/agent_log_json_artifacts_protocol.md">agent_log.md</a> · <a href="qc_evidence/qc_report_json_artifacts_protocol.json">qc_report.json</a> · <a href="qc_evidence/qc_report_json_artifacts_protocol.md">qc_report.md</a></td>
+        </tr>
+
+        <tr>
+          <td class="tid"><code>render_task_view</code></td>
+          <td class="verdict-pass">PASS</td>
+          <td class="ingested-yes">yes</td>
+          <td class="files"><ul class="file-list"><li><code>render_task_view.py</code></li><li><code>task_view.html</code></li><li><code>qc_evidence/plan_render_task_view.md</code></li><li><code>qc_evidence/plan_render_task_view.json</code></li><li><code>qc_evidence/agent_log_render_task_view.md</code></li><li><code>qc_evidence/agent_log_render_task_view.json</code></li></ul></td>
+          <td class="qc">15 items (P:15)</td>
+          <td class="arts"><a href="qc_evidence/plan_render_task_view.json">plan.json</a> · <a href="qc_evidence/plan_render_task_view.md">plan.md</a> · <a href="qc_evidence/agent_log_render_task_view.json">agent_log.json</a> · <a href="qc_evidence/agent_log_render_task_view.md">agent_log.md</a> · <a href="qc_evidence/qc_report_render_task_view.json">qc_report.json</a> · <a href="qc_evidence/qc_report_render_task_view.md">qc_report.md</a></td>
+        </tr>
+
+        <tr>
+          <td class="tid"><code>reqc_ingest_task_log_cli</code></td>
+          <td class="verdict-pass">PASS</td>
+          <td class="ingested-yes">yes</td>
+          <td class="files"><ul class="file-list"><li><code>qc_evidence/plan_reqc_ingest_task_log_cli.md</code></li><li><code>qc_evidence/plan_reqc_ingest_task_log_cli.json</code></li><li><code>qc_evidence/agent_log_reqc_ingest_task_log_cli.md</code></li><li><code>qc_evidence/agent_log_reqc_ingest_task_log_cli.json</code></li></ul></td>
+          <td class="qc">14 items (P:14)</td>
+          <td class="arts"><a href="qc_evidence/plan_reqc_ingest_task_log_cli.json">plan.json</a> · <a href="qc_evidence/plan_reqc_ingest_task_log_cli.md">plan.md</a> · <a href="qc_evidence/agent_log_reqc_ingest_task_log_cli.json">agent_log.json</a> · <a href="qc_evidence/agent_log_reqc_ingest_task_log_cli.md">agent_log.md</a> · <a href="qc_evidence/qc_report_reqc_ingest_task_log_cli.json">qc_report.json</a> · <a href="qc_evidence/qc_report_reqc_ingest_task_log_cli.md">qc_report.md</a></td>
+        </tr>
+
+        <tr>
+          <td class="tid"><code>resync_ingest_task_log_cli_db</code></td>
+          <td class="verdict-pass">PASS</td>
+          <td class="ingested-yes">yes</td>
+          <td class="files"><ul class="file-list"><li><code>qc_evidence/.ingested_tasks.json</code></li><li><code>agent.db</code></li><li><code>qc_evidence/ingest_logs/ingest_20260916T103312Z.json</code></li><li><code>qc_evidence/plan_resync_ingest_task_log_cli_db.md</code></li><li><code>qc_evidence/plan_resync_ingest_task_log_cli_db.json</code></li><li><code>qc_evidence/agent_log_resync_ingest_task_log_cli_db.md</code></li><li><code>qc_evidence/agent_log_resync_ingest_task_log_cli_db.json</code></li></ul></td>
+          <td class="qc">14 items (P:14)</td>
+          <td class="arts"><a href="qc_evidence/plan_resync_ingest_task_log_cli_db.json">plan.json</a> · <a href="qc_evidence/plan_resync_ingest_task_log_cli_db.md">plan.md</a> · <a href="qc_evidence/agent_log_resync_ingest_task_log_cli_db.json">agent_log.json</a> · <a href="qc_evidence/agent_log_resync_ingest_task_log_cli_db.md">agent_log.md</a> · <a href="qc_evidence/qc_report_resync_ingest_task_log_cli_db.json">qc_report.json</a> · <a href="qc_evidence/qc_report_resync_ingest_task_log_cli_db.md">qc_report.md</a></td>
+        </tr>
+
+        <tr>
+          <td class="tid"><code>scan_ingest_task_log_cli</code></td>
+          <td class="verdict-pass">PASS</td>
+          <td class="ingested-yes">yes</td>
+          <td class="files"><ul class="file-list"><li><code>qc_evidence/plan_scan_ingest_task_log_cli.md</code></li><li><code>qc_evidence/plan_scan_ingest_task_log_cli.json</code></li><li><code>qc_evidence/agent_log_scan_ingest_task_log_cli.md</code></li><li><code>qc_evidence/agent_log_scan_ingest_task_log_cli.json</code></li><li><code>qc_evidence/.ingested_tasks.json</code></li><li><code>qc_evidence/ingest_logs/ingest_20260916T100329Z.json</code></li><li><code>agent.db</code></li></ul></td>
+          <td class="qc">13 items (P:13)</td>
+          <td class="arts"><a href="qc_evidence/plan_scan_ingest_task_log_cli.json">plan.json</a> · <a href="qc_evidence/plan_scan_ingest_task_log_cli.md">plan.md</a> · <a href="qc_evidence/agent_log_scan_ingest_task_log_cli.json">agent_log.json</a> · <a href="qc_evidence/agent_log_scan_ingest_task_log_cli.md">agent_log.md</a> · <a href="qc_evidence/qc_report_scan_ingest_task_log_cli.json">qc_report.json</a> · <a href="qc_evidence/qc_report_scan_ingest_task_log_cli.md">qc_report.md</a></td>
+        </tr>
+    </tbody>
+  </table>
+</body>
+</html>

@@ -1,0 +1,26 @@
+{
+  "mode": "scan_dry_run",
+  "written_at": "2026-09-16T09:53:21Z",
+  "events": [
+    {
+      "ts": "2026-09-16T09:53:21Z",
+      "mode": "scan_dry_run",
+      "task_id": "ingest_task_log_cli",
+      "action": "invalid",
+      "detail": [
+        "missing_file: agent_log_ingest_task_log_cli.json",
+        "missing_file: qc_report_ingest_task_log_cli.json"
+      ]
+    },
+    {
+      "ts": "2026-09-16T09:53:21Z",
+      "mode": "scan_dry_run",
+      "task_id": "json_artifacts_protocol",
+      "action": "would_insert",
+      "detail": {
+        "final_verdict": "PASS",
+        "skill_name": "qc.json_artifacts_protocol.v1"
+      }
+    }
+  ]
+}

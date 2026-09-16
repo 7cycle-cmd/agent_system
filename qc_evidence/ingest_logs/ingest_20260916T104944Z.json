@@ -1,0 +1,60 @@
+{
+  "mode": "scan",
+  "written_at": "2026-09-16T10:49:44Z",
+  "events": [
+    {
+      "ts": "2026-09-16T10:49:44Z",
+      "mode": "scan",
+      "task_id": "fix_ingest_agent_log_artifacts",
+      "action": "invalid",
+      "detail": [
+        "missing_file: plan_fix_ingest_agent_log_artifacts.json",
+        "missing_file: agent_log_fix_ingest_agent_log_artifacts.json"
+      ]
+    },
+    {
+      "ts": "2026-09-16T10:49:44Z",
+      "mode": "scan",
+      "task_id": "ingest_task_log_cli",
+      "action": "skip",
+      "detail": "already_in_marker"
+    },
+    {
+      "ts": "2026-09-16T10:49:44Z",
+      "mode": "scan",
+      "task_id": "json_artifacts_protocol",
+      "action": "skip",
+      "detail": "already_in_marker"
+    },
+    {
+      "ts": "2026-09-16T10:49:44Z",
+      "mode": "scan",
+      "task_id": "render_task_view",
+      "action": "skip",
+      "detail": "already_in_marker"
+    },
+    {
+      "ts": "2026-09-16T10:49:44Z",
+      "mode": "scan",
+      "task_id": "reqc_ingest_task_log_cli",
+      "action": "skip",
+      "detail": "already_in_marker"
+    },
+    {
+      "ts": "2026-09-16T10:49:44Z",
+      "mode": "scan",
+      "task_id": "resync_ingest_task_log_cli_db",
+      "action": "insert",
+      "detail": {
+        "final_verdict": "PASS"
+      }
+    },
+    {
+      "ts": "2026-09-16T10:49:44Z",
+      "mode": "scan",
+      "task_id": "scan_ingest_task_log_cli",
+      "action": "skip",
+      "detail": "already_in_marker"
+    }
+  ]
+}

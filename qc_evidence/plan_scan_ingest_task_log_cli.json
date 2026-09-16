@@ -1,0 +1,52 @@
+{
+  "task_id": "scan_ingest_task_log_cli",
+  "checklist_id": "qc.scan_ingest_task_log_cli.v1",
+  "scope": "Run ingest_task_log.py --scan; verify marker and task_run_logs row for ingest_task_log_cli. No source edits.",
+  "step_list": [
+    "Preflight parent JSON triple Test-Path and --list",
+    "Run .\\.venv\\Scripts\\python.exe ingest_task_log.py --scan",
+    "Verify qc_evidence/.ingested_tasks.json contains ingest_task_log_cli",
+    "Verify agent.db task_run_logs has exactly one row for ingest_task_log_cli",
+    "Optional second --scan for idempotency",
+    "Write agent_log_scan_ingest_task_log_cli.md and .json; stop for QC"
+  ],
+  "allowlist": [
+    "qc_evidence/.ingested_tasks.json (CLI only)",
+    "qc_evidence/ingest_logs/* (CLI only)",
+    "agent.db task_run_logs (CLI only)",
+    "qc_evidence/plan_scan_ingest_task_log_cli.md",
+    "qc_evidence/plan_scan_ingest_task_log_cli.json",
+    "qc_evidence/agent_log_scan_ingest_task_log_cli.md",
+    "qc_evidence/agent_log_scan_ingest_task_log_cli.json"
+  ],
+  "allowed_commands": [
+    ".\\.venv\\Scripts\\python.exe ingest_task_log.py --scan",
+    ".\\.venv\\Scripts\\python.exe ingest_task_log.py --list",
+    "Test-Path parent JSON triples",
+    "python json/sqlite verify marker and task_run_logs",
+    "git diff -- ingest_task_log.py",
+    "git status scoped"
+  ],
+  "forbidden": [
+    "Edit ingest_task_log.py",
+    "Edit docs/snippets or plan_ide_execution_worker.md",
+    "Hand-edit marker or manual SQL fake insert",
+    "Rewrite parent ingest_task_log_cli artifacts",
+    "AGENT final_verdict or PASS/FAIL"
+  ],
+  "locked_qc_checklist": [
+    "QC-01",
+    "QC-02",
+    "QC-03",
+    "QC-04",
+    "QC-05",
+    "QC-06",
+    "QC-07",
+    "QC-08",
+    "QC-09",
+    "QC-10",
+    "QC-11",
+    "QC-12",
+    "QC-13"
+  ]
+}

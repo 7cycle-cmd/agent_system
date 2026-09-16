@@ -1,0 +1,30 @@
+{
+  "task_id": "resync_ingest_task_log_cli_db",
+  "checklist_id": "qc.resync_ingest_task_log_cli_db.v1",
+  "scope": "Option B: remove ingest_task_log_cli from marker, DELETE that task_run_logs row only, run ingest_task_log.py --scan to re-insert from PASS qc_report. No plan/agent_log or script source edits.",
+  "step_list": [
+    "Confirm qc_report_ingest_task_log_cli.json final_verdict PASS",
+    "Remove ingest_task_log_cli from .ingested_tasks.json only",
+    "DELETE FROM task_run_logs WHERE task_id=ingest_task_log_cli",
+    "Run ingest_task_log.py --scan",
+    "Verify row final_verdict PASS and other ids retained",
+    "Write agent_log twins; stop for QC"
+  ],
+  "delta": "Option B",
+  "allowlist": [
+    "qc_evidence/.ingested_tasks.json",
+    "agent.db task_run_logs row ingest_task_log_cli",
+    "qc_evidence/ingest_logs/*",
+    "qc_evidence/plan_resync_ingest_task_log_cli_db.md",
+    "qc_evidence/plan_resync_ingest_task_log_cli_db.json",
+    "qc_evidence/agent_log_resync_ingest_task_log_cli_db.md",
+    "qc_evidence/agent_log_resync_ingest_task_log_cli_db.json"
+  ],
+  "forbidden": [
+    "Edit plan_ingest_task_log_cli.*",
+    "Edit agent_log_ingest_task_log_cli.*",
+    "Edit ingest_task_log.py",
+    "Edit render_task_view.py",
+    "AGENT final_verdict"
+  ]
+}

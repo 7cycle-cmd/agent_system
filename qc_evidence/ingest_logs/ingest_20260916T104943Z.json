@@ -1,0 +1,15 @@
+{
+  "mode": "rescan",
+  "written_at": "2026-09-16T10:49:43Z",
+  "events": [
+    {
+      "ts": "2026-09-16T10:49:43Z",
+      "mode": "rescan",
+      "task_id": "ingest_task_log_cli",
+      "action": "update",
+      "detail": {
+        "final_verdict": "PASS"
+      }
+    }
+  ]
+}

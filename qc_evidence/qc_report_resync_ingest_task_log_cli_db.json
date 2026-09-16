@@ -1,0 +1,78 @@
+{
+  "task_id": "resync_ingest_task_log_cli_db",
+  "checklist_id": "qc.resync_ingest_task_log_cli_db.v1",
+  "delta": "Option B",
+  "checklist_items": [
+    {
+      "id": "QC-01",
+      "result": "PASS",
+      "evidence": "qc_report_ingest_task_log_cli.json final_verdict PASS"
+    },
+    {
+      "id": "QC-02",
+      "result": "PASS",
+      "evidence": "Option B: marker remove + DELETE one row + ingest_task_log.py --scan"
+    },
+    {
+      "id": "QC-03",
+      "result": "PASS",
+      "evidence": "scan exit code 0"
+    },
+    {
+      "id": "QC-04",
+      "result": "PASS",
+      "evidence": "task_run_logs COUNT ingest_task_log_cli = 1"
+    },
+    {
+      "id": "QC-05",
+      "result": "PASS",
+      "evidence": "final_verdict PASS on ingest_task_log_cli row"
+    },
+    {
+      "id": "QC-06",
+      "result": "PASS",
+      "evidence": "marker contains ingest_task_log_cli"
+    },
+    {
+      "id": "QC-07",
+      "result": "PASS",
+      "evidence": "prior other task_ids retained; no lost ids"
+    },
+    {
+      "id": "QC-08",
+      "result": "PASS",
+      "evidence": "plan_ingest_task_log_cli.json SHA256 unchanged"
+    },
+    {
+      "id": "QC-09",
+      "result": "PASS",
+      "evidence": "agent_log_ingest_task_log_cli.* SHA256 unchanged"
+    },
+    {
+      "id": "QC-10",
+      "result": "PASS",
+      "evidence": "ingest_task_log.py not modified for upsert; Option B path"
+    },
+    {
+      "id": "QC-11",
+      "result": "PASS",
+      "evidence": "render_task_view.py not modified"
+    },
+    {
+      "id": "QC-12",
+      "result": "PASS",
+      "evidence": "no unauthorized foreign artifact body edits"
+    },
+    {
+      "id": "QC-13",
+      "result": "PASS",
+      "evidence": "agent_log_resync twins exist without final_verdict"
+    },
+    {
+      "id": "QC-14",
+      "result": "PASS",
+      "evidence": "this report scores QC-01..QC-13; final_verdict only in QC artifacts"
+    }
+  ],
+  "final_verdict": "PASS"
+}

@@ -1,0 +1,57 @@
+{
+  "task_id": "render_task_view",
+  "checklist_id": "qc.render_task_view.v1",
+  "files_modified": [
+    {
+      "path": "render_task_view.py",
+      "action": "create"
+    },
+    {
+      "path": "task_view.html",
+      "action": "create"
+    },
+    {
+      "path": "qc_evidence/plan_render_task_view.md",
+      "action": "create"
+    },
+    {
+      "path": "qc_evidence/plan_render_task_view.json",
+      "action": "create"
+    },
+    {
+      "path": "qc_evidence/agent_log_render_task_view.md",
+      "action": "create"
+    },
+    {
+      "path": "qc_evidence/agent_log_render_task_view.json",
+      "action": "create"
+    }
+  ],
+  "commands": [
+    {
+      "cmd": ".\\.venv\\Scripts\\python.exe render_task_view.py --help",
+      "result": "exit 0; --render and --open documented"
+    },
+    {
+      "cmd": ".\\.venv\\Scripts\\python.exe render_task_view.py --render",
+      "result": "exit 0; task_count 4; wrote task_view.html"
+    },
+    {
+      "cmd": "Test-Path render_task_view.py; Test-Path task_view.html",
+      "result": "True; True"
+    },
+    {
+      "cmd": "HTML/marker/sqlite checks",
+      "result": "no script tag; verdict-pass/fail present; ingest_task_log_cli in HTML; no sqlite in renderer; marker has ingest_task_log_cli + json_artifacts_protocol"
+    },
+    {
+      "cmd": "git diff -- ingest_task_log.py",
+      "result": "empty"
+    }
+  ],
+  "diff_snippets": [
+    "render_task_view.py: argparse --render/--open, FILE_RE discover, marker ingested, static HTML no JS",
+    "task_view.html: 4 tasks; PASS green / FAIL red classes; relative qc_evidence links"
+  ],
+  "notes": "No DB. No foreign artifact edits. No final_verdict from AGENT."
+}

@@ -1,0 +1,906 @@
+﻿{
+  "task_id": "t_wo_tskill01_001",
+  "qc_report_ref": "qc_mem_tskill01_001",
+  "linked_trace_id": "tr_mem_tskill01_validate",
+  "target_capability": "task_center.validate_new_task",
+  "work_order_status": "ready",
+  "reject_reason": "",
+  "ssot_work_order": [
+    {
+      "ref_tag": "1.1",
+      "entity_type": "channel",
+      "entity_key": "local_pc",
+      "definition": "Reuse channel ontology code=local_pc name='Local PC'. Execution channel for Task Center skill gates (T-SKILL01).",
+      "tdd_test_cases": [
+        {
+          "test_id": "tdd_ch_local_pc_component_normal",
+          "test_purpose": "component-level: channel dim accepts ontology code local_pc",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "local_pc",
+            "module": "task_center",
+            "capability": "task_center.validate_new_task",
+            "api": "POST /api/tasks/validate",
+            "function": "task_center.validate_new_task",
+            "table": "code_register",
+            "field": "register_id, module_name, function_name, file_path"
+          },
+          "expected_output": {"pass": true, "result": "PASS"},
+          "boundary": false
+        },
+        {
+          "test_id": "tdd_ch_local_pc_component_null",
+          "test_purpose": "component-level boundary null: channel field is null",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": null,
+            "module": "task_center",
+            "capability": "task_center.validate_new_task",
+            "api": "POST /api/tasks/validate",
+            "function": "task_center.validate_new_task",
+            "table": "code_register",
+            "field": "register_id, module_name, function_name, file_path"
+          },
+          "expected_output": {"pass": false, "result": "FAIL", "error_contains": "channel"},
+          "boundary": true
+        },
+        {
+          "test_id": "tdd_ch_local_pc_component_empty",
+          "test_purpose": "component-level boundary empty: channel field is empty string",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "",
+            "module": "task_center",
+            "capability": "task_center.validate_new_task",
+            "api": "POST /api/tasks/validate",
+            "function": "task_center.validate_new_task",
+            "table": "code_register",
+            "field": "register_id, module_name, function_name, file_path"
+          },
+          "expected_output": {"pass": false, "result": "FAIL", "error_contains": "channel"},
+          "boundary": true
+        },
+        {
+          "test_id": "tdd_ch_local_pc_component_invalid",
+          "test_purpose": "component-level boundary invalid: channel not in ontology",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "wrong_channel",
+            "module": "task_center",
+            "capability": "task_center.validate_new_task",
+            "api": "POST /api/tasks/validate",
+            "function": "task_center.validate_new_task",
+            "table": "code_register",
+            "field": "register_id, module_name, function_name, file_path"
+          },
+          "expected_output": {"pass": false, "result": "FAIL", "error_contains": "channel"},
+          "boundary": true
+        },
+        {
+          "test_id": "tdd_ch_local_pc_component_timeout",
+          "test_purpose": "component-level boundary timeout: N/A — validate_new_task has no timeout wrapper",
+          "probe_api": null,
+          "input": null,
+          "expected_output": {"pass": null, "result": "N/A", "reason": "no_timeout_wrapper"},
+          "boundary": true,
+          "status": "N/A"
+        },
+        {
+          "test_id": "tdd_ch_local_pc_integration_normal",
+          "test_purpose": "integration-level: channel with full 8-dim T-SKILL01 payload",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "local_pc",
+            "module": "task_center",
+            "capability": "task_center.validate_new_task",
+            "api": "POST /api/tasks/validate",
+            "function": "task_center.validate_new_task",
+            "table": "code_register",
+            "field": "register_id, module_name, function_name, file_path"
+          },
+          "expected_output": {"pass": true, "result": "PASS"},
+          "boundary": false
+        },
+        {
+          "test_id": "tdd_ch_local_pc_integration_invalid",
+          "test_purpose": "integration-level boundary invalid: mutate channel dim to non-ontology value",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "wrong_channel",
+            "module": "task_center",
+            "capability": "task_center.validate_new_task",
+            "api": "POST /api/tasks/validate",
+            "function": "task_center.validate_new_task",
+            "table": "code_register",
+            "field": "register_id, module_name, function_name, file_path"
+          },
+          "expected_output": {"pass": false, "result": "FAIL", "error_contains": "channel"},
+          "boundary": true
+        }
+      ],
+      "dependencies": [],
+      "repo_target": "task_ssot",
+      "schema_change_required": false,
+      "schema_justification": ""
+    },
+    {
+      "ref_tag": "1.2",
+      "entity_type": "module",
+      "entity_key": "task_center",
+      "definition": "Reuse module ontology code=task_center name='Task Center'. Owns validate_new_task and skill gate APIs.",
+      "tdd_test_cases": [
+        {
+          "test_id": "tdd_mod_task_center_component_normal",
+          "test_purpose": "component-level: module dim accepts ontology code task_center",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "local_pc",
+            "module": "task_center",
+            "capability": "task_center.validate_new_task",
+            "api": "POST /api/tasks/validate",
+            "function": "task_center.validate_new_task",
+            "table": "code_register",
+            "field": "register_id, module_name, function_name, file_path"
+          },
+          "expected_output": {"pass": true, "result": "PASS"},
+          "boundary": false
+        },
+        {
+          "test_id": "tdd_mod_task_center_component_null",
+          "test_purpose": "component-level boundary null: module field is null",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "local_pc",
+            "module": null,
+            "capability": "task_center.validate_new_task",
+            "api": "POST /api/tasks/validate",
+            "function": "task_center.validate_new_task",
+            "table": "code_register",
+            "field": "register_id, module_name, function_name, file_path"
+          },
+          "expected_output": {"pass": false, "result": "FAIL", "error_contains": "module"},
+          "boundary": true
+        },
+        {
+          "test_id": "tdd_mod_task_center_component_empty",
+          "test_purpose": "component-level boundary empty: module field is empty string",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "local_pc",
+            "module": "",
+            "capability": "task_center.validate_new_task",
+            "api": "POST /api/tasks/validate",
+            "function": "task_center.validate_new_task",
+            "table": "code_register",
+            "field": "register_id, module_name, function_name, file_path"
+          },
+          "expected_output": {"pass": false, "result": "FAIL", "error_contains": "module"},
+          "boundary": true
+        },
+        {
+          "test_id": "tdd_mod_task_center_component_invalid",
+          "test_purpose": "component-level boundary invalid: module not in ontology",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "local_pc",
+            "module": "wrong_module",
+            "capability": "task_center.validate_new_task",
+            "api": "POST /api/tasks/validate",
+            "function": "task_center.validate_new_task",
+            "table": "code_register",
+            "field": "register_id, module_name, function_name, file_path"
+          },
+          "expected_output": {"pass": false, "result": "FAIL", "error_contains": "module"},
+          "boundary": true
+        },
+        {
+          "test_id": "tdd_mod_task_center_component_timeout",
+          "test_purpose": "component-level boundary timeout: N/A — validate_new_task has no timeout wrapper",
+          "probe_api": null,
+          "input": null,
+          "expected_output": {"pass": null, "result": "N/A", "reason": "no_timeout_wrapper"},
+          "boundary": true,
+          "status": "N/A"
+        },
+        {
+          "test_id": "tdd_mod_task_center_integration_normal",
+          "test_purpose": "integration-level: module with full 8-dim T-SKILL01 payload",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "local_pc",
+            "module": "task_center",
+            "capability": "task_center.validate_new_task",
+            "api": "POST /api/tasks/validate",
+            "function": "task_center.validate_new_task",
+            "table": "code_register",
+            "field": "register_id, module_name, function_name, file_path"
+          },
+          "expected_output": {"pass": true, "result": "PASS"},
+          "boundary": false
+        },
+        {
+          "test_id": "tdd_mod_task_center_integration_invalid",
+          "test_purpose": "integration-level boundary invalid: mutate module dim to non-ontology value",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "local_pc",
+            "module": "wrong_module",
+            "capability": "task_center.validate_new_task",
+            "api": "POST /api/tasks/validate",
+            "function": "task_center.validate_new_task",
+            "table": "code_register",
+            "field": "register_id, module_name, function_name, file_path"
+          },
+          "expected_output": {"pass": false, "result": "FAIL", "error_contains": "module"},
+          "boundary": true
+        }
+      ],
+      "dependencies": ["1.1"],
+      "repo_target": "task_ssot",
+      "schema_change_required": false,
+      "schema_justification": ""
+    },
+    {
+      "ref_tag": "1.3",
+      "entity_type": "capability",
+      "entity_key": "task_center.validate_new_task",
+      "definition": "Pre-dispatch taxonomy capability (capacity): validate Task|Channel|Module|Capability|API|Function|Table|Field. Implemented by validate_new_task; no ontology mutation.",
+      "tdd_test_cases": [
+        {
+          "test_id": "tdd_cap_validate_new_task_component_normal",
+          "test_purpose": "component-level: capability dim accepts task_center.validate_new_task",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "local_pc",
+            "module": "task_center",
+            "capability": "task_center.validate_new_task",
+            "api": "POST /api/tasks/validate",
+            "function": "task_center.validate_new_task",
+            "table": "code_register",
+            "field": "register_id, module_name, function_name, file_path"
+          },
+          "expected_output": {"pass": true, "result": "PASS"},
+          "boundary": false
+        },
+        {
+          "test_id": "tdd_cap_validate_new_task_component_null",
+          "test_purpose": "component-level boundary null: capability field is null",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "local_pc",
+            "module": "task_center",
+            "capability": null,
+            "api": "POST /api/tasks/validate",
+            "function": "task_center.validate_new_task",
+            "table": "code_register",
+            "field": "register_id, module_name, function_name, file_path"
+          },
+          "expected_output": {"pass": false, "result": "FAIL", "error_contains": "capability"},
+          "boundary": true
+        },
+        {
+          "test_id": "tdd_cap_validate_new_task_component_empty",
+          "test_purpose": "component-level boundary empty: capability field is empty string",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "local_pc",
+            "module": "task_center",
+            "capability": "",
+            "api": "POST /api/tasks/validate",
+            "function": "task_center.validate_new_task",
+            "table": "code_register",
+            "field": "register_id, module_name, function_name, file_path"
+          },
+          "expected_output": {"pass": false, "result": "FAIL", "error_contains": "capability"},
+          "boundary": true
+        },
+        {
+          "test_id": "tdd_cap_validate_new_task_component_invalid",
+          "test_purpose": "component-level boundary invalid: capability not registered for module",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "local_pc",
+            "module": "task_center",
+            "capability": "task_center.unknown_capability",
+            "api": "POST /api/tasks/validate",
+            "function": "task_center.validate_new_task",
+            "table": "code_register",
+            "field": "register_id, module_name, function_name, file_path"
+          },
+          "expected_output": {"pass": false, "result": "FAIL", "error_contains": "capability"},
+          "boundary": true
+        },
+        {
+          "test_id": "tdd_cap_validate_new_task_component_timeout",
+          "test_purpose": "component-level boundary timeout: N/A — validate_new_task has no timeout wrapper",
+          "probe_api": null,
+          "input": null,
+          "expected_output": {"pass": null, "result": "N/A", "reason": "no_timeout_wrapper"},
+          "boundary": true,
+          "status": "N/A"
+        },
+        {
+          "test_id": "tdd_cap_validate_new_task_integration_normal",
+          "test_purpose": "integration-level: capability with full 8-dim T-SKILL01 payload",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "local_pc",
+            "module": "task_center",
+            "capability": "task_center.validate_new_task",
+            "api": "POST /api/tasks/validate",
+            "function": "task_center.validate_new_task",
+            "table": "code_register",
+            "field": "register_id, module_name, function_name, file_path"
+          },
+          "expected_output": {"pass": true, "result": "PASS"},
+          "boundary": false
+        },
+        {
+          "test_id": "tdd_cap_validate_new_task_integration_invalid",
+          "test_purpose": "integration-level boundary invalid: mutate capability dim to unknown value",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "local_pc",
+            "module": "task_center",
+            "capability": "task_center.unknown_capability",
+            "api": "POST /api/tasks/validate",
+            "function": "task_center.validate_new_task",
+            "table": "code_register",
+            "field": "register_id, module_name, function_name, file_path"
+          },
+          "expected_output": {"pass": false, "result": "FAIL", "error_contains": "capability"},
+          "boundary": true
+        }
+      ],
+      "dependencies": ["1.2"],
+      "repo_target": "task_ssot",
+      "schema_change_required": false,
+      "schema_justification": ""
+    },
+    {
+      "ref_tag": "1.4",
+      "entity_type": "api",
+      "entity_key": "POST /api/tasks/validate",
+      "definition": "HTTP API POST /api/tasks/validate. Check-only. Secondary target code_register noted for callable enrollment. No DB mutation from this work order.",
+      "tdd_test_cases": [
+        {
+          "test_id": "tdd_api_tasks_validate_component_normal",
+          "test_purpose": "component-level: api dim accepts POST /api/tasks/validate",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "local_pc",
+            "module": "task_center",
+            "capability": "task_center.validate_new_task",
+            "api": "POST /api/tasks/validate",
+            "function": "task_center.validate_new_task",
+            "table": "code_register",
+            "field": "register_id, module_name, function_name, file_path"
+          },
+          "expected_output": {"pass": true, "result": "PASS"},
+          "boundary": false
+        },
+        {
+          "test_id": "tdd_api_tasks_validate_component_null",
+          "test_purpose": "component-level boundary null: api field is null",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "local_pc",
+            "module": "task_center",
+            "capability": "task_center.validate_new_task",
+            "api": null,
+            "function": "task_center.validate_new_task",
+            "table": "code_register",
+            "field": "register_id, module_name, function_name, file_path"
+          },
+          "expected_output": {"pass": false, "result": "FAIL", "error_contains": "api"},
+          "boundary": true
+        },
+        {
+          "test_id": "tdd_api_tasks_validate_component_empty",
+          "test_purpose": "component-level boundary empty: api field is empty string",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "local_pc",
+            "module": "task_center",
+            "capability": "task_center.validate_new_task",
+            "api": "",
+            "function": "task_center.validate_new_task",
+            "table": "code_register",
+            "field": "register_id, module_name, function_name, file_path"
+          },
+          "expected_output": {"pass": false, "result": "FAIL", "error_contains": "api"},
+          "boundary": true
+        },
+        {
+          "test_id": "tdd_api_tasks_validate_component_invalid",
+          "test_purpose": "component-level boundary invalid: api path not allowed for capability",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "local_pc",
+            "module": "task_center",
+            "capability": "task_center.validate_new_task",
+            "api": "POST /api/tasks/__invalid__",
+            "function": "task_center.validate_new_task",
+            "table": "code_register",
+            "field": "register_id, module_name, function_name, file_path"
+          },
+          "expected_output": {"pass": false, "result": "FAIL", "error_contains": "api"},
+          "boundary": true
+        },
+        {
+          "test_id": "tdd_api_tasks_validate_component_timeout",
+          "test_purpose": "component-level boundary timeout: N/A — validate_new_task has no timeout wrapper",
+          "probe_api": null,
+          "input": null,
+          "expected_output": {"pass": null, "result": "N/A", "reason": "no_timeout_wrapper"},
+          "boundary": true,
+          "status": "N/A"
+        },
+        {
+          "test_id": "tdd_api_tasks_validate_integration_normal",
+          "test_purpose": "integration-level: api with full 8-dim T-SKILL01 payload",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "local_pc",
+            "module": "task_center",
+            "capability": "task_center.validate_new_task",
+            "api": "POST /api/tasks/validate",
+            "function": "task_center.validate_new_task",
+            "table": "code_register",
+            "field": "register_id, module_name, function_name, file_path"
+          },
+          "expected_output": {"pass": true, "result": "PASS"},
+          "boundary": false
+        },
+        {
+          "test_id": "tdd_api_tasks_validate_integration_invalid",
+          "test_purpose": "integration-level boundary invalid: mutate api dim to unknown endpoint",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "local_pc",
+            "module": "task_center",
+            "capability": "task_center.validate_new_task",
+            "api": "POST /api/tasks/__invalid__",
+            "function": "task_center.validate_new_task",
+            "table": "code_register",
+            "field": "register_id, module_name, function_name, file_path"
+          },
+          "expected_output": {"pass": false, "result": "FAIL", "error_contains": "api"},
+          "boundary": true
+        }
+      ],
+      "dependencies": ["1.3", "1.5"],
+      "repo_target": "task_ssot",
+      "schema_change_required": false,
+      "schema_justification": ""
+    },
+    {
+      "ref_tag": "1.5",
+      "entity_type": "function",
+      "entity_key": "task_center.validate_new_task",
+      "definition": "Python function task_center.validate_new_task in src/task_center/skill_task_validate.py. register_id empty until caller register_managed_function.",
+      "tdd_test_cases": [
+        {
+          "test_id": "tdd_fn_validate_new_task_component_normal",
+          "test_purpose": "component-level: function dim accepts task_center.validate_new_task",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "local_pc",
+            "module": "task_center",
+            "capability": "task_center.validate_new_task",
+            "api": "POST /api/tasks/validate",
+            "function": "task_center.validate_new_task",
+            "table": "code_register",
+            "field": "register_id, module_name, function_name, file_path"
+          },
+          "expected_output": {"pass": true, "result": "PASS"},
+          "boundary": false
+        },
+        {
+          "test_id": "tdd_fn_validate_new_task_component_null",
+          "test_purpose": "component-level boundary null: function field is null",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "local_pc",
+            "module": "task_center",
+            "capability": "task_center.validate_new_task",
+            "api": "POST /api/tasks/validate",
+            "function": null,
+            "table": "code_register",
+            "field": "register_id, module_name, function_name, file_path"
+          },
+          "expected_output": {"pass": false, "result": "FAIL", "error_contains": "function"},
+          "boundary": true
+        },
+        {
+          "test_id": "tdd_fn_validate_new_task_component_empty",
+          "test_purpose": "component-level boundary empty: function field is empty string",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "local_pc",
+            "module": "task_center",
+            "capability": "task_center.validate_new_task",
+            "api": "POST /api/tasks/validate",
+            "function": "",
+            "table": "code_register",
+            "field": "register_id, module_name, function_name, file_path"
+          },
+          "expected_output": {"pass": false, "result": "FAIL", "error_contains": "function"},
+          "boundary": true
+        },
+        {
+          "test_id": "tdd_fn_validate_new_task_component_invalid",
+          "test_purpose": "component-level boundary invalid: function name not bound to capability",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "local_pc",
+            "module": "task_center",
+            "capability": "task_center.validate_new_task",
+            "api": "POST /api/tasks/validate",
+            "function": "task_center.__invalid_fn__",
+            "table": "code_register",
+            "field": "register_id, module_name, function_name, file_path"
+          },
+          "expected_output": {"pass": false, "result": "FAIL", "error_contains": "function"},
+          "boundary": true
+        },
+        {
+          "test_id": "tdd_fn_validate_new_task_component_timeout",
+          "test_purpose": "component-level boundary timeout: N/A — validate_new_task has no timeout wrapper",
+          "probe_api": null,
+          "input": null,
+          "expected_output": {"pass": null, "result": "N/A", "reason": "no_timeout_wrapper"},
+          "boundary": true,
+          "status": "N/A"
+        },
+        {
+          "test_id": "tdd_fn_validate_new_task_integration_normal",
+          "test_purpose": "integration-level: function with full 8-dim T-SKILL01 payload",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "local_pc",
+            "module": "task_center",
+            "capability": "task_center.validate_new_task",
+            "api": "POST /api/tasks/validate",
+            "function": "task_center.validate_new_task",
+            "table": "code_register",
+            "field": "register_id, module_name, function_name, file_path"
+          },
+          "expected_output": {"pass": true, "result": "PASS"},
+          "boundary": false
+        },
+        {
+          "test_id": "tdd_fn_validate_new_task_integration_invalid",
+          "test_purpose": "integration-level boundary invalid: mutate function dim to unbound name",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "local_pc",
+            "module": "task_center",
+            "capability": "task_center.validate_new_task",
+            "api": "POST /api/tasks/validate",
+            "function": "task_center.__invalid_fn__",
+            "table": "code_register",
+            "field": "register_id, module_name, function_name, file_path"
+          },
+          "expected_output": {"pass": false, "result": "FAIL", "error_contains": "function"},
+          "boundary": true
+        }
+      ],
+      "dependencies": ["1.2", "1.3", "1.6", "1.7"],
+      "repo_target": "code_register",
+      "schema_change_required": false,
+      "schema_justification": ""
+    },
+    {
+      "ref_tag": "1.6",
+      "entity_type": "db_table",
+      "entity_key": "code_register",
+      "definition": "Reuse existing code_register table as enrollment SSOT. No DDL; schema_change_required=false.",
+      "tdd_test_cases": [
+        {
+          "test_id": "tdd_tbl_code_register_component_normal",
+          "test_purpose": "component-level: table dim accepts code_register",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "local_pc",
+            "module": "task_center",
+            "capability": "task_center.validate_new_task",
+            "api": "POST /api/tasks/validate",
+            "function": "task_center.validate_new_task",
+            "table": "code_register",
+            "field": "register_id, module_name, function_name, file_path"
+          },
+          "expected_output": {"pass": true, "result": "PASS"},
+          "boundary": false
+        },
+        {
+          "test_id": "tdd_tbl_code_register_component_null",
+          "test_purpose": "component-level boundary null: table field is null",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "local_pc",
+            "module": "task_center",
+            "capability": "task_center.validate_new_task",
+            "api": "POST /api/tasks/validate",
+            "function": "task_center.validate_new_task",
+            "table": null,
+            "field": "register_id, module_name, function_name, file_path"
+          },
+          "expected_output": {"pass": false, "result": "FAIL", "error_contains": "table"},
+          "boundary": true
+        },
+        {
+          "test_id": "tdd_tbl_code_register_component_empty",
+          "test_purpose": "component-level boundary empty: table field is empty string",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "local_pc",
+            "module": "task_center",
+            "capability": "task_center.validate_new_task",
+            "api": "POST /api/tasks/validate",
+            "function": "task_center.validate_new_task",
+            "table": "",
+            "field": "register_id, module_name, function_name, file_path"
+          },
+          "expected_output": {"pass": false, "result": "FAIL", "error_contains": "table"},
+          "boundary": true
+        },
+        {
+          "test_id": "tdd_tbl_code_register_component_invalid",
+          "test_purpose": "component-level boundary invalid: table not in allowed set",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "local_pc",
+            "module": "task_center",
+            "capability": "task_center.validate_new_task",
+            "api": "POST /api/tasks/validate",
+            "function": "task_center.validate_new_task",
+            "table": "not_a_real_table",
+            "field": "register_id, module_name, function_name, file_path"
+          },
+          "expected_output": {"pass": false, "result": "FAIL", "error_contains": "table"},
+          "boundary": true
+        },
+        {
+          "test_id": "tdd_tbl_code_register_component_timeout",
+          "test_purpose": "component-level boundary timeout: N/A — validate_new_task has no timeout wrapper",
+          "probe_api": null,
+          "input": null,
+          "expected_output": {"pass": null, "result": "N/A", "reason": "no_timeout_wrapper"},
+          "boundary": true,
+          "status": "N/A"
+        },
+        {
+          "test_id": "tdd_tbl_code_register_integration_normal",
+          "test_purpose": "integration-level: db_table with full 8-dim T-SKILL01 payload",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "local_pc",
+            "module": "task_center",
+            "capability": "task_center.validate_new_task",
+            "api": "POST /api/tasks/validate",
+            "function": "task_center.validate_new_task",
+            "table": "code_register",
+            "field": "register_id, module_name, function_name, file_path"
+          },
+          "expected_output": {"pass": true, "result": "PASS"},
+          "boundary": false
+        },
+        {
+          "test_id": "tdd_tbl_code_register_integration_invalid",
+          "test_purpose": "integration-level boundary invalid: mutate table dim to unknown table",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "local_pc",
+            "module": "task_center",
+            "capability": "task_center.validate_new_task",
+            "api": "POST /api/tasks/validate",
+            "function": "task_center.validate_new_task",
+            "table": "not_a_real_table",
+            "field": "register_id, module_name, function_name, file_path"
+          },
+          "expected_output": {"pass": false, "result": "FAIL", "error_contains": "table"},
+          "boundary": true
+        }
+      ],
+      "dependencies": [],
+      "repo_target": "task_ssot",
+      "schema_change_required": false,
+      "schema_justification": ""
+    },
+    {
+      "ref_tag": "1.7",
+      "entity_type": "field",
+      "entity_key": "code_register.register_id,module_name,function_name,file_path",
+      "definition": "Required code_register columns for T-SKILL01 field dim. Caller may map TDD into field_tdd_rule later. Secondary: field_tdd_rule.",
+      "tdd_test_cases": [
+        {
+          "test_id": "tdd_fld_code_register_keys_component_normal",
+          "test_purpose": "component-level: field dim accepts register_id, module_name, function_name, file_path",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "local_pc",
+            "module": "task_center",
+            "capability": "task_center.validate_new_task",
+            "api": "POST /api/tasks/validate",
+            "function": "task_center.validate_new_task",
+            "table": "code_register",
+            "field": "register_id, module_name, function_name, file_path"
+          },
+          "expected_output": {"pass": true, "result": "PASS"},
+          "boundary": false
+        },
+        {
+          "test_id": "tdd_fld_code_register_keys_component_null",
+          "test_purpose": "component-level boundary null: field dim is null",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "local_pc",
+            "module": "task_center",
+            "capability": "task_center.validate_new_task",
+            "api": "POST /api/tasks/validate",
+            "function": "task_center.validate_new_task",
+            "table": "code_register",
+            "field": null
+          },
+          "expected_output": {"pass": false, "result": "FAIL", "error_contains": "field"},
+          "boundary": true
+        },
+        {
+          "test_id": "tdd_fld_code_register_keys_component_empty",
+          "test_purpose": "component-level boundary empty: field dim is empty string",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "local_pc",
+            "module": "task_center",
+            "capability": "task_center.validate_new_task",
+            "api": "POST /api/tasks/validate",
+            "function": "task_center.validate_new_task",
+            "table": "code_register",
+            "field": ""
+          },
+          "expected_output": {"pass": false, "result": "FAIL", "error_contains": "field"},
+          "boundary": true
+        },
+        {
+          "test_id": "tdd_fld_code_register_keys_component_invalid",
+          "test_purpose": "component-level boundary invalid: field lists non-existent column",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "local_pc",
+            "module": "task_center",
+            "capability": "task_center.validate_new_task",
+            "api": "POST /api/tasks/validate",
+            "function": "task_center.validate_new_task",
+            "table": "code_register",
+            "field": "bad_column"
+          },
+          "expected_output": {"pass": false, "result": "FAIL", "error_contains": "field"},
+          "boundary": true
+        },
+        {
+          "test_id": "tdd_fld_code_register_keys_component_timeout",
+          "test_purpose": "component-level boundary timeout: N/A — validate_new_task has no timeout wrapper",
+          "probe_api": null,
+          "input": null,
+          "expected_output": {"pass": null, "result": "N/A", "reason": "no_timeout_wrapper"},
+          "boundary": true,
+          "status": "N/A"
+        },
+        {
+          "test_id": "tdd_fld_code_register_keys_integration_normal",
+          "test_purpose": "integration-level: field with full 8-dim T-SKILL01 payload",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "local_pc",
+            "module": "task_center",
+            "capability": "task_center.validate_new_task",
+            "api": "POST /api/tasks/validate",
+            "function": "task_center.validate_new_task",
+            "table": "code_register",
+            "field": "register_id, module_name, function_name, file_path"
+          },
+          "expected_output": {"pass": true, "result": "PASS"},
+          "boundary": false
+        },
+        {
+          "test_id": "tdd_fld_code_register_keys_integration_invalid",
+          "test_purpose": "integration-level boundary invalid: mutate field dim to bad_column",
+          "probe_api": "task_center.validate_new_task",
+          "input": {
+            "task": "T-SKILL01 — Register Task Format Validator Skill",
+            "channel": "local_pc",
+            "module": "task_center",
+            "capability": "task_center.validate_new_task",
+            "api": "POST /api/tasks/validate",
+            "function": "task_center.validate_new_task",
+            "table": "code_register",
+            "field": "bad_column"
+          },
+          "expected_output": {"pass": false, "result": "FAIL", "error_contains": "field"},
+          "boundary": true
+        }
+      ],
+      "dependencies": ["1.6"],
+      "repo_target": "task_ssot",
+      "schema_change_required": false,
+      "schema_justification": ""
+    }
+  ],
+  "code_spec_artifacts": [
+    {
+      "artifact_type": "api",
+      "ref_tag": "1.4",
+      "spec_source_code": "SPEC ONLY — do not write files.\nEndpoint: POST /api/tasks/validate\nBehavior: parse 8-dim payload; call task_center.validate_new_task; return PASS/FAIL + ERROR_LIST.\nNo DB mutation; no register_managed_function; no upsert_task_ssot.",
+      "spec_test_code": "SPEC TEST — POST canonical T-SKILL01 body → PASS; POST {} → FAIL; invalid channel → FAIL.",
+      "register_metadata": {
+        "register_id": "",
+        "module_name": "task_center",
+        "function_name": "task_center.validate_new_task"
+      }
+    },
+    {
+      "artifact_type": "function",
+      "ref_tag": "1.5",
+      "spec_source_code": "SPEC ONLY — existing path src/task_center/skill_task_validate.py::validate_new_task.\nCaller later: register_managed_function(module_name='task_center', function_name='task_center.validate_new_task', file_path='src/task_center/skill_task_validate.py'); register_id stays empty in this work order.",
+      "spec_test_code": "SPEC TEST — unit canonical PASS; null/empty/invalid FAIL; integration API + code_register fields; no managed_coding apply here.",
+      "register_metadata": {
+        "register_id": "",
+        "module_name": "task_center",
+        "function_name": "task_center.validate_new_task"
+      }
+    }
+  ],
+  "assembly_explanation": "Channel local_pc + module task_center host capability task_center.validate_new_task. API POST /api/tasks/validate exposes function task_center.validate_new_task, which checks eight taxonomy dims against table code_register fields register_id, module_name, function_name, file_path. All entities reuse repo ontology/schema; no DDL. Caller applies task_ssot / code_register / field_tdd_rule manually later. TDD cases probe validate_new_task with real 8-dim payloads; timeout marked N/A (no wrapper).",
+  "summary": "ready work_order t_wo_tskill01_001 v0.2 TDD-fixed: 7 entities unchanged; component probes use real dim payloads; integration_invalid mutates dim values (no broken flag); timeout=N/A; schema_change_required=false.",
+  "tdd_fix_summary": {
+    "component_stub_removed": "Replaced {entity,mode} / generic value stubs with full 8-dim payloads; each boundary mutates that entity's own dim (null/empty/invalid).",
+    "integration_invalid_fixed": "Removed ignored broken flag; mutate channel|module|capability|api|function|table|field directly (wrong_channel, wrong_module, unknown_capability, __invalid__ api/fn, not_a_real_table, bad_column).",
+    "timeout": "All 7 component_timeout cases status=N/A reason=no_timeout_wrapper (no real timeout harness on validate_new_task).",
+    "probe_api": "task_center.validate_new_task on all executable cases",
+    "entities_unchanged": ["1.1 channel local_pc", "1.2 module task_center", "1.3 capability task_center.validate_new_task", "1.4 api POST /api/tasks/validate", "1.5 function task_center.validate_new_task", "1.6 db_table code_register", "1.7 field code_register keys"],
+    "schema_change_required": false,
+    "v0.2.1_fields": "none"
+  }
+}

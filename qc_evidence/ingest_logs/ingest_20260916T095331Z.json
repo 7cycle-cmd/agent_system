@@ -1,0 +1,23 @@
+{
+  "mode": "scan",
+  "written_at": "2026-09-16T09:53:31Z",
+  "events": [
+    {
+      "ts": "2026-09-16T09:53:31Z",
+      "mode": "scan",
+      "task_id": "ingest_task_log_cli",
+      "action": "invalid",
+      "detail": [
+        "missing_file: agent_log_ingest_task_log_cli.json",
+        "missing_file: qc_report_ingest_task_log_cli.json"
+      ]
+    },
+    {
+      "ts": "2026-09-16T09:53:31Z",
+      "mode": "scan",
+      "task_id": "json_artifacts_protocol",
+      "action": "skip",
+      "detail": "already_in_marker"
+    }
+  ]
+}

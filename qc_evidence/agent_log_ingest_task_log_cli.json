@@ -1,0 +1,89 @@
+{
+  "task_id": "ingest_task_log_cli",
+  "checklist_id": "qc.ingest_task_log_cli.v1",
+  "files_modified": [
+    {
+      "path": "ingest_task_log.py",
+      "action": "create",
+      "notes": "CLI ingest: --scan/--dry-run/--list; CREATE TABLE IF NOT EXISTS task_run_logs; marker + ingest_logs"
+    },
+    {
+      "path": "qc_evidence/.ingested_tasks.json",
+      "action": "create",
+      "notes": "seed marker {task_ids:[], updated_at:null}"
+    },
+    {
+      "path": "qc_evidence/plan_ingest_task_log_cli.json",
+      "action": "create",
+      "notes": "frozen plan machine copy for ingest_task_log_cli"
+    },
+    {
+      "path": "qc_evidence/agent_log_ingest_task_log_cli.md",
+      "action": "create",
+      "notes": "human twin agent log (created in fix pass after QC-17/QC-18 FAIL)"
+    },
+    {
+      "path": "qc_evidence/agent_log_ingest_task_log_cli.json",
+      "action": "create",
+      "notes": "JSON twin agent log (created in fix pass after QC-17/QC-18 FAIL)"
+    }
+  ],
+  "commands": [
+    {
+      "cmd": "editor create ingest_task_log.py + plan JSON + marker seed",
+      "cwd": "C:\\projects\\agent_system",
+      "exit_code": null,
+      "output_snippet": "initial AGENT partial; agent_log twins deferred then missing at first QC"
+    },
+    {
+      "cmd": "QC session: py_compile ingest_task_log.py",
+      "cwd": "C:\\projects\\agent_system",
+      "exit_code": 0,
+      "output_snippet": "COMPILE=0 (recorded in qc_report_ingest_task_log_cli)"
+    },
+    {
+      "cmd": "QC session: ingest_task_log.py --list",
+      "cwd": "C:\\projects\\agent_system",
+      "exit_code": 0,
+      "output_snippet": "task_ids initially []"
+    },
+    {
+      "cmd": "QC session: ingest_task_log.py --scan --dry-run",
+      "cwd": "C:\\projects\\agent_system",
+      "exit_code": 0,
+      "output_snippet": "MARKER_UNCHANGED; candidate json_artifacts_protocol; invalid incomplete ingest_task_log_cli triple"
+    },
+    {
+      "cmd": "QC session: ingest_task_log.py --scan (x2)",
+      "cwd": "C:\\projects\\agent_system",
+      "exit_code": 0,
+      "output_snippet": "import json_artifacts_protocol; rescan already_in_marker"
+    },
+    {
+      "cmd": "fix AGENT: create agent_log_ingest_task_log_cli.md + .json",
+      "cwd": "C:\\projects\\agent_system",
+      "exit_code": null,
+      "output_snippet": "close QC-17/QC-18 gap only"
+    }
+  ],
+  "diff_snippets": [
+    {
+      "path": "ingest_task_log.py",
+      "summary": "New CLI: scan qc_evidence triples, validate, insert task_run_logs, marker, ingest_logs"
+    },
+    {
+      "path": "qc_evidence/agent_log_ingest_task_log_cli.md",
+      "summary": "Human-readable agent execution log twin for ingest_task_log_cli"
+    },
+    {
+      "path": "qc_evidence/agent_log_ingest_task_log_cli.json",
+      "summary": "Machine-readable agent log; no final_verdict"
+    }
+  ],
+  "notes": [
+    "Factual only; no final_verdict",
+    "Parent checklist qc.ingest_task_log_cli.v1 QC-17/QC-18 failed due to missing agent_log twins",
+    "ingest_task_log.py not modified in fix pass",
+    "No template or DB schema source edits in fix pass"
+  ]
+}

@@ -1,0 +1,1222 @@
+{
+  "task_id": "t_wo_tskill01_001",
+  "work_order": "c:\\projects\\agent_system\\qc_evidence\\work_order_t_wo_tskill01_001.json",
+  "parent_trace": "tr_ae6e8fc47654",
+  "started_at": "2026-09-16T07:28:59.956967+00:00",
+  "fix_note": "ontology *_registry tables; validate_new_task read-only",
+  "audit": {
+    "result": "PASS",
+    "findings": [],
+    "timeout_NA": 7,
+    "inv": [
+      [
+        "tdd_ch_local_pc_integration_invalid",
+        "channel",
+        "wrong_channel"
+      ],
+      [
+        "tdd_mod_task_center_integration_invalid",
+        "module",
+        "wrong_module"
+      ],
+      [
+        "tdd_cap_validate_new_task_integration_invalid",
+        "capability",
+        "task_center.unknown_capability"
+      ],
+      [
+        "tdd_api_tasks_validate_integration_invalid",
+        "api",
+        "POST /api/tasks/__invalid__"
+      ],
+      [
+        "tdd_fn_validate_new_task_integration_invalid",
+        "function",
+        "task_center.__invalid_fn__"
+      ],
+      [
+        "tdd_tbl_code_register_integration_invalid",
+        "table",
+        "not_a_real_table"
+      ],
+      [
+        "tdd_fld_code_register_keys_integration_invalid",
+        "field",
+        "bad_column"
+      ]
+    ],
+    "stubs": 0,
+    "broken": 0
+  },
+  "component_log": [
+    {
+      "test_id": "tdd_ch_local_pc_component_normal",
+      "result": "PASS",
+      "expected_pass": true,
+      "actual_pass": true,
+      "error_contains_required": null,
+      "reasons": [],
+      "actual": {
+        "ok": true,
+        "result": "PASS",
+        "errors": [],
+        "dispatch_allowed": true
+      },
+      "input_dim_snapshot": {
+        "channel": "local_pc",
+        "module": "task_center",
+        "capability": "task_center.validate_new_task",
+        "api": "POST /api/tasks/validate",
+        "function": "task_center.validate_new_task",
+        "table": "code_register",
+        "field": "register_id, module_name, function_name, file_path"
+      },
+      "ref_tag": "1.1"
+    },
+    {
+      "test_id": "tdd_ch_local_pc_component_null",
+      "result": "PASS",
+      "expected_pass": false,
+      "actual_pass": false,
+      "error_contains_required": "channel",
+      "reasons": [],
+      "actual": {
+        "ok": false,
+        "result": "FAIL",
+        "errors": [
+          "Channel: empty — required"
+        ],
+        "dispatch_allowed": false
+      },
+      "input_dim_snapshot": {
+        "channel": null,
+        "module": "task_center",
+        "capability": "task_center.validate_new_task",
+        "api": "POST /api/tasks/validate",
+        "function": "task_center.validate_new_task",
+        "table": "code_register",
+        "field": "register_id, module_name, function_name, file_path"
+      },
+      "ref_tag": "1.1"
+    },
+    {
+      "test_id": "tdd_ch_local_pc_component_empty",
+      "result": "PASS",
+      "expected_pass": false,
+      "actual_pass": false,
+      "error_contains_required": "channel",
+      "reasons": [],
+      "actual": {
+        "ok": false,
+        "result": "FAIL",
+        "errors": [
+          "Channel: empty — required"
+        ],
+        "dispatch_allowed": false
+      },
+      "input_dim_snapshot": {
+        "channel": "",
+        "module": "task_center",
+        "capability": "task_center.validate_new_task",
+        "api": "POST /api/tasks/validate",
+        "function": "task_center.validate_new_task",
+        "table": "code_register",
+        "field": "register_id, module_name, function_name, file_path"
+      },
+      "ref_tag": "1.1"
+    },
+    {
+      "test_id": "tdd_ch_local_pc_component_invalid",
+      "result": "PASS",
+      "expected_pass": false,
+      "actual_pass": false,
+      "error_contains_required": "channel",
+      "reasons": [],
+      "actual": {
+        "ok": false,
+        "result": "FAIL",
+        "errors": [
+          "Channel: unknown or inactive 'wrong_channel' (channel_registry)"
+        ],
+        "dispatch_allowed": false
+      },
+      "input_dim_snapshot": {
+        "channel": "wrong_channel",
+        "module": "task_center",
+        "capability": "task_center.validate_new_task",
+        "api": "POST /api/tasks/validate",
+        "function": "task_center.validate_new_task",
+        "table": "code_register",
+        "field": "register_id, module_name, function_name, file_path"
+      },
+      "ref_tag": "1.1"
+    },
+    {
+      "test_id": "tdd_ch_local_pc_component_timeout",
+      "result": "SKIP",
+      "reason": "N/A",
+      "actual": null,
+      "ref_tag": "1.1"
+    },
+    {
+      "test_id": "tdd_mod_task_center_component_normal",
+      "result": "PASS",
+      "expected_pass": true,
+      "actual_pass": true,
+      "error_contains_required": null,
+      "reasons": [],
+      "actual": {
+        "ok": true,
+        "result": "PASS",
+        "errors": [],
+        "dispatch_allowed": true
+      },
+      "input_dim_snapshot": {
+        "channel": "local_pc",
+        "module": "task_center",
+        "capability": "task_center.validate_new_task",
+        "api": "POST /api/tasks/validate",
+        "function": "task_center.validate_new_task",
+        "table": "code_register",
+        "field": "register_id, module_name, function_name, file_path"
+      },
+      "ref_tag": "1.2"
+    },
+    {
+      "test_id": "tdd_mod_task_center_component_null",
+      "result": "PASS",
+      "expected_pass": false,
+      "actual_pass": false,
+      "error_contains_required": "module",
+      "reasons": [],
+      "actual": {
+        "ok": false,
+        "result": "FAIL",
+        "errors": [
+          "Module: empty — required"
+        ],
+        "dispatch_allowed": false
+      },
+      "input_dim_snapshot": {
+        "channel": "local_pc",
+        "module": null,
+        "capability": "task_center.validate_new_task",
+        "api": "POST /api/tasks/validate",
+        "function": "task_center.validate_new_task",
+        "table": "code_register",
+        "field": "register_id, module_name, function_name, file_path"
+      },
+      "ref_tag": "1.2"
+    },
+    {
+      "test_id": "tdd_mod_task_center_component_empty",
+      "result": "PASS",
+      "expected_pass": false,
+      "actual_pass": false,
+      "error_contains_required": "module",
+      "reasons": [],
+      "actual": {
+        "ok": false,
+        "result": "FAIL",
+        "errors": [
+          "Module: empty — required"
+        ],
+        "dispatch_allowed": false
+      },
+      "input_dim_snapshot": {
+        "channel": "local_pc",
+        "module": "",
+        "capability": "task_center.validate_new_task",
+        "api": "POST /api/tasks/validate",
+        "function": "task_center.validate_new_task",
+        "table": "code_register",
+        "field": "register_id, module_name, function_name, file_path"
+      },
+      "ref_tag": "1.2"
+    },
+    {
+      "test_id": "tdd_mod_task_center_component_invalid",
+      "result": "PASS",
+      "expected_pass": false,
+      "actual_pass": false,
+      "error_contains_required": "module",
+      "reasons": [],
+      "actual": {
+        "ok": false,
+        "result": "FAIL",
+        "errors": [
+          "Module: unknown or inactive 'wrong_module' (module_registry)",
+          "Capability: 'task_center.validate_new_task' belongs to module 'task_center', not 'wrong_module'"
+        ],
+        "dispatch_allowed": false
+      },
+      "input_dim_snapshot": {
+        "channel": "local_pc",
+        "module": "wrong_module",
+        "capability": "task_center.validate_new_task",
+        "api": "POST /api/tasks/validate",
+        "function": "task_center.validate_new_task",
+        "table": "code_register",
+        "field": "register_id, module_name, function_name, file_path"
+      },
+      "ref_tag": "1.2"
+    },
+    {
+      "test_id": "tdd_mod_task_center_component_timeout",
+      "result": "SKIP",
+      "reason": "N/A",
+      "actual": null,
+      "ref_tag": "1.2"
+    },
+    {
+      "test_id": "tdd_cap_validate_new_task_component_normal",
+      "result": "PASS",
+      "expected_pass": true,
+      "actual_pass": true,
+      "error_contains_required": null,
+      "reasons": [],
+      "actual": {
+        "ok": true,
+        "result": "PASS",
+        "errors": [],
+        "dispatch_allowed": true
+      },
+      "input_dim_snapshot": {
+        "channel": "local_pc",
+        "module": "task_center",
+        "capability": "task_center.validate_new_task",
+        "api": "POST /api/tasks/validate",
+        "function": "task_center.validate_new_task",
+        "table": "code_register",
+        "field": "register_id, module_name, function_name, file_path"
+      },
+      "ref_tag": "1.3"
+    },
+    {
+      "test_id": "tdd_cap_validate_new_task_component_null",
+      "result": "PASS",
+      "expected_pass": false,
+      "actual_pass": false,
+      "error_contains_required": "capability",
+      "reasons": [],
+      "actual": {
+        "ok": false,
+        "result": "FAIL",
+        "errors": [
+          "Capability: empty — required",
+          "Function: cannot validate without capability",
+          "API: cannot validate without capability"
+        ],
+        "dispatch_allowed": false
+      },
+      "input_dim_snapshot": {
+        "channel": "local_pc",
+        "module": "task_center",
+        "capability": null,
+        "api": "POST /api/tasks/validate",
+        "function": "task_center.validate_new_task",
+        "table": "code_register",
+        "field": "register_id, module_name, function_name, file_path"
+      },
+      "ref_tag": "1.3"
+    },
+    {
+      "test_id": "tdd_cap_validate_new_task_component_empty",
+      "result": "PASS",
+      "expected_pass": false,
+      "actual_pass": false,
+      "error_contains_required": "capability",
+      "reasons": [],
+      "actual": {
+        "ok": false,
+        "result": "FAIL",
+        "errors": [
+          "Capability: empty — required",
+          "Function: cannot validate without capability",
+          "API: cannot validate without capability"
+        ],
+        "dispatch_allowed": false
+      },
+      "input_dim_snapshot": {
+        "channel": "local_pc",
+        "module": "task_center",
+        "capability": "",
+        "api": "POST /api/tasks/validate",
+        "function": "task_center.validate_new_task",
+        "table": "code_register",
+        "field": "register_id, module_name, function_name, file_path"
+      },
+      "ref_tag": "1.3"
+    },
+    {
+      "test_id": "tdd_cap_validate_new_task_component_invalid",
+      "result": "PASS",
+      "expected_pass": false,
+      "actual_pass": false,
+      "error_contains_required": "capability",
+      "reasons": [],
+      "actual": {
+        "ok": false,
+        "result": "FAIL",
+        "errors": [
+          "Capability: unknown or inactive 'task_center.unknown_capability' (not in capability_registry allowlist)",
+          "Function: 'task_center.validate_new_task' not registered under capability 'task_center.unknown_capability' (function_registry)",
+          "API: 'POST /api/tasks/validate' not registered under capability 'task_center.unknown_capability' (api_registry)"
+        ],
+        "dispatch_allowed": false
+      },
+      "input_dim_snapshot": {
+        "channel": "local_pc",
+        "module": "task_center",
+        "capability": "task_center.unknown_capability",
+        "api": "POST /api/tasks/validate",
+        "function": "task_center.validate_new_task",
+        "table": "code_register",
+        "field": "register_id, module_name, function_name, file_path"
+      },
+      "ref_tag": "1.3"
+    },
+    {
+      "test_id": "tdd_cap_validate_new_task_component_timeout",
+      "result": "SKIP",
+      "reason": "N/A",
+      "actual": null,
+      "ref_tag": "1.3"
+    },
+    {
+      "test_id": "tdd_api_tasks_validate_component_normal",
+      "result": "PASS",
+      "expected_pass": true,
+      "actual_pass": true,
+      "error_contains_required": null,
+      "reasons": [],
+      "actual": {
+        "ok": true,
+        "result": "PASS",
+        "errors": [],
+        "dispatch_allowed": true
+      },
+      "input_dim_snapshot": {
+        "channel": "local_pc",
+        "module": "task_center",
+        "capability": "task_center.validate_new_task",
+        "api": "POST /api/tasks/validate",
+        "function": "task_center.validate_new_task",
+        "table": "code_register",
+        "field": "register_id, module_name, function_name, file_path"
+      },
+      "ref_tag": "1.4"
+    },
+    {
+      "test_id": "tdd_api_tasks_validate_component_null",
+      "result": "PASS",
+      "expected_pass": false,
+      "actual_pass": false,
+      "error_contains_required": "api",
+      "reasons": [],
+      "actual": {
+        "ok": false,
+        "result": "FAIL",
+        "errors": [
+          "API: blank not allowed — use 'none' if no HTTP API"
+        ],
+        "dispatch_allowed": false
+      },
+      "input_dim_snapshot": {
+        "channel": "local_pc",
+        "module": "task_center",
+        "capability": "task_center.validate_new_task",
+        "api": null,
+        "function": "task_center.validate_new_task",
+        "table": "code_register",
+        "field": "register_id, module_name, function_name, file_path"
+      },
+      "ref_tag": "1.4"
+    },
+    {
+      "test_id": "tdd_api_tasks_validate_component_empty",
+      "result": "PASS",
+      "expected_pass": false,
+      "actual_pass": false,
+      "error_contains_required": "api",
+      "reasons": [],
+      "actual": {
+        "ok": false,
+        "result": "FAIL",
+        "errors": [
+          "API: blank not allowed — use 'none' if no HTTP API"
+        ],
+        "dispatch_allowed": false
+      },
+      "input_dim_snapshot": {
+        "channel": "local_pc",
+        "module": "task_center",
+        "capability": "task_center.validate_new_task",
+        "api": "",
+        "function": "task_center.validate_new_task",
+        "table": "code_register",
+        "field": "register_id, module_name, function_name, file_path"
+      },
+      "ref_tag": "1.4"
+    },
+    {
+      "test_id": "tdd_api_tasks_validate_component_invalid",
+      "result": "PASS",
+      "expected_pass": false,
+      "actual_pass": false,
+      "error_contains_required": "api",
+      "reasons": [],
+      "actual": {
+        "ok": false,
+        "result": "FAIL",
+        "errors": [
+          "API: 'POST /api/tasks/__invalid__' not registered under capability 'task_center.validate_new_task' (api_registry)"
+        ],
+        "dispatch_allowed": false
+      },
+      "input_dim_snapshot": {
+        "channel": "local_pc",
+        "module": "task_center",
+        "capability": "task_center.validate_new_task",
+        "api": "POST /api/tasks/__invalid__",
+        "function": "task_center.validate_new_task",
+        "table": "code_register",
+        "field": "register_id, module_name, function_name, file_path"
+      },
+      "ref_tag": "1.4"
+    },
+    {
+      "test_id": "tdd_api_tasks_validate_component_timeout",
+      "result": "SKIP",
+      "reason": "N/A",
+      "actual": null,
+      "ref_tag": "1.4"
+    },
+    {
+      "test_id": "tdd_fn_validate_new_task_component_normal",
+      "result": "PASS",
+      "expected_pass": true,
+      "actual_pass": true,
+      "error_contains_required": null,
+      "reasons": [],
+      "actual": {
+        "ok": true,
+        "result": "PASS",
+        "errors": [],
+        "dispatch_allowed": true
+      },
+      "input_dim_snapshot": {
+        "channel": "local_pc",
+        "module": "task_center",
+        "capability": "task_center.validate_new_task",
+        "api": "POST /api/tasks/validate",
+        "function": "task_center.validate_new_task",
+        "table": "code_register",
+        "field": "register_id, module_name, function_name, file_path"
+      },
+      "ref_tag": "1.5"
+    },
+    {
+      "test_id": "tdd_fn_validate_new_task_component_null",
+      "result": "PASS",
+      "expected_pass": false,
+      "actual_pass": false,
+      "error_contains_required": "function",
+      "reasons": [],
+      "actual": {
+        "ok": false,
+        "result": "FAIL",
+        "errors": [
+          "Function: empty — required"
+        ],
+        "dispatch_allowed": false
+      },
+      "input_dim_snapshot": {
+        "channel": "local_pc",
+        "module": "task_center",
+        "capability": "task_center.validate_new_task",
+        "api": "POST /api/tasks/validate",
+        "function": null,
+        "table": "code_register",
+        "field": "register_id, module_name, function_name, file_path"
+      },
+      "ref_tag": "1.5"
+    },
+    {
+      "test_id": "tdd_fn_validate_new_task_component_empty",
+      "result": "PASS",
+      "expected_pass": false,
+      "actual_pass": false,
+      "error_contains_required": "function",
+      "reasons": [],
+      "actual": {
+        "ok": false,
+        "result": "FAIL",
+        "errors": [
+          "Function: empty — required"
+        ],
+        "dispatch_allowed": false
+      },
+      "input_dim_snapshot": {
+        "channel": "local_pc",
+        "module": "task_center",
+        "capability": "task_center.validate_new_task",
+        "api": "POST /api/tasks/validate",
+        "function": "",
+        "table": "code_register",
+        "field": "register_id, module_name, function_name, file_path"
+      },
+      "ref_tag": "1.5"
+    },
+    {
+      "test_id": "tdd_fn_validate_new_task_component_invalid",
+      "result": "PASS",
+      "expected_pass": false,
+      "actual_pass": false,
+      "error_contains_required": "function",
+      "reasons": [],
+      "actual": {
+        "ok": false,
+        "result": "FAIL",
+        "errors": [
+          "Function: 'task_center.__invalid_fn__' not registered under capability 'task_center.validate_new_task' (function_registry)"
+        ],
+        "dispatch_allowed": false
+      },
+      "input_dim_snapshot": {
+        "channel": "local_pc",
+        "module": "task_center",
+        "capability": "task_center.validate_new_task",
+        "api": "POST /api/tasks/validate",
+        "function": "task_center.__invalid_fn__",
+        "table": "code_register",
+        "field": "register_id, module_name, function_name, file_path"
+      },
+      "ref_tag": "1.5"
+    },
+    {
+      "test_id": "tdd_fn_validate_new_task_component_timeout",
+      "result": "SKIP",
+      "reason": "N/A",
+      "actual": null,
+      "ref_tag": "1.5"
+    },
+    {
+      "test_id": "tdd_tbl_code_register_component_normal",
+      "result": "PASS",
+      "expected_pass": true,
+      "actual_pass": true,
+      "error_contains_required": null,
+      "reasons": [],
+      "actual": {
+        "ok": true,
+        "result": "PASS",
+        "errors": [],
+        "dispatch_allowed": true
+      },
+      "input_dim_snapshot": {
+        "channel": "local_pc",
+        "module": "task_center",
+        "capability": "task_center.validate_new_task",
+        "api": "POST /api/tasks/validate",
+        "function": "task_center.validate_new_task",
+        "table": "code_register",
+        "field": "register_id, module_name, function_name, file_path"
+      },
+      "ref_tag": "1.6"
+    },
+    {
+      "test_id": "tdd_tbl_code_register_component_null",
+      "result": "PASS",
+      "expected_pass": false,
+      "actual_pass": false,
+      "error_contains_required": "table",
+      "reasons": [],
+      "actual": {
+        "ok": false,
+        "result": "FAIL",
+        "errors": [
+          "Table: blank not allowed — use 'n/a' if no table"
+        ],
+        "dispatch_allowed": false
+      },
+      "input_dim_snapshot": {
+        "channel": "local_pc",
+        "module": "task_center",
+        "capability": "task_center.validate_new_task",
+        "api": "POST /api/tasks/validate",
+        "function": "task_center.validate_new_task",
+        "table": null,
+        "field": "register_id, module_name, function_name, file_path"
+      },
+      "ref_tag": "1.6"
+    },
+    {
+      "test_id": "tdd_tbl_code_register_component_empty",
+      "result": "PASS",
+      "expected_pass": false,
+      "actual_pass": false,
+      "error_contains_required": "table",
+      "reasons": [],
+      "actual": {
+        "ok": false,
+        "result": "FAIL",
+        "errors": [
+          "Table: blank not allowed — use 'n/a' if no table"
+        ],
+        "dispatch_allowed": false
+      },
+      "input_dim_snapshot": {
+        "channel": "local_pc",
+        "module": "task_center",
+        "capability": "task_center.validate_new_task",
+        "api": "POST /api/tasks/validate",
+        "function": "task_center.validate_new_task",
+        "table": "",
+        "field": "register_id, module_name, function_name, file_path"
+      },
+      "ref_tag": "1.6"
+    },
+    {
+      "test_id": "tdd_tbl_code_register_component_invalid",
+      "result": "PASS",
+      "expected_pass": false,
+      "actual_pass": false,
+      "error_contains_required": "table",
+      "reasons": [],
+      "actual": {
+        "ok": false,
+        "result": "FAIL",
+        "errors": [
+          "Table: unknown or inactive 'not_a_real_table' (db_table_registry)"
+        ],
+        "dispatch_allowed": false
+      },
+      "input_dim_snapshot": {
+        "channel": "local_pc",
+        "module": "task_center",
+        "capability": "task_center.validate_new_task",
+        "api": "POST /api/tasks/validate",
+        "function": "task_center.validate_new_task",
+        "table": "not_a_real_table",
+        "field": "register_id, module_name, function_name, file_path"
+      },
+      "ref_tag": "1.6"
+    },
+    {
+      "test_id": "tdd_tbl_code_register_component_timeout",
+      "result": "SKIP",
+      "reason": "N/A",
+      "actual": null,
+      "ref_tag": "1.6"
+    },
+    {
+      "test_id": "tdd_fld_code_register_keys_component_normal",
+      "result": "PASS",
+      "expected_pass": true,
+      "actual_pass": true,
+      "error_contains_required": null,
+      "reasons": [],
+      "actual": {
+        "ok": true,
+        "result": "PASS",
+        "errors": [],
+        "dispatch_allowed": true
+      },
+      "input_dim_snapshot": {
+        "channel": "local_pc",
+        "module": "task_center",
+        "capability": "task_center.validate_new_task",
+        "api": "POST /api/tasks/validate",
+        "function": "task_center.validate_new_task",
+        "table": "code_register",
+        "field": "register_id, module_name, function_name, file_path"
+      },
+      "ref_tag": "1.7"
+    },
+    {
+      "test_id": "tdd_fld_code_register_keys_component_null",
+      "result": "PASS",
+      "expected_pass": false,
+      "actual_pass": false,
+      "error_contains_required": "field",
+      "reasons": [],
+      "actual": {
+        "ok": false,
+        "result": "FAIL",
+        "errors": [
+          "Field: blank not allowed when Table is set — use 'n/a' only if no fields"
+        ],
+        "dispatch_allowed": false
+      },
+      "input_dim_snapshot": {
+        "channel": "local_pc",
+        "module": "task_center",
+        "capability": "task_center.validate_new_task",
+        "api": "POST /api/tasks/validate",
+        "function": "task_center.validate_new_task",
+        "table": "code_register",
+        "field": null
+      },
+      "ref_tag": "1.7"
+    },
+    {
+      "test_id": "tdd_fld_code_register_keys_component_empty",
+      "result": "PASS",
+      "expected_pass": false,
+      "actual_pass": false,
+      "error_contains_required": "field",
+      "reasons": [],
+      "actual": {
+        "ok": false,
+        "result": "FAIL",
+        "errors": [
+          "Field: blank not allowed when Table is set — use 'n/a' only if no fields"
+        ],
+        "dispatch_allowed": false
+      },
+      "input_dim_snapshot": {
+        "channel": "local_pc",
+        "module": "task_center",
+        "capability": "task_center.validate_new_task",
+        "api": "POST /api/tasks/validate",
+        "function": "task_center.validate_new_task",
+        "table": "code_register",
+        "field": ""
+      },
+      "ref_tag": "1.7"
+    },
+    {
+      "test_id": "tdd_fld_code_register_keys_component_invalid",
+      "result": "PASS",
+      "expected_pass": false,
+      "actual_pass": false,
+      "error_contains_required": "field",
+      "reasons": [],
+      "actual": {
+        "ok": false,
+        "result": "FAIL",
+        "errors": [
+          "Field: unknown on 'code_register' (db_field_registry): bad_column"
+        ],
+        "dispatch_allowed": false
+      },
+      "input_dim_snapshot": {
+        "channel": "local_pc",
+        "module": "task_center",
+        "capability": "task_center.validate_new_task",
+        "api": "POST /api/tasks/validate",
+        "function": "task_center.validate_new_task",
+        "table": "code_register",
+        "field": "bad_column"
+      },
+      "ref_tag": "1.7"
+    },
+    {
+      "test_id": "tdd_fld_code_register_keys_component_timeout",
+      "result": "SKIP",
+      "reason": "N/A",
+      "actual": null,
+      "ref_tag": "1.7"
+    }
+  ],
+  "integration_log": [
+    {
+      "test_id": "tdd_ch_local_pc_integration_normal",
+      "result": "PASS",
+      "expected_pass": true,
+      "actual_pass": true,
+      "error_contains_required": null,
+      "reasons": [],
+      "actual": {
+        "ok": true,
+        "result": "PASS",
+        "errors": [],
+        "dispatch_allowed": true
+      },
+      "input_dim_snapshot": {
+        "channel": "local_pc",
+        "module": "task_center",
+        "capability": "task_center.validate_new_task",
+        "api": "POST /api/tasks/validate",
+        "function": "task_center.validate_new_task",
+        "table": "code_register",
+        "field": "register_id, module_name, function_name, file_path"
+      },
+      "ref_tag": "1.1"
+    },
+    {
+      "test_id": "tdd_ch_local_pc_integration_invalid",
+      "result": "PASS",
+      "expected_pass": false,
+      "actual_pass": false,
+      "error_contains_required": "channel",
+      "reasons": [],
+      "actual": {
+        "ok": false,
+        "result": "FAIL",
+        "errors": [
+          "Channel: unknown or inactive 'wrong_channel' (channel_registry)"
+        ],
+        "dispatch_allowed": false
+      },
+      "input_dim_snapshot": {
+        "channel": "wrong_channel",
+        "module": "task_center",
+        "capability": "task_center.validate_new_task",
+        "api": "POST /api/tasks/validate",
+        "function": "task_center.validate_new_task",
+        "table": "code_register",
+        "field": "register_id, module_name, function_name, file_path"
+      },
+      "ref_tag": "1.1"
+    },
+    {
+      "test_id": "tdd_mod_task_center_integration_normal",
+      "result": "PASS",
+      "expected_pass": true,
+      "actual_pass": true,
+      "error_contains_required": null,
+      "reasons": [],
+      "actual": {
+        "ok": true,
+        "result": "PASS",
+        "errors": [],
+        "dispatch_allowed": true
+      },
+      "input_dim_snapshot": {
+        "channel": "local_pc",
+        "module": "task_center",
+        "capability": "task_center.validate_new_task",
+        "api": "POST /api/tasks/validate",
+        "function": "task_center.validate_new_task",
+        "table": "code_register",
+        "field": "register_id, module_name, function_name, file_path"
+      },
+      "ref_tag": "1.2"
+    },
+    {
+      "test_id": "tdd_mod_task_center_integration_invalid",
+      "result": "PASS",
+      "expected_pass": false,
+      "actual_pass": false,
+      "error_contains_required": "module",
+      "reasons": [],
+      "actual": {
+        "ok": false,
+        "result": "FAIL",
+        "errors": [
+          "Module: unknown or inactive 'wrong_module' (module_registry)",
+          "Capability: 'task_center.validate_new_task' belongs to module 'task_center', not 'wrong_module'"
+        ],
+        "dispatch_allowed": false
+      },
+      "input_dim_snapshot": {
+        "channel": "local_pc",
+        "module": "wrong_module",
+        "capability": "task_center.validate_new_task",
+        "api": "POST /api/tasks/validate",
+        "function": "task_center.validate_new_task",
+        "table": "code_register",
+        "field": "register_id, module_name, function_name, file_path"
+      },
+      "ref_tag": "1.2"
+    },
+    {
+      "test_id": "tdd_cap_validate_new_task_integration_normal",
+      "result": "PASS",
+      "expected_pass": true,
+      "actual_pass": true,
+      "error_contains_required": null,
+      "reasons": [],
+      "actual": {
+        "ok": true,
+        "result": "PASS",
+        "errors": [],
+        "dispatch_allowed": true
+      },
+      "input_dim_snapshot": {
+        "channel": "local_pc",
+        "module": "task_center",
+        "capability": "task_center.validate_new_task",
+        "api": "POST /api/tasks/validate",
+        "function": "task_center.validate_new_task",
+        "table": "code_register",
+        "field": "register_id, module_name, function_name, file_path"
+      },
+      "ref_tag": "1.3"
+    },
+    {
+      "test_id": "tdd_cap_validate_new_task_integration_invalid",
+      "result": "PASS",
+      "expected_pass": false,
+      "actual_pass": false,
+      "error_contains_required": "capability",
+      "reasons": [],
+      "actual": {
+        "ok": false,
+        "result": "FAIL",
+        "errors": [
+          "Capability: unknown or inactive 'task_center.unknown_capability' (not in capability_registry allowlist)",
+          "Function: 'task_center.validate_new_task' not registered under capability 'task_center.unknown_capability' (function_registry)",
+          "API: 'POST /api/tasks/validate' not registered under capability 'task_center.unknown_capability' (api_registry)"
+        ],
+        "dispatch_allowed": false
+      },
+      "input_dim_snapshot": {
+        "channel": "local_pc",
+        "module": "task_center",
+        "capability": "task_center.unknown_capability",
+        "api": "POST /api/tasks/validate",
+        "function": "task_center.validate_new_task",
+        "table": "code_register",
+        "field": "register_id, module_name, function_name, file_path"
+      },
+      "ref_tag": "1.3"
+    },
+    {
+      "test_id": "tdd_api_tasks_validate_integration_normal",
+      "result": "PASS",
+      "expected_pass": true,
+      "actual_pass": true,
+      "error_contains_required": null,
+      "reasons": [],
+      "actual": {
+        "ok": true,
+        "result": "PASS",
+        "errors": [],
+        "dispatch_allowed": true
+      },
+      "input_dim_snapshot": {
+        "channel": "local_pc",
+        "module": "task_center",
+        "capability": "task_center.validate_new_task",
+        "api": "POST /api/tasks/validate",
+        "function": "task_center.validate_new_task",
+        "table": "code_register",
+        "field": "register_id, module_name, function_name, file_path"
+      },
+      "ref_tag": "1.4"
+    },
+    {
+      "test_id": "tdd_api_tasks_validate_integration_invalid",
+      "result": "PASS",
+      "expected_pass": false,
+      "actual_pass": false,
+      "error_contains_required": "api",
+      "reasons": [],
+      "actual": {
+        "ok": false,
+        "result": "FAIL",
+        "errors": [
+          "API: 'POST /api/tasks/__invalid__' not registered under capability 'task_center.validate_new_task' (api_registry)"
+        ],
+        "dispatch_allowed": false
+      },
+      "input_dim_snapshot": {
+        "channel": "local_pc",
+        "module": "task_center",
+        "capability": "task_center.validate_new_task",
+        "api": "POST /api/tasks/__invalid__",
+        "function": "task_center.validate_new_task",
+        "table": "code_register",
+        "field": "register_id, module_name, function_name, file_path"
+      },
+      "ref_tag": "1.4"
+    },
+    {
+      "test_id": "tdd_fn_validate_new_task_integration_normal",
+      "result": "PASS",
+      "expected_pass": true,
+      "actual_pass": true,
+      "error_contains_required": null,
+      "reasons": [],
+      "actual": {
+        "ok": true,
+        "result": "PASS",
+        "errors": [],
+        "dispatch_allowed": true
+      },
+      "input_dim_snapshot": {
+        "channel": "local_pc",
+        "module": "task_center",
+        "capability": "task_center.validate_new_task",
+        "api": "POST /api/tasks/validate",
+        "function": "task_center.validate_new_task",
+        "table": "code_register",
+        "field": "register_id, module_name, function_name, file_path"
+      },
+      "ref_tag": "1.5"
+    },
+    {
+      "test_id": "tdd_fn_validate_new_task_integration_invalid",
+      "result": "PASS",
+      "expected_pass": false,
+      "actual_pass": false,
+      "error_contains_required": "function",
+      "reasons": [],
+      "actual": {
+        "ok": false,
+        "result": "FAIL",
+        "errors": [
+          "Function: 'task_center.__invalid_fn__' not registered under capability 'task_center.validate_new_task' (function_registry)"
+        ],
+        "dispatch_allowed": false
+      },
+      "input_dim_snapshot": {
+        "channel": "local_pc",
+        "module": "task_center",
+        "capability": "task_center.validate_new_task",
+        "api": "POST /api/tasks/validate",
+        "function": "task_center.__invalid_fn__",
+        "table": "code_register",
+        "field": "register_id, module_name, function_name, file_path"
+      },
+      "ref_tag": "1.5"
+    },
+    {
+      "test_id": "tdd_tbl_code_register_integration_normal",
+      "result": "PASS",
+      "expected_pass": true,
+      "actual_pass": true,
+      "error_contains_required": null,
+      "reasons": [],
+      "actual": {
+        "ok": true,
+        "result": "PASS",
+        "errors": [],
+        "dispatch_allowed": true
+      },
+      "input_dim_snapshot": {
+        "channel": "local_pc",
+        "module": "task_center",
+        "capability": "task_center.validate_new_task",
+        "api": "POST /api/tasks/validate",
+        "function": "task_center.validate_new_task",
+        "table": "code_register",
+        "field": "register_id, module_name, function_name, file_path"
+      },
+      "ref_tag": "1.6"
+    },
+    {
+      "test_id": "tdd_tbl_code_register_integration_invalid",
+      "result": "PASS",
+      "expected_pass": false,
+      "actual_pass": false,
+      "error_contains_required": "table",
+      "reasons": [],
+      "actual": {
+        "ok": false,
+        "result": "FAIL",
+        "errors": [
+          "Table: unknown or inactive 'not_a_real_table' (db_table_registry)"
+        ],
+        "dispatch_allowed": false
+      },
+      "input_dim_snapshot": {
+        "channel": "local_pc",
+        "module": "task_center",
+        "capability": "task_center.validate_new_task",
+        "api": "POST /api/tasks/validate",
+        "function": "task_center.validate_new_task",
+        "table": "not_a_real_table",
+        "field": "register_id, module_name, function_name, file_path"
+      },
+      "ref_tag": "1.6"
+    },
+    {
+      "test_id": "tdd_fld_code_register_keys_integration_normal",
+      "result": "PASS",
+      "expected_pass": true,
+      "actual_pass": true,
+      "error_contains_required": null,
+      "reasons": [],
+      "actual": {
+        "ok": true,
+        "result": "PASS",
+        "errors": [],
+        "dispatch_allowed": true
+      },
+      "input_dim_snapshot": {
+        "channel": "local_pc",
+        "module": "task_center",
+        "capability": "task_center.validate_new_task",
+        "api": "POST /api/tasks/validate",
+        "function": "task_center.validate_new_task",
+        "table": "code_register",
+        "field": "register_id, module_name, function_name, file_path"
+      },
+      "ref_tag": "1.7"
+    },
+    {
+      "test_id": "tdd_fld_code_register_keys_integration_invalid",
+      "result": "PASS",
+      "expected_pass": false,
+      "actual_pass": false,
+      "error_contains_required": "field",
+      "reasons": [],
+      "actual": {
+        "ok": false,
+        "result": "FAIL",
+        "errors": [
+          "Field: unknown on 'code_register' (db_field_registry): bad_column"
+        ],
+        "dispatch_allowed": false
+      },
+      "input_dim_snapshot": {
+        "channel": "local_pc",
+        "module": "task_center",
+        "capability": "task_center.validate_new_task",
+        "api": "POST /api/tasks/validate",
+        "function": "task_center.validate_new_task",
+        "table": "code_register",
+        "field": "bad_column"
+      },
+      "ref_tag": "1.7"
+    }
+  ],
+  "halted_at": null,
+  "final_verdict": "ALL_PASS",
+  "manual_mcs_payload": {
+    "action": "register_managed_function",
+    "note": "HUMAN APPLY ONLY — do not auto-call",
+    "register_id": "",
+    "module_name": "task_center",
+    "function_name": "task_center.validate_new_task",
+    "file_path": "src/task_center/skill_task_validate.py",
+    "task_id": "t_wo_tskill01_001",
+    "work_order_ref": "qc_evidence/work_order_t_wo_tskill01_001.json",
+    "target_capability": "task_center.validate_new_task"
+  },
+  "prompt_trace": {
+    "ok": true,
+    "trace_id": "tr_60e551c20848",
+    "row": {
+      "trace_id": "tr_60e551c20848",
+      "task_id": "t_wo_tskill01_001",
+      "skill_id": "skill_worker_code_builder",
+      "skill_version": "v0.2_draft",
+      "prompt_snapshot": "{\"kind\": \"caller_validation_run\", \"parent_trace_id\": \"tr_ae6e8fc47654\", \"verdict\": \"ALL_PASS\", \"halted_at\": null, \"fix\": \"ontology_registry\", \"audit\": {\"result\": \"PASS\", \"findings\": [], \"timeout_NA\": 7, \"inv\": [[\"tdd_ch_local_pc_integration_invalid\", \"channel\", \"wrong_channel\"], [\"tdd_mod_task_center_integration_invalid\", \"module\", \"wrong_module\"], [\"tdd_cap_validate_new_task_integration_invalid\", \"capability\", \"task_center.unknown_capability\"], [\"tdd_api_tasks_validate_integration_invalid\", \"api\", \"POST /api/tasks/__invalid__\"], [\"tdd_fn_validate_new_task_integration_invalid\", \"function\", \"task_center.__invalid_fn__\"], [\"tdd_tbl_code_register_integration_invalid\", \"table\", \"not_a_real_table\"], [\"tdd_fld_code_register_keys_integration_invalid\", \"field\", \"bad_column\"]], \"stubs\": 0, \"broken\": 0}, \"component_log\": [{\"test_id\": \"tdd_ch_local_pc_component_normal\", \"result\": \"PASS\", \"expected_pass\": true, \"actual_pass\": true, \"error_contains_required\": null, \"reasons\": [], \"actual\": {\"ok\": true, \"result\": \"PASS\", \"errors\": [], \"dispatch_allowed\": true}, \"input_dim_snapshot\": {\"channel\": \"local_pc\", \"module\": \"task_center\", \"capability\": \"task_center.validate_new_task\", \"api\": \"POST /api/tasks/validate\", \"function\": \"task_center.validate_new_task\", \"table\": \"code_register\", \"field\": \"register_id, module_name, function_name, file_path\"}, \"ref_tag\": \"1.1\"}, {\"test_id\": \"tdd_ch_local_pc_component_null\", \"result\": \"PASS\", \"expected_pass\": false, \"actual_pass\": false, \"error_contains_required\": \"channel\", \"reasons\": [], \"actual\": {\"ok\": false, \"result\": \"FAIL\", \"errors\": [\"Channel: empty — required\"], \"dispatch_allowed\": false}, \"input_dim_snapshot\": {\"channel\": null, \"module\": \"task_center\", \"capability\": \"task_center.validate_new_task\", \"api\": \"POST /api/tasks/validate\", \"function\": \"task_center.validate_new_task\", \"table\": \"code_register\", \"field\": \"register_id, module_name, function_name, file_path\"}, \"ref_tag\": \"1.1\"}, {\"test_id\": \"tdd_ch_local_pc_component_empty\", \"result\": \"PASS\", \"expected_pass\": false, \"actual_pass\": false, \"error_contains_required\": \"channel\", \"reasons\": [], \"actual\": {\"ok\": false, \"result\": \"FAIL\", \"errors\": [\"Channel: empty — required\"], \"dispatch_allowed\": false}, \"input_dim_snapshot\": {\"channel\": \"\", \"module\": \"task_center\", \"capability\": \"task_center.validate_new_task\", \"api\": \"POST /api/tasks/validate\", \"function\": \"task_center.validate_new_task\", \"table\": \"code_register\", \"field\": \"register_id, module_name, function_name, file_path\"}, \"ref_tag\": \"1.1\"}, {\"test_id\": \"tdd_ch_local_pc_component_invalid\", \"result\": \"PASS\", \"expected_pass\": false, \"actual_pass\": false, \"error_contains_required\": \"channel\", \"reasons\": [], \"actual\": {\"ok\": false, \"result\": \"FAIL\", \"errors\": [\"Channel: unknown or inactive 'wrong_channel' (channel_registry)\"], \"dispatch_allowed\": false}, \"input_dim_snapshot\": {\"channel\": \"wrong_channel\", \"module\": \"task_center\", \"capability\": \"task_center.validate_new_task\", \"api\": \"POST /api/tasks/validate\", \"function\": \"task_center.validate_new_task\", \"table\": \"code_register\", \"field\": \"register_id, module_name, function_name, file_path\"}, \"ref_tag\": \"1.1\"}, {\"test_id\": \"tdd_ch_local_pc_component_timeout\", \"result\": \"SKIP\", \"reason\": \"N/A\", \"actual\": null, \"ref_tag\": \"1.1\"}, {\"test_id\": \"tdd_mod_task_center_component_normal\", \"result\": \"PASS\", \"expected_pass\": true, \"actual_pass\": true, \"error_contains_required\": null, \"reasons\": [], \"actual\": {\"ok\": true, \"result\": \"PASS\", \"errors\": [], \"dispatch_allowed\": true}, \"input_dim_snapshot\": {\"channel\": \"local_pc\", \"module\": \"task_center\", \"capability\": \"task_center.validate_new_task\", \"api\": \"POST /api/tasks/validate\", \"function\": \"task_center.validate_new_task\", \"table\": \"code_register\", \"field\": \"register_id, module_name, function_name, file_path\"}, \"ref_tag\": \"1.2\"}, {\"test_id\": \"tdd_mod_task_center_component_null\", \"result\": \"PASS\", \"expected_pass\": false, \"actual_pass\": false, \"error_contains_required\": \"module\", \"reasons\": [], \"actual\": {\"ok\": false, \"result\": \"FAIL\", \"errors\": [\"Module: empty — required\"], \"dispatch_allowed\": false}, \"input_dim_snapshot\": {\"channel\": \"local_pc\", \"module\": null, \"capability\": \"task_center.validate_new_task\", \"api\": \"POST /api/tasks/validate\", \"function\": \"task_center.validate_new_task\", \"table\": \"code_register\", \"field\": \"register_id, module_name, function_name, file_path\"}, \"ref_tag\": \"1.2\"}, {\"test_id\": \"tdd_mod_task_center_component_empty\", \"result\": \"PASS\", \"expected_pass\": false, \"actual_pass\": false, \"error_contains_required\": \"module\", \"reasons\": [], \"actual\": {\"ok\": false, \"result\": \"FAIL\", \"errors\": [\"Module: empty — required\"], \"dispatch_allowed\": false}, \"input_dim_snapshot\": {\"channel\": \"local_pc\", \"module\": \"\", \"capability\": \"task_center.validate_new_task\", \"api\": \"POST /api/tasks/validate\", \"function\": \"task_center.validate_new_task\", \"table\": \"code_register\", \"field\": \"register_id, module_name, function_name, file_path\"}, \"ref_tag\": \"1.2\"}, {\"test_id\": \"tdd_mod_task_center_component_invalid\", \"result\": \"PASS\", \"expected_pass\": false, \"actual_pass\": false, \"error_contains_required\": \"module\", \"reasons\": [], \"actual\": {\"ok\": false, \"result\": \"FAIL\", \"errors\": [\"Module: unknown or inactive 'wrong_module' (module_registry)\", \"Capability: 'task_center.validate_new_task' belongs to module 'task_center', not 'wrong_module'\"], \"dispatch_allowed\": false}, \"input_dim_snapshot\": {\"channel\": \"local_pc\", \"module\": \"wrong_module\", \"capability\": \"task_center.validate_new_task\", \"api\": \"POST /api/tasks/validate\", \"function\": \"task_center.validate_new_task\", \"table\": \"code_register\", \"field\": \"register_id, module_name, function_name, file_path\"}, \"ref_tag\": \"1.2\"}, {\"test_id\": \"tdd_mod_task_center_component_timeout\", \"result\": \"SKIP\", \"reason\": \"N/A\", \"actual\": null, \"ref_tag\": \"1.2\"}, {\"test_id\": \"tdd_cap_validate_new_task_component_normal\", \"result\": \"PASS\", \"expected_pass\": true, \"actual_pass\": true, \"error_contains_required\": null, \"reasons\": [], \"actual\": {\"ok\": true, \"result\": \"PASS\", \"errors\": [], \"dispatch_allowed\": true}, \"input_dim_snapshot\": {\"channel\": \"local_pc\", \"module\": \"task_center\", \"capability\": \"task_center.validate_new_task\", \"api\": \"POST /api/tasks/validate\", \"function\": \"task_center.validate_new_task\", \"table\": \"code_register\", \"field\": \"register_id, module_name, function_name, file_path\"}, \"ref_tag\": \"1.3\"}, {\"test_id\": \"tdd_cap_validate_new_task_component_null\", \"result\": \"PASS\", \"expected_pass\": false, \"actual_pass\": false, \"error_contains_required\": \"capability\", \"reasons\": [], \"actual\": {\"ok\": false, \"result\": \"FAIL\", \"errors\": [\"Capability: empty — required\", \"Function: cannot validate without capability\", \"API: cannot validate without capability\"], \"dispatch_allowed\": false}, \"input_dim_snapshot\": {\"channel\": \"local_pc\", \"module\": \"task_center\", \"capability\": null, \"api\": \"POST /api/tasks/validate\", \"function\": \"task_center.validate_new_task\", \"table\": \"code_register\", \"field\": \"register_id, module_name, function_name, file_path\"}, \"ref_tag\": \"1.3\"}, {\"test_id\": \"tdd_cap_validate_new_task_component_empty\", \"result\": \"PASS\", \"expected_pass\": false, \"actual_pass\": false, \"error_contains_required\": \"capability\", \"reasons\": [], \"actual\": {\"ok\": false, \"result\": \"FAIL\", \"errors\": [\"Capability: empty — required\", \"Function: cannot validate without capability\", \"API: cannot validate without capability\"], \"dispatch_allowed\": false}, \"input_dim_snapshot\": {\"channel\": \"local_pc\", \"module\": \"task_center\", \"capability\": \"\", \"api\": \"POST /api/tasks/validate\", \"function\": \"task_center.validate_new_task\", \"table\": \"code_register\", \"field\": \"register_id, module_name, function_name, file_path\"}, \"ref_tag\": \"1.3\"}, {\"test_id\": \"tdd_cap_validate_new_task_component_invalid\", \"result\": \"PASS\", \"expected_pass\": false, \"actual_pass\": false, \"error_contains_required\": \"capability\", \"reasons\": [], \"actual\": {\"ok\": false, \"result\": \"FAIL\", \"errors\": [\"Capability: unknown or inactive 'task_center.unknown_capability' (not in capability_registry allowlist)\", \"Function: 'task_center.validate_new_task' not registered under capability 'task_center.unknown_capability' (function_registry)\", \"API: 'POST /api/tasks/validate' not registered under capability 'task_center.unknown_capability' (api_registry)\"], \"dispatch_allowed\": false}, \"input_dim_snapshot\": {\"channel\": \"local_pc\", \"module\": \"task_center\", \"capability\": \"task_center.unknown_capability\", \"api\": \"POST /api/tasks/validate\", \"function\": \"task_center.validate_new_task\", \"table\": \"code_register\", \"field\": \"register_id, module_name, function_name, file_path\"}, \"ref_tag\": \"1.3\"}, {\"test_id\": \"tdd_cap_validate_new_task_component_timeout\", \"result\": \"SKIP\", \"reason\": \"N/A\", \"actual\": null, \"ref_tag\": \"1.3\"}, {\"test_id\": \"tdd_api_tasks_validate_component_normal\", \"result\": \"PASS\", \"expected_pass\": true, \"actual_pass\": true, \"error_contains_required\": null, \"reasons\": [], \"actual\": {\"ok\": true, \"result\": \"PASS\", \"errors\": [], \"dispatch_allowed\": true}, \"input_dim_snapshot\": {\"channel\": \"local_pc\", \"module\": \"task_center\", \"capability\": \"task_center.validate_new_task\", \"api\": \"POST /api/tasks/validate\", \"function\": \"task_center.validate_new_task\", \"table\": \"code_register\", \"field\": \"register_id, module_name, function_name, file_path\"}, \"ref_tag\": \"1.4\"}, {\"test_id\": \"tdd_api_tasks_validate_component_null\", \"result\": \"PASS\", \"expected_pass\": false, \"actual_pass\": false, \"error_contains_required\": \"api\", \"reasons\": [], \"actual\": {\"ok\": false, \"result\": \"FAIL\", \"errors\": [\"API: blank not allowed — use 'none' if no HTTP API\"], \"dispatch_allowed\": false}, \"input_dim_snapshot\": {\"channel\": \"local_pc\", \"module\": \"task_center\", \"capability\": \"task_center.validate_new_task\", \"api\": null, \"function\": \"task_center.validate_new_task\", \"table\": \"code_register\", \"field\": \"register_id, module_name, function_name, file_path\"}, \"ref_tag\": \"1.4\"}, {\"test_id\": \"tdd_api_tasks_validate_component_empty\", \"result\": \"PASS\", \"expected_pass\": false, \"actual_pass\": false, \"error_contains_required\": \"api\", \"reasons\": [], \"actual\": {\"ok\": false, \"result\": \"FAIL\", \"errors\": [\"API: blank not allowed — use 'none' if no HTTP API\"], \"dispatch_allowed\": false}, \"input_dim_snapshot\": {\"channel\": \"local_pc\", \"module\": \"task_center\", \"capability\": \"task_center.validate_new_task\", \"api\": \"\", \"function\": \"task_center.validate_new_task\", \"table\": \"code_register\", \"field\": \"register_id, module_name, function_name, file_path\"}, \"ref_tag\": \"1.4\"}, {\"test_id\": \"tdd_api_tasks_validate_component_invalid\", \"result\": \"PASS\", \"expected_pass\": false, \"actual_pass\": false, \"error_contains_required\": \"api\", \"reasons\": [], \"actual\": {\"ok\": false, \"result\": \"FAIL\", \"errors\": [\"API: 'POST /api/tasks/__invalid__' not registered under capability 'task_center.validate_new_task' (api_registry)\"], \"dispatch_allowed\": false}, \"input_dim_snapshot\": {\"channel\": \"local_pc\", \"module\": \"task_center\", \"capability\": \"task_center.validate_new_task\", \"api\": \"POST /api/tasks/__invalid__\", \"function\": \"task_center.validate_new_task\", \"table\": \"code_register\", \"field\": \"register_id, module_name, function_name, file_path\"}, \"ref_tag\": \"1.4\"}, {\"test_id\": \"tdd_api_tasks_validate_component_timeout\", \"result\": \"SKIP\", \"reason\": \"N/A\", \"actual\": null, \"ref_tag\": \"1.4\"}, {\"test_id\": \"tdd_fn_validate_new_task_component_normal\", \"result\": \"PASS\", \"expected_pass\": true, \"actual_pass\": true, \"error_contains_required\": null, \"reasons\": [], \"actual\": {\"ok\": true, \"result\": \"PASS\", \"errors\": [], \"dispatch_allowed\": true}, \"input_dim_snapshot\": {\"channel\": \"local_pc\", \"module\": \"task_center\", \"capability\": \"task_center.validate_new_task\", \"api\": \"POST /api/tasks/validate\", \"function\": \"task_center.validate_new_task\", \"table\": \"code_register\", \"field\": \"register_id, module_name, function_name, file_path\"}, \"ref_tag\": \"1.5\"}, {\"test_id\": \"tdd_fn_validate_new_task_component_null\", \"result\": \"PASS\", \"expected_pass\": false, \"actual_pass\": false, \"error_contains_required\": \"function\", \"reasons\": [], \"actual\": {\"ok\": false, \"result\": \"FAIL\", \"errors\": [\"Function: empty — required\"], \"dispatch_allowed\": false}, \"input_dim_snapshot\": {\"channel\": \"local_pc\", \"module\": \"task_center\", \"capability\": \"task_center.validate_new_task\", \"api\": \"POST /api/tasks/validate\", \"function\": null, \"table\": \"code_register\", \"field\": \"register_id, module_name, function_name, file_path\"}, \"ref_tag\": \"1.5\"}, {\"test_id\": \"tdd_fn_validate_new_task_component_empty\", \"result\": \"PASS\", \"expected_pass\": false, \"actual_pass\": false, \"error_contains_required\": \"function\", \"reasons\": [], \"actual\": {\"ok\": false, \"result\": \"FAIL\", \"errors\": [\"Function: empty — required\"], \"dispatch_allowed\": false}, \"input_dim_snapshot\": {\"channel\": \"local_pc\", \"module\": \"task_center\", \"capability\": \"task_center.validate_new_task\", \"api\": \"POST /api/tasks/validate\", \"function\": \"\", \"table\": \"code_register\", \"field\": \"register_id, module_name, function_name, file_path\"}, \"ref_tag\": \"1.5\"}, {\"test_id\": \"tdd_fn_validate_new_task_component_invalid\", \"result\": \"PASS\", \"expected_pass\": false, \"actual_pass\": false, \"error_contains_required\": \"function\", \"reasons\": [], \"actual\": {\"ok\": false, \"result\": \"FAIL\", \"errors\": [\"Function: 'task_center.__invalid_fn__' not registered under capability 'task_center.validate_new_task' (function_registry)\"], \"dispatch_allowed\": false}, \"input_dim_snapshot\": {\"channel\": \"local_pc\", \"module\": \"task_center\", \"capability\": \"task_center.validate_new_task\", \"api\": \"POST /api/tasks/validate\", \"function\": \"task_center.__invalid_fn__\", \"table\": \"code_register\", \"field\": \"register_id, module_name, function_name, file_path\"}, \"ref_tag\": \"1.5\"}, {\"test_id\": \"tdd_fn_validate_new_task_component_timeout\", \"result\": \"SKIP\", \"reason\": \"N/A\", \"actual\": null, \"ref_tag\": \"1.5\"}, {\"test_id\": \"tdd_tbl_code_register_component_normal\", \"result\": \"PASS\", \"expected_pass\": true, \"actual_pass\": true, \"error_contains_required\": null, \"reasons\": [], \"actual\": {\"ok\": true, \"result\": \"PASS\", \"errors\": [], \"dispatch_allowed\": true}, \"input_dim_snapshot\": {\"channel\": \"local_pc\", \"module\": \"task_center\", \"capability\": \"task_center.validate_new_task\", \"api\": \"POST /api/tasks/validate\", \"function\": \"task_center.validate_new_task\", \"table\": \"code_register\", \"field\": \"register_id, module_name, function_name, file_path\"}, \"ref_tag\": \"1.6\"}, {\"test_id\": \"tdd_tbl_code_register_component_null\", \"result\": \"PASS\", \"expected_pass\": false, \"actual_pass\": false, \"error_contains_required\": \"table\", \"reasons\": [], \"actual\": {\"ok\": false, \"result\": \"FAIL\", \"errors\": [\"Table: blank not allowed — use 'n/a' if no table\"], \"dispatch_allowed\": false}, \"input_dim_snapshot\": {\"channel\": \"local_pc\", \"module\": \"task_center\", \"capability\": \"task_center.validate_new_task\", \"api\": \"POST /api/tasks/validate\", \"function\": \"task_center.validate_new_task\", \"table\": null, \"field\": \"register_id, module_name, function_name, file_path\"}, \"ref_tag\": \"1.6\"}, {\"test_id\": \"tdd_tbl_code_register_component_empty\", \"result\": \"PASS\", \"expected_pass\": false, \"actual_pass\": false, \"error_contains_required\": \"table\", \"reasons\": [], \"actual\": {\"ok\": false, \"result\": \"FAIL\", \"errors\": [\"Table: blank not allowed — use 'n/a' if no table\"], \"dispatch_allowed\": false}, \"input_dim_snapshot\": {\"channel\": \"local_pc\", \"module\": \"task_center\", \"capability\": \"task_center.validate_new_task\", \"api\": \"POST /api/tasks/validate\", \"function\": \"task_center.validate_new_task\", \"table\": \"\", \"field\": \"register_id, module_name, function_name, file_path\"}, \"ref_tag\": \"1.6\"}, {\"test_id\": \"tdd_tbl_code_register_component_invalid\", \"result\": \"PASS\", \"expected_pass\": false, \"actual_pass\": false, \"error_contains_required\": \"table\", \"reasons\": [], \"actual\": {\"ok\": false, \"result\": \"FAIL\", \"errors\": [\"Table: unknown or inactive 'not_a_real_table' (db_table_registry)\"], \"dispatch_allowed\": false}, \"input_dim_snapshot\": {\"channel\": \"local_pc\", \"module\": \"task_center\", \"capability\": \"task_center.validate_new_task\", \"api\": \"POST /api/tasks/validate\", \"function\": \"task_center.validate_new_task\", \"table\": \"not_a_real_table\", \"field\": \"register_id, module_name, function_name, file_path\"}, \"ref_tag\": \"1.6\"}, {\"test_id\": \"tdd_tbl_code_register_component_timeout\", \"result\": \"SKIP\", \"reason\": \"N/A\", \"actual\": null, \"ref_tag\": \"1.6\"}, {\"test_id\": \"tdd_fld_code_register_keys_component_normal\", \"result\": \"PASS\", \"expected_pass\": true, \"actual_pass\": true, \"error_contains_required\": null, \"reasons\": [], \"actual\": {\"ok\": true, \"result\": \"PASS\", \"errors\": [], \"dispatch_allowed\": true}, \"input_dim_snapshot\": {\"channel\": \"local_pc\", \"module\": \"task_center\", \"capability\": \"task_center.validate_new_task\", \"api\": \"POST /api/tasks/validate\", \"function\": \"task_center.validate_new_task\", \"table\": \"code_register\", \"field\": \"register_id, module_name, function_name, file_path\"}, \"ref_tag\": \"1.7\"}, {\"test_id\": \"tdd_fld_code_register_keys_component_null\", \"result\": \"PASS\", \"expected_pass\": false, \"actual_pass\": false, \"error_contains_required\": \"field\", \"reasons\": [], \"actual\": {\"ok\": false, \"result\": \"FAIL\", \"errors\": [\"Field: blank not allowed when Table is set — use 'n/a' only if no fields\"], \"dispatch_allowed\": false}, \"input_dim_snapshot\": {\"channel\": \"local_pc\", \"module\": \"task_center\", \"capability\": \"task_center.validate_new_task\", \"api\": \"POST /api/tasks/validate\", \"function\": \"task_center.validate_new_task\", \"table\": \"code_register\", \"field\": null}, \"ref_tag\": \"1.7\"}, {\"test_id\": \"tdd_fld_code_register_keys_component_empty\", \"result\": \"PASS\", \"expected_pass\": false, \"actual_pass\": false, \"error_contains_required\": \"field\", \"reasons\": [], \"actual\": {\"ok\": false, \"result\": \"FAIL\", \"errors\": [\"Field: blank not allowed when Table is set — use 'n/a' only if no fields\"], \"dispatch_allowed\": false}, \"input_dim_snapshot\": {\"channel\": \"local_pc\", \"module\": \"task_center\", \"capability\": \"task_center.validate_new_task\", \"api\": \"POST /api/tasks/validate\", \"function\": \"task_center.validate_new_task\", \"table\": \"code_register\", \"field\": \"\"}, \"ref_tag\": \"1.7\"}, {\"test_id\": \"tdd_fld_code_register_keys_component_invalid\", \"result\": \"PASS\", \"expected_pass\": false, \"actual_pass\": false, \"error_contains_required\": \"field\", \"reasons\": [], \"actual\": {\"ok\": false, \"result\": \"FAIL\", \"errors\": [\"Field: unknown on 'code_register' (db_field_registry): bad_column\"], \"dispatch_allowed\": false}, \"input_dim_snapshot\": {\"channel\": \"local_pc\", \"module\": \"task_center\", \"capability\": \"task_center.validate_new_task\", \"api\": \"POST /api/tasks/validate\", \"function\": \"task_center.validate_new_task\", \"table\": \"code_register\", \"field\": \"bad_column\"}, \"ref_tag\": \"1.7\"}, {\"test_id\": \"tdd_fld_code_register_keys_component_timeout\", \"result\": \"SKIP\", \"reason\": \"N/A\", \"actual\": null, \"ref_tag\": \"1.7\"}], \"integration_log\": [{\"test_id\": \"tdd_ch_local_pc_integration_normal\", \"result\": \"PASS\", \"expected_pass\": true, \"actual_pass\": true, \"error_contains_required\": null, \"reasons\": [], \"actual\": {\"ok\": true, \"result\": \"PASS\", \"errors\": [], \"dispatch_allowed\": true}, \"input_dim_snapshot\": {\"channel\": \"local_pc\", \"module\": \"task_center\", \"capability\": \"task_center.validate_new_task\", \"api\": \"POST /api/tasks/validate\", \"function\": \"task_center.validate_new_task\", \"table\": \"code_register\", \"field\": \"register_id, module_name, function_name, file_path\"}, \"ref_tag\": \"1.1\"}, {\"test_id\": \"tdd_ch_local_pc_integration_invalid\", \"result\": \"PASS\", \"expected_pass\": false, \"actual_pass\": false, \"error_contains_required\": \"channel\", \"reasons\": [], \"actual\": {\"ok\": false, \"result\": \"FAIL\", \"errors\": [\"Channel: unknown or inactive 'wrong_channel' (channel_registry)\"], \"dispatch_allowed\": false}, \"input_dim_snapshot\": {\"channel\": \"wrong_channel\", \"module\": \"task_center\", \"capability\": \"task_center.validate_new_task\", \"api\": \"POST /api/tasks/validate\", \"function\": \"task_center.validate_new_task\", \"table\": \"code_register\", \"field\": \"register_id, module_name, function_name, file_path\"}, \"ref_tag\": \"1.1\"}, {\"test_id\": \"tdd_mod_task_center_integration_normal\", \"result\": \"PASS\", \"expected_pass\": true, \"actual_pass\": true, \"error_contains_required\": null, \"reasons\": [], \"actual\": {\"ok\": true, \"result\": \"PASS\", \"errors\": [], \"dispatch_allowed\": true}, \"input_dim_snapshot\": {\"channel\": \"local_pc\", \"module\": \"task_center\", \"capability\": \"task_center.validate_new_task\", \"api\": \"POST /api/tasks/validate\", \"function\": \"task_center.validate_new_task\", \"table\": \"code_register\", \"field\": \"register_id, module_name, function_name, file_path\"}, \"ref_tag\": \"1.2\"}, {\"test_id\": \"tdd_mod_task_center_integration_invalid\", \"result\": \"PASS\", \"expected_pass\": false, \"actual_pass\": false, \"error_contains_required\": \"module\", \"reasons\": [], \"actual\": {\"ok\": false, \"result\": \"FAIL\", \"errors\": [\"Module: unknown or inactive 'wrong_module' (module_registry)\", \"Capability: 'task_center.validate_new_task' belongs to module 'task_center', not 'wrong_module'\"], \"dispatch_allowed\": false}, \"input_dim_snapshot\": {\"channel\": \"local_pc\", \"module\": \"wrong_module\", \"capability\": \"task_center.validate_new_task\", \"api\": \"POST /api/tasks/validate\", \"function\": \"task_center.validate_new_task\", \"table\": \"code_register\", \"field\": \"register_id, module_name, function_name, file_path\"}, \"ref_tag\": \"1.2\"}, {\"test_id\": \"tdd_cap_validate_new_task_integration_normal\", \"result\": \"PASS\", \"expected_pass\": true, \"actual_pass\": true, \"error_contains_required\": null, \"reasons\": [], \"actual\": {\"ok\": true, \"result\": \"PASS\", \"errors\": [], \"dispatch_allowed\": true}, \"input_dim_snapshot\": {\"channel\": \"local_pc\", \"module\": \"task_center\", \"capability\": \"task_center.validate_new_task\", \"api\": \"POST /api/tasks/validate\", \"function\": \"task_center.validate_new_task\", \"table\": \"code_register\", \"field\": \"register_id, module_name, function_name, file_path\"}, \"ref_tag\": \"1.3\"}, {\"test_id\": \"tdd_cap_validate_new_task_integration_invalid\", \"result\": \"PASS\", \"expected_pass\": false, \"actual_pass\": false, \"error_contains_required\": \"capability\", \"reasons\": [], \"actual\": {\"ok\": false, \"result\": \"FAIL\", \"errors\": [\"Capability: unknown or inactive 'task_center.unknown_capability' (not in capability_registry allowlist)\", \"Function: 'task_center.validate_new_task' not registered under capability 'task_center.unknown_capability' (function_registry)\", \"API: 'POST /api/tasks/validate' not registered under capability 'task_center.unknown_capability' (api_registry)\"], \"dispatch_allowed\": false}, \"input_dim_snapshot\": {\"channel\": \"local_pc\", \"module\": \"task_center\", \"capability\": \"task_center.unknown_capability\", \"api\": \"POST /api/tasks/validate\", \"function\": \"task_center.validate_new_task\", \"table\": \"code_register\", \"field\": \"register_id, module_name, function_name, file_path\"}, \"ref_tag\": \"1.3\"}, {\"test_id\": \"tdd_api_tasks_validate_integration_normal\", \"result\": \"PASS\", \"expected_pass\": true, \"actual_pass\": true, \"error_contains_required\": null, \"reasons\": [], \"actual\": {\"ok\": true, \"result\": \"PASS\", \"errors\": [], \"dispatch_allowed\": true}, \"input_dim_snapshot\": {\"channel\": \"local_pc\", \"module\": \"task_center\", \"capability\": \"task_center.validate_new_task\", \"api\": \"POST /api/tasks/validate\", \"function\": \"task_center.validate_new_task\", \"table\": \"code_register\", \"field\": \"register_id, module_name, function_name, file_path\"}, \"ref_tag\": \"1.4\"}, {\"test_id\": \"tdd_api_tasks_validate_integration_invalid\", \"result\": \"PASS\", \"expected_pass\": false, \"actual_pass\": false, \"error_contains_required\": \"api\", \"reasons\": [], \"actual\": {\"ok\": false, \"result\": \"FAIL\", \"errors\": [\"API: 'POST /api/tasks/__invalid__' not registered under capability 'task_center.validate_new_task' (api_registry)\"], \"dispatch_allowed\": false}, \"input_dim_snapshot\": {\"channel\": \"local_pc\", \"module\": \"task_center\", \"capability\": \"task_center.validate_new_task\", \"api\": \"POST /api/tasks/__invalid__\", \"function\": \"task_center.validate_new_task\", \"table\": \"code_register\", \"field\": \"register_id, module_name, function_name, file_path\"}, \"ref_tag\": \"1.4\"}, {\"test_id\": \"tdd_fn_validate_new_task_integration_normal\", \"result\": \"PASS\", \"expected_pass\": true, \"actual_pass\": true, \"error_contains_required\": null, \"reasons\": [], \"actual\": {\"ok\": true, \"result\": \"PASS\", \"errors\": [], \"dispatch_allowed\": true}, \"input_dim_snapshot\": {\"channel\": \"local_pc\", \"module\": \"task_center\", \"capability\": \"task_center.validate_new_task\", \"api\": \"POST /api/tasks/validate\", \"function\": \"task_center.validate_new_task\", \"table\": \"code_register\", \"field\": \"register_id, module_name, function_name, file_path\"}, \"ref_tag\": \"1.5\"}, {\"test_id\": \"tdd_fn_validate_new_task_integration_invalid\", \"result\": \"PASS\", \"expected_pass\": false, \"actual_pass\": false, \"error_contains_required\": \"function\", \"reasons\": [], \"actual\": {\"ok\": false, \"result\": \"FAIL\", \"errors\": [\"Function: 'task_center.__invalid_fn__' not registered under capability 'task_center.validate_new_task' (function_registry)\"], \"dispatch_allowed\": false}, \"input_dim_snapshot\": {\"channel\": \"local_pc\", \"module\": \"task_center\", \"capability\": \"task_center.validate_new_task\", \"api\": \"POST /api/tasks/validate\", \"function\": \"task_center.__invalid_fn__\", \"table\": \"code_register\", \"field\": \"register_id, module_name, function_name, file_path\"}, \"ref_tag\": \"1.5\"}, {\"test_id\": \"tdd_tbl_code_register_integration_normal\", \"result\": \"PASS\", \"expected_pass\": true, \"actual_pass\": true, \"error_contains_required\": null, \"reasons\": [], \"actual\": {\"ok\": true, \"result\": \"PASS\", \"errors\": [], \"dispatch_allowed\": true}, \"input_dim_snapshot\": {\"channel\": \"local_pc\", \"module\": \"task_center\", \"capability\": \"task_center.validate_new_task\", \"api\": \"POST /api/tasks/validate\", \"function\": \"task_center.validate_new_task\", \"table\": \"code_register\", \"field\": \"register_id, module_name, function_name, file_path\"}, \"ref_tag\": \"1.6\"}, {\"test_id\": \"tdd_tbl_code_register_integration_invalid\", \"result\": \"PASS\", \"expected_pass\": false, \"actual_pass\": false, \"error_contains_required\": \"table\", \"reasons\": [], \"actual\": {\"ok\": false, \"result\": \"FAIL\", \"errors\": [\"Table: unknown or inactive 'not_a_real_table' (db_table_registry)\"], \"dispatch_allowed\": false}, \"input_dim_snapshot\": {\"channel\": \"local_pc\", \"module\": \"task_center\", \"capability\": \"task_center.validate_new_task\", \"api\": \"POST /api/tasks/validate\", \"function\": \"task_center.validate_new_task\", \"table\": \"not_a_real_table\", \"field\": \"register_id, module_name, function_name, file_path\"}, \"ref_tag\": \"1.6\"}, {\"test_id\": \"tdd_fld_code_register_keys_integration_normal\", \"result\": \"PASS\", \"expected_pass\": true, \"actual_pass\": true, \"error_contains_required\": null, \"reasons\": [], \"actual\": {\"ok\": true, \"result\": \"PASS\", \"errors\": [], \"dispatch_allowed\": true}, \"input_dim_snapshot\": {\"channel\": \"local_pc\", \"module\": \"task_center\", \"capability\": \"task_center.validate_new_task\", \"api\": \"POST /api/tasks/validate\", \"function\": \"task_center.validate_new_task\", \"table\": \"code_register\", \"field\": \"register_id, module_name, function_name, file_path\"}, \"ref_tag\": \"1.7\"}, {\"test_id\": \"tdd_fld_code_register_keys_integration_invalid\", \"result\": \"PASS\", \"expected_pass\": false, \"actual_pass\": false, \"error_contains_required\": \"field\", \"reasons\": [], \"actual\": {\"ok\": false, \"result\": \"FAIL\", \"errors\": [\"Field: unknown on 'code_register' (db_field_registry): bad_column\"], \"dispatch_allowed\": false}, \"input_dim_snapshot\": {\"channel\": \"local_pc\", \"module\": \"task_center\", \"capability\": \"task_center.validate_new_task\", \"api\": \"POST /api/tasks/validate\", \"function\": \"task_center.validate_new_task\", \"table\": \"code_register\", \"field\": \"bad_column\"}, \"ref_tag\": \"1.7\"}], \"manual_mcs_payload\": {\"action\": \"register_managed_function\", \"note\": \"HUMAN APPLY ONLY — do not auto-call\", \"register_id\": \"\", \"module_name\": \"task_center\", \"function_name\": \"task_center.validate_new_task\", \"file_path\": \"src/task_center/skill_task_validate.py\", \"task_id\": \"t_wo_tskill01_001\", \"work_order_ref\": \"qc_evidence/work_order_t_wo_tskill01_001.json\", \"target_capability\": \"task_center.validate_new_task\"}}",
+      "variables_json": "{\"parent_trace_id\": \"tr_ae6e8fc47654\", \"verdict\": \"ALL_PASS\", \"caller_report\": \"c:\\\\projects\\\\agent_system\\\\qc_evidence\\\\caller_run_t_wo_tskill01_001.json\"}",
+      "dimension_tags_json": "[\"build\", \"ssot\", \"tdd\", \"caller\", \"ontology\"]",
+      "module": "task_center",
+      "capability": "task_center.validate_new_task",
+      "actor": "caller",
+      "source": "caller_tdd_ontology",
+      "created_at": "2026-09-16 07:29:00",
+      "dimension_tags": [
+        "build",
+        "ssot",
+        "tdd",
+        "caller",
+        "ontology"
+      ],
+      "variables": {
+        "parent_trace_id": "tr_ae6e8fc47654",
+        "verdict": "ALL_PASS",
+        "caller_report": "c:\\projects\\agent_system\\qc_evidence\\caller_run_t_wo_tskill01_001.json"
+      }
+    }
+  },
+  "finished_at": "2026-09-16T07:29:00.623466+00:00"
+}

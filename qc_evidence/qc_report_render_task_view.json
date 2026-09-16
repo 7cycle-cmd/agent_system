@@ -1,0 +1,82 @@
+{
+  "task_id": "render_task_view",
+  "checklist_id": "qc.render_task_view.v1",
+  "checklist_items": [
+    {
+      "id": "QC-01",
+      "result": "PASS",
+      "evidence": "Test-Path render_task_view.py True"
+    },
+    {
+      "id": "QC-02",
+      "result": "PASS",
+      "evidence": "--help exit 0 documents --render and --open"
+    },
+    {
+      "id": "QC-03",
+      "result": "PASS",
+      "evidence": "--render exit 0"
+    },
+    {
+      "id": "QC-04",
+      "result": "PASS",
+      "evidence": "task_view.html exists"
+    },
+    {
+      "id": "QC-05",
+      "result": "PASS",
+      "evidence": "5 task_id rows in HTML from qc_evidence groups"
+    },
+    {
+      "id": "QC-06",
+      "result": "PASS",
+      "evidence": "required table columns present including artifacts"
+    },
+    {
+      "id": "QC-07",
+      "result": "PASS",
+      "evidence": "ingest_task_log_cli ingested yes matches marker"
+    },
+    {
+      "id": "QC-08",
+      "result": "PASS",
+      "evidence": "fix_ingest_agent_log_artifacts ingested no not in marker"
+    },
+    {
+      "id": "QC-09",
+      "result": "PASS",
+      "evidence": "verdict-pass and verdict-fail CSS classes in HTML"
+    },
+    {
+      "id": "QC-10",
+      "result": "PASS",
+      "evidence": "all qc_evidence href targets exist (0 missing)"
+    },
+    {
+      "id": "QC-11",
+      "result": "PASS",
+      "evidence": "no script tag in task_view.html"
+    },
+    {
+      "id": "QC-12",
+      "result": "PASS",
+      "evidence": "no ingest_task_log.py or template edits this task"
+    },
+    {
+      "id": "QC-13",
+      "result": "PASS",
+      "evidence": "no sqlite in render_task_view.py"
+    },
+    {
+      "id": "QC-14",
+      "result": "PASS",
+      "evidence": "agent_log_render_task_view twins OK without final_verdict"
+    },
+    {
+      "id": "QC-15",
+      "result": "PASS",
+      "evidence": "this report scores QC-01..QC-14; final_verdict only in QC artifacts"
+    }
+  ],
+  "final_verdict": "PASS"
+}

@@ -1,0 +1,107 @@
+{
+  "task_id": "json_artifacts_protocol",
+  "checklist_id": "qc.json_artifacts_protocol.v1",
+  "checklist_items": [
+    {
+      "id": "QC-01",
+      "result": "PASS",
+      "evidence": "SSOT documents plan_{task_id}.json, agent_log_{task_id}.json, qc_report_{task_id}.json (L137-169)"
+    },
+    {
+      "id": "QC-02",
+      "result": "PASS",
+      "evidence": "SSOT L133 Keep MD for humans; Emit JSON twins every run"
+    },
+    {
+      "id": "QC-03",
+      "result": "PASS",
+      "evidence": "Who writes: plan PLAN/AGENT; agent_log AGENT only; qc_report QC only"
+    },
+    {
+      "id": "QC-04",
+      "result": "PASS",
+      "evidence": "template_plan.md documents required plan.json keys including locked_qc_checklist and allowlists"
+    },
+    {
+      "id": "QC-05",
+      "result": "PASS",
+      "evidence": "template_agent_execution_log.md documents files_modified, commands, diff_snippets, notes"
+    },
+    {
+      "id": "QC-06",
+      "result": "PASS",
+      "evidence": "Agent template forbids final_verdict/SUCCESS in JSON twin"
+    },
+    {
+      "id": "QC-07",
+      "result": "PASS",
+      "evidence": "template_qc_report.md documents checklist_items and final_verdict"
+    },
+    {
+      "id": "QC-08",
+      "result": "PASS",
+      "evidence": "All three templates include Machine-readable twin section and skeleton"
+    },
+    {
+      "id": "QC-09",
+      "result": "PASS",
+      "evidence": "copilot-instructions.md retains NO PLAN LOOP and NO EXPLORE LOOP"
+    },
+    {
+      "id": "QC-10",
+      "result": "PASS",
+      "evidence": "instructions point to plan_ide_execution_worker.md and JSON twin paths"
+    },
+    {
+      "id": "QC-11",
+      "result": "PASS",
+      "evidence": "OUTSIDE_ALLOW [] — agent files_modified ⊆ plan file_allowlist"
+    },
+    {
+      "id": "QC-12",
+      "result": "PASS",
+      "evidence": "No DB schema or ingest CLI paths in agent files_modified"
+    },
+    {
+      "id": "QC-13",
+      "result": "PASS",
+      "evidence": "skill_task_validate.py not in files_modified; agent notes state no edits"
+    },
+    {
+      "id": "QC-14",
+      "result": "PASS",
+      "evidence": "plan_json_artifacts_protocol.json exists; required keys present; checklist n=20"
+    },
+    {
+      "id": "QC-15",
+      "result": "PASS",
+      "evidence": "agent_log_json_artifacts_protocol.json exists; required keys present"
+    },
+    {
+      "id": "QC-16",
+      "result": "PASS",
+      "evidence": "agent_log JSON has no final_verdict key"
+    },
+    {
+      "id": "QC-17",
+      "result": "PASS",
+      "evidence": "qc_report_json_artifacts_protocol.json written by QC with checklist_items and final_verdict"
+    },
+    {
+      "id": "QC-18",
+      "result": "PASS",
+      "evidence": "agent_log_json_artifacts_protocol.md exists alongside JSON"
+    },
+    {
+      "id": "QC-19",
+      "result": "PASS",
+      "evidence": "Agent log commands include exit_code; JSON commands n=3 exits [null,0,0]"
+    },
+    {
+      "id": "QC-20",
+      "result": "PASS",
+      "evidence": "This QC report covers QC-01 through QC-19 with result+evidence"
+    }
+  ],
+  "final_verdict": "PASS"
+}

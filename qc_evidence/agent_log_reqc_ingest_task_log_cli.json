@@ -1,0 +1,77 @@
+{
+  "task_id": "reqc_ingest_task_log_cli",
+  "checklist_id": "qc.reqc_ingest_task_log_cli.v1",
+  "parent_checklist_id": "qc.ingest_task_log_cli.v1",
+  "files_modified": [
+    {
+      "path": "qc_evidence/plan_reqc_ingest_task_log_cli.md",
+      "action": "create"
+    },
+    {
+      "path": "qc_evidence/plan_reqc_ingest_task_log_cli.json",
+      "action": "create"
+    },
+    {
+      "path": "qc_evidence/agent_log_reqc_ingest_task_log_cli.md",
+      "action": "create"
+    },
+    {
+      "path": "qc_evidence/agent_log_reqc_ingest_task_log_cli.json",
+      "action": "create"
+    }
+  ],
+  "commands": [
+    {
+      "cmd": "Get-FileHash plan_ingest + agent_log pre/post",
+      "result": "HASH_MATCH_plan=True HASH_MATCH_agentJ=True HASH_MATCH_agentM=True"
+    },
+    {
+      "cmd": "py_compile + ingest_task_log.py -h/--list/--scan --dry-run/--scan x2",
+      "result": "all exit 0; dry-run marker_unchanged; agent_log JSON no final_verdict; MD exists"
+    },
+    {
+      "cmd": "sqlite SELECT task_run_logs ingest_task_log_cli",
+      "result": "count=1; skill ide_execution_worker/1"
+    },
+    {
+      "cmd": "git diff ingest_task_log.py render_task_view.py",
+      "result": "empty"
+    }
+  ],
+  "diff_snippets": [
+    "Parent plan/agent_log SHA256 unchanged",
+    "QC-17 agent_log json_exists true has_final_verdict false",
+    "QC-18 md_exists true",
+    "Parent qc_report not written by AGENT"
+  ],
+  "notes": "Evidence-only. Parent QC-01..18 observations collected for QC MODE to refresh qc_report_ingest_task_log_cli. No final_verdict.",
+  "parent_evidence": {
+    "QC-01": {"exists": true},
+    "QC-02": {"exit": 0, "has_scan": true, "has_dry_run": true, "has_list": true},
+    "QC-03": {"has_file_re": true, "mentions_qc_evidence": true},
+    "QC-04": {"marker_in_src": true, "marker_exists": true},
+    "QC-05": {"dir": true, "has_json": true, "has_jsonl": true},
+    "QC-06": {"create_if_not_exists": true, "all_cols": true},
+    "QC-07": "no template edits this reqc",
+    "QC-08": "no protocol SSOT edit this reqc",
+    "QC-09": "schema sources not written",
+    "QC-10": {"py_compile": "ok"},
+    "QC-11": {"exit": 0},
+    "QC-12": {"exit": 0, "marker_unchanged": true},
+    "QC-13": {"exit": 0, "mentions_json_artifacts_or_skip": true},
+    "QC-14": {"fix_incomplete_not_in_marker": true, "fix_incomplete_not_in_db": true},
+    "QC-15": {"exit": 0, "stdout_has_skip": true},
+    "QC-16": {"plan_json": true},
+    "QC-17": {
+      "json_exists": true,
+      "missing_required": [],
+      "has_final_verdict": false,
+      "task_id": "ingest_task_log_cli"
+    },
+    "QC-18": {"md_exists": true},
+    "parent_ingest_state": {
+      "marker_has_ingest_task_log_cli": true,
+      "db_count": 1
+    }
+  }
+}

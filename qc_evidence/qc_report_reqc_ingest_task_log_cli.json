@@ -1,0 +1,78 @@
+{
+  "task_id": "reqc_ingest_task_log_cli",
+  "checklist_id": "qc.reqc_ingest_task_log_cli.v1",
+  "parent_checklist_id": "qc.ingest_task_log_cli.v1",
+  "checklist_items": [
+    {
+      "id": "QC-01",
+      "result": "PASS",
+      "evidence": "Parent qc_report_ingest_task_log_cli.md refreshed this QC"
+    },
+    {
+      "id": "QC-02",
+      "result": "PASS",
+      "evidence": "Parent qc_report_ingest_task_log_cli.json valid JSON"
+    },
+    {
+      "id": "QC-03",
+      "result": "PASS",
+      "evidence": "Parent task_id ingest_task_log_cli"
+    },
+    {
+      "id": "QC-04",
+      "result": "PASS",
+      "evidence": "Parent checklist_id qc.ingest_task_log_cli.v1"
+    },
+    {
+      "id": "QC-05",
+      "result": "PASS",
+      "evidence": "Parent checklist_items QC-01 through QC-20 present"
+    },
+    {
+      "id": "QC-06",
+      "result": "PASS",
+      "evidence": "QC-17 and QC-18 re-scored PASS with existing agent_log artifacts"
+    },
+    {
+      "id": "QC-07",
+      "result": "PASS",
+      "evidence": "Parent final_verdict PASS"
+    },
+    {
+      "id": "QC-08",
+      "result": "PASS",
+      "evidence": "All parent QC-01..QC-18 PASS implies parent final_verdict PASS"
+    },
+    {
+      "id": "QC-09",
+      "result": "PASS",
+      "evidence": "plan_ingest_task_log_cli.json SHA256 unchanged"
+    },
+    {
+      "id": "QC-10",
+      "result": "PASS",
+      "evidence": "agent_log_ingest_task_log_cli.md/.json SHA256 unchanged"
+    },
+    {
+      "id": "QC-11",
+      "result": "PASS",
+      "evidence": "No hand-edit of .ingested_tasks.json this QC"
+    },
+    {
+      "id": "QC-12",
+      "result": "PASS",
+      "evidence": "ingest_task_log.py and render_task_view.py not modified this QC"
+    },
+    {
+      "id": "QC-13",
+      "result": "PASS",
+      "evidence": "agent_log_reqc has no final_verdict"
+    },
+    {
+      "id": "QC-14",
+      "result": "PASS",
+      "evidence": "This meta report scores QC-01..QC-13; final_verdict only in QC artifacts"
+    }
+  ],
+  "final_verdict": "PASS"
+}

@@ -1,0 +1,91 @@
+{
+  "task_id": "json_artifacts_protocol",
+  "checklist_id": "qc.json_artifacts_protocol.v1",
+  "files_modified": [
+    {
+      "path": "docs/plan_ide_execution_worker.md",
+      "action": "edit",
+      "notes": "MD+JSON artifact convention and JSON shapes"
+    },
+    {
+      "path": "docs/snippets/template_plan.md",
+      "action": "edit",
+      "notes": "plan.json twin required keys + skeleton"
+    },
+    {
+      "path": "docs/snippets/template_agent_execution_log.md",
+      "action": "edit",
+      "notes": "agent_log.json twin; no final_verdict"
+    },
+    {
+      "path": "docs/snippets/template_qc_report.md",
+      "action": "edit",
+      "notes": "qc_report.json twin with final_verdict"
+    },
+    {
+      "path": ".github/copilot-instructions.md",
+      "action": "edit",
+      "notes": "JSON twins pointer; HARD GUARDS preserved"
+    },
+    {
+      "path": "qc_evidence/plan_json_artifacts_protocol.json",
+      "action": "create",
+      "notes": "frozen plan machine copy"
+    },
+    {
+      "path": "qc_evidence/plan_json_artifacts_protocol.md",
+      "action": "create",
+      "notes": "optional human plan stub"
+    },
+    {
+      "path": "qc_evidence/agent_log_json_artifacts_protocol.md",
+      "action": "create",
+      "notes": "agent log MD"
+    },
+    {
+      "path": "qc_evidence/agent_log_json_artifacts_protocol.json",
+      "action": "create",
+      "notes": "agent log JSON twin"
+    }
+  ],
+  "commands": [
+    {
+      "cmd": "editor replace_string/write on allowlisted paths",
+      "cwd": "C:\\projects\\agent_system",
+      "exit_code": null,
+      "output_snippet": "docs + templates + instructions + qc_evidence plan/agent artifacts"
+    },
+    {
+      "cmd": "Test-Path allowlisted protocol/template/artifact paths",
+      "cwd": "C:\\projects\\agent_system",
+      "exit_code": 0,
+      "output_snippet": "all True"
+    },
+    {
+      "cmd": ".\\.venv\\Scripts\\python.exe -c json.load plan+agent_log keys",
+      "cwd": "C:\\projects\\agent_system",
+      "exit_code": 0,
+      "output_snippet": "PLAN_KEYS ok; ALOG_KEYS ok; ALOG_HAS_final_verdict False"
+    }
+  ],
+  "diff_snippets": [
+    {
+      "path": "docs/plan_ide_execution_worker.md",
+      "summary": "Added MD+JSON artifact table, JSON schemas, mode write rules"
+    },
+    {
+      "path": "docs/snippets/template_*.md",
+      "summary": "Added Machine-readable twin (JSON) sections"
+    },
+    {
+      "path": ".github/copilot-instructions.md",
+      "summary": "Execution modes mention plan/agent_log/qc_report JSON twins"
+    }
+  ],
+  "notes": [
+    "Factual only; no final_verdict",
+    "qc_report_* not written in AGENT",
+    "No DB ingest or schema changes",
+    "No skill_task_validate.py edits"
+  ]
+}

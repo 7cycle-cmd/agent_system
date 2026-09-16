@@ -1,0 +1,163 @@
+{
+  "task_id": "json_artifacts_protocol",
+  "checklist_id": "qc.json_artifacts_protocol.v1",
+  "scope": {
+    "in_scope": [
+      "Document JSON twins alongside MD for plan, agent_log, qc_report",
+      "Update plan_ide_execution_worker.md artifact convention and JSON shapes",
+      "Update template_plan.md, template_agent_execution_log.md, template_qc_report.md",
+      "Optional copilot-instructions pointer for JSON twins",
+      "Emit plan_json_artifacts_protocol.json and agent_log MD+JSON for this task"
+    ],
+    "out_of_scope": [
+      "DB schema / task_run_logs migration",
+      "Ingest CLI or backend API writer",
+      "validate_new_task / ontology / TDD runners",
+      "AGENT writing qc_report final_verdict",
+      "Removing MD artifacts"
+    ]
+  },
+  "step_list": [
+    "Edit docs/plan_ide_execution_worker.md for MD+JSON paths and schemas",
+    "Edit docs/snippets/template_plan.md JSON twin section",
+    "Edit docs/snippets/template_agent_execution_log.md JSON twin section",
+    "Edit docs/snippets/template_qc_report.md JSON twin section",
+    "Optional: .github/copilot-instructions.md JSON twin pointer",
+    "Write qc_evidence/plan_json_artifacts_protocol.json",
+    "Write qc_evidence/agent_log_json_artifacts_protocol.md and .json",
+    "Stop for QC (qc_report MD+JSON written in QC MODE only)"
+  ],
+  "locked_qc_checklist": [
+    {
+      "id": "QC-01",
+      "criterion": "plan_ide_execution_worker.md documents JSON paths for plan, agent_log, qc_report",
+      "method": "Content search for plan_{task_id}.json / agent_log_{task_id}.json / qc_report_{task_id}.json"
+    },
+    {
+      "id": "QC-02",
+      "criterion": "Protocol states MD retained and JSON is additional twin",
+      "method": "Content search MD keep + JSON extra/twin"
+    },
+    {
+      "id": "QC-03",
+      "criterion": "plan JSON PLAN/AGENT, agent_log AGENT, qc_report QC",
+      "method": "Content read of mode/artifact sections"
+    },
+    {
+      "id": "QC-04",
+      "criterion": "template_plan.md documents plan.json required keys",
+      "method": "Content search task_id scope step_list locked_qc_checklist file_allowlist allowed_commands forbidden_actions"
+    },
+    {
+      "id": "QC-05",
+      "criterion": "template_agent_execution_log.md documents agent_log.json keys",
+      "method": "Content search task_id files_modified commands diff_snippets notes"
+    },
+    {
+      "id": "QC-06",
+      "criterion": "Agent log template forbids JSON final_verdict/SUCCESS",
+      "method": "Content search"
+    },
+    {
+      "id": "QC-07",
+      "criterion": "template_qc_report.md documents qc_report.json keys",
+      "method": "Content search task_id checklist_items final_verdict"
+    },
+    {
+      "id": "QC-08",
+      "criterion": "Skeleton/field list in each of three templates",
+      "method": "Path + content inspection"
+    },
+    {
+      "id": "QC-09",
+      "criterion": "HARD GUARDS still in copilot-instructions.md",
+      "method": "Content search NO PLAN LOOP and Explore"
+    },
+    {
+      "id": "QC-10",
+      "criterion": "Instructions still point at plan_ide_execution_worker.md",
+      "method": "Content search"
+    },
+    {
+      "id": "QC-11",
+      "criterion": "Only allowlisted files modified",
+      "method": "Agent log / git paths ⊆ allowlist"
+    },
+    {
+      "id": "QC-12",
+      "criterion": "No DB schema or ingest CLI in this task",
+      "method": "Agent log + path check"
+    },
+    {
+      "id": "QC-13",
+      "criterion": "No edits to skill_task_validate.py",
+      "method": "Modified-files list"
+    },
+    {
+      "id": "QC-14",
+      "criterion": "plan_json_artifacts_protocol.json exists with checklist and allowlists",
+      "method": "Test-Path + JSON key check"
+    },
+    {
+      "id": "QC-15",
+      "criterion": "agent_log_json_artifacts_protocol.json exists with required keys",
+      "method": "Test-Path + key check"
+    },
+    {
+      "id": "QC-16",
+      "criterion": "Agent log JSON has no final_verdict success claim",
+      "method": "Content/key check"
+    },
+    {
+      "id": "QC-17",
+      "criterion": "After QC MODE: qc_report_json_artifacts_protocol.json with checklist_items and final_verdict",
+      "method": "Test-Path + key check (QC creates)"
+    },
+    {
+      "id": "QC-18",
+      "criterion": "MD twin agent_log exists; JSON not replacement",
+      "method": "Test-Path agent_log_*.md"
+    },
+    {
+      "id": "QC-19",
+      "criterion": "Agent log lists commands with exit codes where run",
+      "method": "Content check"
+    },
+    {
+      "id": "QC-20",
+      "criterion": "QC report marks QC-01..QC-19 with PASS/FAIL/SKIP + evidence",
+      "method": "QC report structure"
+    }
+  ],
+  "file_allowlist": [
+    { "path": "docs/plan_ide_execution_worker.md", "action": "edit" },
+    { "path": "docs/snippets/template_plan.md", "action": "edit" },
+    { "path": "docs/snippets/template_agent_execution_log.md", "action": "edit" },
+    { "path": "docs/snippets/template_qc_report.md", "action": "edit" },
+    { "path": ".github/copilot-instructions.md", "action": "edit" },
+    { "path": "qc_evidence/plan_json_artifacts_protocol.json", "action": "create" },
+    { "path": "qc_evidence/plan_json_artifacts_protocol.md", "action": "create" },
+    { "path": "qc_evidence/agent_log_json_artifacts_protocol.md", "action": "create" },
+    { "path": "qc_evidence/agent_log_json_artifacts_protocol.json", "action": "create" },
+    { "path": "qc_evidence/qc_report_json_artifacts_protocol.md", "action": "create_qc_only" },
+    { "path": "qc_evidence/qc_report_json_artifacts_protocol.json", "action": "create_qc_only" }
+  ],
+  "allowed_commands": [
+    "Test-Path <allowlisted path>",
+    "Get-Item <allowlisted path>",
+    "Select-String -Path <allowlisted path> -Pattern <literal>",
+    ".\\.venv\\Scripts\\python.exe -c \"import json,sys; p=sys.argv[1]; d=json.load(open(p,encoding='utf-8')); print(sorted(d.keys()))\" <allowlisted.json>",
+    "git status --short",
+    "git diff -- <allowlisted path>"
+  ],
+  "forbidden_actions": [
+    "Any path outside file_allowlist",
+    "Any command outside allowed_commands",
+    "Change locked checklist qc.json_artifacts_protocol.v1 after approval",
+    "DB schema / task_run_logs / ingest CLI",
+    "Edits to validate_new_task, ontology_store, init_ontology_registry.sql, TDD runners",
+    "Remove MD artifact requirement",
+    "AGENT writing final_verdict or qc_report as if QC passed",
+    "Explore/runSubagent unless user types explore"
+  ]
+}

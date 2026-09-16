@@ -1,0 +1,72 @@
+{
+  "task_id": "scan_ingest_task_log_cli",
+  "checklist_id": "qc.scan_ingest_task_log_cli.v1",
+  "checklist_items": [
+    {
+      "id": "QC-01",
+      "result": "PASS",
+      "evidence": "venv python ingest_task_log.py --scan executed (AGENT + QC)"
+    },
+    {
+      "id": "QC-02",
+      "result": "PASS",
+      "evidence": "scan exit code 0"
+    },
+    {
+      "id": "QC-03",
+      "result": "PASS",
+      "evidence": "ingest_task_log_cli skipped already_in_marker with full plan/agent_log/qc_report kinds; not missing"
+    },
+    {
+      "id": "QC-04",
+      "result": "PASS",
+      "evidence": "marker task_ids contains ingest_task_log_cli"
+    },
+    {
+      "id": "QC-05",
+      "result": "PASS",
+      "evidence": "marker valid JSON with task_ids list and updated_at"
+    },
+    {
+      "id": "QC-06",
+      "result": "PASS",
+      "evidence": "task_run_logs row (ingest_task_log_cli, ide_execution_worker, 1)"
+    },
+    {
+      "id": "QC-07",
+      "result": "PASS",
+      "evidence": "COUNT=1 for ingest_task_log_cli"
+    },
+    {
+      "id": "QC-08",
+      "result": "PASS",
+      "evidence": "parent three JSON paths exist True"
+    },
+    {
+      "id": "QC-09",
+      "result": "PASS",
+      "evidence": "git diff -- ingest_task_log.py empty; no AGENT source edit"
+    },
+    {
+      "id": "QC-10",
+      "result": "PASS",
+      "evidence": "no template/protocol SSOT edits this task"
+    },
+    {
+      "id": "QC-11",
+      "result": "PASS",
+      "evidence": "after repeat --scan still exactly one DB row"
+    },
+    {
+      "id": "QC-12",
+      "result": "PASS",
+      "evidence": "agent_log twins exist; keys ok; no final_verdict; task_id scan_ingest_task_log_cli"
+    },
+    {
+      "id": "QC-13",
+      "result": "PASS",
+      "evidence": "this report itemizes QC-01..QC-12; final_verdict only in QC artifacts"
+    }
+  ],
+  "final_verdict": "PASS"
+}

@@ -1,0 +1,108 @@
+{
+  "ok": true,
+  "harvest": {
+    "ok": true,
+    "inserted": 26,
+    "log_ids": [
+      "exp_f2372b451236",
+      "exp_a93107f3be1f",
+      "exp_6e9403c9e104",
+      "exp_752aeeac3724",
+      "exp_ffd1bd9d5c8e",
+      "exp_0056e7e84b46",
+      "exp_1edeab803c60",
+      "exp_df520ff9b26b",
+      "exp_97f3487b9ce7",
+      "exp_eb8c973be958",
+      "exp_eb12d3c12fde",
+      "exp_27d5bce306ec",
+      "exp_9c2c33efed7e",
+      "exp_4860441615be",
+      "exp_2467e446b83e",
+      "exp_43f33f91684a",
+      "exp_8280bff53810",
+      "exp_fde4fb8322dc",
+      "exp_fea2bc86f490",
+      "exp_af919baeb44b",
+      "exp_745cae189f10",
+      "exp_16327dea2dc9",
+      "exp_e7d9760d1552",
+      "exp_cc57b537e348",
+      "exp_440a501c09cf",
+      "exp_c9aa78ea4f3c"
+    ],
+    "total_experience": 132,
+    "only_failures": true,
+    "note": "audit_trace read-only; no audit rows modified"
+  },
+  "latest_n": 10,
+  "latest_sample": [
+    {
+      "log_id": "exp_ffd1bd9d5c8e",
+      "audit_trace_id": "atr_36e587e8b8e5",
+      "test_case_ref": "tc.3.10",
+      "error_type": "field",
+      "error_message": "Field: unknown on 'code_register' (db_field_registry): field.__unknown_col__"
+    },
+    {
+      "log_id": "exp_fea2bc86f490",
+      "audit_trace_id": "atr_a07f1a3a7bf9",
+      "test_case_ref": "tc.1.1",
+      "error_type": "capability",
+      "error_message": "Capability: unknown or inactive 'task_center.unknown_capability' (not in capability_registry allowlist); Function: 'task"
+    },
+    {
+      "log_id": "exp_fde4fb8322dc",
+      "audit_trace_id": "atr_9962e4fb2e45",
+      "test_case_ref": "tc.3.6",
+      "error_type": "function",
+      "error_message": "Function: 'task_center.__unknown_fn_edge__' not registered under capability 'task_center.validate_new_task' (function_re"
+    },
+    {
+      "log_id": "exp_f2372b451236",
+      "audit_trace_id": "atr_142f2f24d343",
+      "test_case_ref": "tc.1.4",
+      "error_type": "field",
+      "error_message": "Field: unknown on 'code_register' (db_field_registry): bad_column"
+    },
+    {
+      "log_id": "exp_eb8c973be958",
+      "audit_trace_id": "atr_4bf3c294477e",
+      "test_case_ref": "tc.1.9",
+      "error_type": "capability",
+      "error_message": "Capability: empty — required; Function: cannot validate without capability; API: cannot validate without capability"
+    }
+  ],
+  "counts_by_error_type": {
+    "field": 20,
+    "capability": 24,
+    "function": 16,
+    "table": 10,
+    "channel": 19,
+    "module": 23,
+    "api": 16,
+    "payload_unknown_key": 4
+  },
+  "sample_by_error_type": {
+    "error_type": "field",
+    "rows": [
+      {
+        "log_id": "exp_ffd1bd9d5c8e",
+        "test_case_ref": "tc.3.10",
+        "error_type": "field"
+      },
+      {
+        "log_id": "exp_f2372b451236",
+        "test_case_ref": "tc.1.4",
+        "error_type": "field"
+      },
+      {
+        "log_id": "exp_2467e446b83e",
+        "test_case_ref": "tc.1.12",
+        "error_type": "field"
+      }
+    ]
+  },
+  "report_path": "C:\\projects\\agent_system\\qc_evidence\\experience_log_harvest.json",
+  "note": "audit_trace unmodified; experience_log append-only harvest"
+}

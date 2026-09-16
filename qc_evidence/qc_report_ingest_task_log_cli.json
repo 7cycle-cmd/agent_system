@@ -1,0 +1,108 @@
+{
+  "task_id": "ingest_task_log_cli",
+  "checklist_id": "qc.ingest_task_log_cli.v1",
+  "rescored_via": "reqc_ingest_task_log_cli",
+  "checklist_items": [
+    {
+      "id": "QC-01",
+      "result": "PASS",
+      "evidence": "Test-Path ingest_task_log.py -> True"
+    },
+    {
+      "id": "QC-02",
+      "result": "PASS",
+      "evidence": "CLI -h exit 0; flags --scan --dry-run --list present"
+    },
+    {
+      "id": "QC-03",
+      "result": "PASS",
+      "evidence": "FILE_RE and qc_evidence patterns in ingest_task_log.py"
+    },
+    {
+      "id": "QC-04",
+      "result": "PASS",
+      "evidence": ".ingested_tasks.json used; marker exists; --list exit 0"
+    },
+    {
+      "id": "QC-05",
+      "result": "PASS",
+      "evidence": "qc_evidence/ingest_logs/ has ingest_*.json and ingest.jsonl"
+    },
+    {
+      "id": "QC-06",
+      "result": "PASS",
+      "evidence": "CREATE TABLE IF NOT EXISTS task_run_logs with required columns in script"
+    },
+    {
+      "id": "QC-07",
+      "result": "PASS",
+      "evidence": "No template edits this re-QC"
+    },
+    {
+      "id": "QC-08",
+      "result": "PASS",
+      "evidence": "plan_ide_execution_worker.md not modified this re-QC"
+    },
+    {
+      "id": "QC-09",
+      "result": "PASS",
+      "evidence": "init_db/db_schema/validate not written this re-QC"
+    },
+    {
+      "id": "QC-10",
+      "result": "PASS",
+      "evidence": "py_compile ingest_task_log.py ok"
+    },
+    {
+      "id": "QC-11",
+      "result": "PASS",
+      "evidence": "ingest_task_log.py --list exit 0"
+    },
+    {
+      "id": "QC-12",
+      "result": "PASS",
+      "evidence": "--scan --dry-run exit 0; marker unchanged by dry-run"
+    },
+    {
+      "id": "QC-13",
+      "result": "PASS",
+      "evidence": "--scan exit 0; ingest_task_log_cli in marker and task_run_logs count=1; rescan already_in_marker"
+    },
+    {
+      "id": "QC-14",
+      "result": "PASS",
+      "evidence": "Incomplete fix_ingest_agent_log_artifacts not in marker or task_run_logs"
+    },
+    {
+      "id": "QC-15",
+      "result": "PASS",
+      "evidence": "Rescan skips already_in_marker; parent db_count remains 1"
+    },
+    {
+      "id": "QC-16",
+      "result": "PASS",
+      "evidence": "plan_ingest_task_log_cli.json exists; SHA256 unchanged from AGENT baseline"
+    },
+    {
+      "id": "QC-17",
+      "result": "PASS",
+      "evidence": "agent_log_ingest_task_log_cli.json exists; required keys present; final_verdict absent; task_id ingest_task_log_cli"
+    },
+    {
+      "id": "QC-18",
+      "result": "PASS",
+      "evidence": "agent_log_ingest_task_log_cli.md exists; SHA256 unchanged"
+    },
+    {
+      "id": "QC-19",
+      "result": "PASS",
+      "evidence": "This report scores QC-01 through QC-18"
+    },
+    {
+      "id": "QC-20",
+      "result": "PASS",
+      "evidence": "final_verdict only in QC report artifacts; agent_log has no final_verdict"
+    }
+  ],
+  "final_verdict": "PASS"
+}

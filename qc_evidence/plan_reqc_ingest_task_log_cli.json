@@ -1,0 +1,30 @@
+{
+  "task_id": "reqc_ingest_task_log_cli",
+  "checklist_id": "qc.reqc_ingest_task_log_cli.v1",
+  "parent_checklist_id": "qc.ingest_task_log_cli.v1",
+  "scope": "Evidence-only re-verify parent qc.ingest_task_log_cli.v1; QC refreshes parent qc_report only; no plan/agent_log/script hand-edits.",
+  "step_list": [
+    "Pre-hash parent plan and agent_log",
+    "Run parent QC-01..20 verification commands",
+    "Post-hash confirm unchanged",
+    "Write agent_log_reqc_ingest_task_log_cli twins",
+    "Stop for QC parent report overwrite"
+  ],
+  "allowlist": [
+    "qc_evidence/plan_reqc_ingest_task_log_cli.md",
+    "qc_evidence/plan_reqc_ingest_task_log_cli.json",
+    "qc_evidence/agent_log_reqc_ingest_task_log_cli.md",
+    "qc_evidence/agent_log_reqc_ingest_task_log_cli.json",
+    "qc_evidence/qc_report_ingest_task_log_cli.md (QC only)",
+    "qc_evidence/qc_report_ingest_task_log_cli.json (QC only)",
+    "qc_evidence/qc_report_reqc_ingest_task_log_cli.md (QC only)",
+    "qc_evidence/qc_report_reqc_ingest_task_log_cli.json (QC only)"
+  ],
+  "forbidden": [
+    "Edit plan_ingest_task_log_cli.*",
+    "Edit agent_log_ingest_task_log_cli.*",
+    "AGENT overwrite parent qc_report",
+    "AGENT final_verdict",
+    "Edit ingest_task_log.py or render_task_view.py"
+  ]
+}

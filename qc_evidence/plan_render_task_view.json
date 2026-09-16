@@ -1,0 +1,43 @@
+{
+  "task_id": "render_task_view",
+  "checklist_id": "qc.render_task_view.v1",
+  "scope": "Create render_task_view.py; generate static task_view.html from qc_evidence triples; CLI --render/--open/--help; no DB; no JS; no foreign artifact or ingest_task_log.py edits.",
+  "step_list": [
+    "Implement render_task_view.py with discover/merge/HTML/argparse",
+    "Run --help and --render",
+    "Verify HTML features and no sqlite/script",
+    "Write agent_log twins; stop for QC"
+  ],
+  "allowlist": [
+    "render_task_view.py",
+    "task_view.html",
+    "qc_evidence/plan_render_task_view.md",
+    "qc_evidence/plan_render_task_view.json",
+    "qc_evidence/agent_log_render_task_view.md",
+    "qc_evidence/agent_log_render_task_view.json"
+  ],
+  "forbidden": [
+    "Edit ingest_task_log.py",
+    "Edit foreign qc_evidence plan/agent/qc bodies",
+    "Touch agent.db",
+    "Add JavaScript or server",
+    "AGENT final_verdict"
+  ],
+  "locked_qc_checklist": [
+    "QC-01",
+    "QC-02",
+    "QC-03",
+    "QC-04",
+    "QC-05",
+    "QC-06",
+    "QC-07",
+    "QC-08",
+    "QC-09",
+    "QC-10",
+    "QC-11",
+    "QC-12",
+    "QC-13",
+    "QC-14",
+    "QC-15"
+  ]
+}

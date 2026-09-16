@@ -1,0 +1,67 @@
+{
+  "task_id": "fix_ingest_agent_log_artifacts",
+  "checklist_id": "qc.fix_ingest_agent_log_artifacts.v1",
+  "checklist_items": [
+    {
+      "id": "QC-01",
+      "result": "PASS",
+      "evidence": "Test-Path agent_log_ingest_task_log_cli.md -> True"
+    },
+    {
+      "id": "QC-02",
+      "result": "PASS",
+      "evidence": "Test-Path agent_log_ingest_task_log_cli.json -> True"
+    },
+    {
+      "id": "QC-03",
+      "result": "PASS",
+      "evidence": "JSON has task_id, files_modified, commands, diff_snippets, notes; MISSING []"
+    },
+    {
+      "id": "QC-04",
+      "result": "PASS",
+      "evidence": "task_id value ingest_task_log_cli"
+    },
+    {
+      "id": "QC-05",
+      "result": "PASS",
+      "evidence": "final_verdict key absent from agent_log JSON"
+    },
+    {
+      "id": "QC-06",
+      "result": "PASS",
+      "evidence": "MD contains Files modified and Commands sections and ingest_task_log_cli"
+    },
+    {
+      "id": "QC-07",
+      "result": "PASS",
+      "evidence": "MD and JSON both reference ingest_task_log_cli"
+    },
+    {
+      "id": "QC-08",
+      "result": "PASS",
+      "evidence": "git diff -- ingest_task_log.py empty for fix pass; script not rewritten in fix AGENT"
+    },
+    {
+      "id": "QC-09",
+      "result": "PASS",
+      "evidence": "No template modifications in fix allowlist/outputs"
+    },
+    {
+      "id": "QC-10",
+      "result": "PASS",
+      "evidence": "No DB schema source files modified in fix task"
+    },
+    {
+      "id": "QC-11",
+      "result": "PASS",
+      "evidence": "Parent QC-17/QC-18 paths now exist"
+    },
+    {
+      "id": "QC-12",
+      "result": "PASS",
+      "evidence": "This report scores QC-01..QC-11 with evidence; final_verdict only in QC artifacts"
+    }
+  ],
+  "final_verdict": "PASS"
+}

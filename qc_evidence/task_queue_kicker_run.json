@@ -1,0 +1,26 @@
+{
+  "ok": true,
+  "result": "PASS",
+  "seeded_task_id": "tq_3756cfd0cede",
+  "processed": 1,
+  "results": [
+    {
+      "ok": true,
+      "task_id": "tq_3756cfd0cede",
+      "validate_ok": true,
+      "validate_errors": [],
+      "audit_ok": true,
+      "trace_id": "atr_7aaeabce2b37",
+      "update_ok": true,
+      "final_status": "done",
+      "final_verdict": "PASS",
+      "final_trace_id": "atr_7aaeabce2b37",
+      "link_ok": true
+    }
+  ],
+  "started_at": "2026-09-16T09:09:58.767627+00:00",
+  "finished_at": "2026-09-16T09:09:58.825274+00:00",
+  "queue_table": "validate_task_queue",
+  "note": "poll → validate_new_task (read-only) → audit_trace → update_task_status; legacy task_queue untouched",
+  "report_path": "C:\\projects\\agent_system\\qc_evidence\\task_queue_kicker_run.json"
+}

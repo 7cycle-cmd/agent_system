@@ -1,0 +1,72 @@
+{
+  "task_id": "scan_ingest_task_log_cli",
+  "checklist_id": "qc.scan_ingest_task_log_cli.v1",
+  "files_modified": [
+    {
+      "path": "qc_evidence/plan_scan_ingest_task_log_cli.md",
+      "action": "create"
+    },
+    {
+      "path": "qc_evidence/plan_scan_ingest_task_log_cli.json",
+      "action": "create"
+    },
+    {
+      "path": "qc_evidence/agent_log_scan_ingest_task_log_cli.md",
+      "action": "create"
+    },
+    {
+      "path": "qc_evidence/agent_log_scan_ingest_task_log_cli.json",
+      "action": "create"
+    },
+    {
+      "path": "qc_evidence/.ingested_tasks.json",
+      "action": "cli_managed_unchanged_skip",
+      "note": "preflight already listed ingest_task_log_cli"
+    },
+    {
+      "path": "qc_evidence/ingest_logs/ingest_20260916T100329Z.json",
+      "action": "cli_create"
+    },
+    {
+      "path": "agent.db",
+      "action": "cli_managed_row_present",
+      "note": "task_run_logs ingest_task_log_cli count=1; no new insert this run"
+    }
+  ],
+  "commands": [
+    {
+      "cmd": "Test-Path qc_evidence/plan|agent_log|qc_report_ingest_task_log_cli.json",
+      "result": "True, True, True"
+    },
+    {
+      "cmd": ".\\.venv\\Scripts\\python.exe ingest_task_log.py --list",
+      "result": "exit 0; task_ids ingest_task_log_cli, json_artifacts_protocol (preflight and post)"
+    },
+    {
+      "cmd": ".\\.venv\\Scripts\\python.exe ingest_task_log.py --scan",
+      "result": "exit 0; imported []; ingest_task_log_cli skipped already_in_marker"
+    },
+    {
+      "cmd": ".\\.venv\\Scripts\\python.exe ingest_task_log.py --scan",
+      "result": "exit 0; second scan same skip; no duplicate row"
+    },
+    {
+      "cmd": "python json+sqlite3 verify marker and task_run_logs",
+      "result": "marker_has_ingest_task_log_cli True; updated_at 2026-09-16T10:03:29Z; db_count 1; row (ingest_task_log_cli, ide_execution_worker, 1)"
+    },
+    {
+      "cmd": "git diff -- ingest_task_log.py",
+      "result": "empty"
+    },
+    {
+      "cmd": "git status --short scoped",
+      "result": "?? ingest_task_log.py; ?? docs/snippets/; ?? docs/plan_ide_execution_worker.md (pre-existing; not edited)"
+    }
+  ],
+  "diff_snippets": [
+    "scan skip event: task_id=ingest_task_log_cli action=skip detail=already_in_marker",
+    "db_rows [('ingest_task_log_cli', 'ide_execution_worker', '1')]",
+    "db_count 1 after two --scan runs"
+  ],
+  "notes": "Parent ingest_task_log_cli already in marker and task_run_logs at AGENT preflight; --scan confirmed idempotent already_in_marker path. No source edits. No final_verdict."
+}

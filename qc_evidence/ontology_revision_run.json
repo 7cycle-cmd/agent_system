@@ -1,0 +1,56 @@
+{
+  "ok": true,
+  "result": "PASS",
+  "halted_at": null,
+  "executed_count": 2,
+  "pass_count": 2,
+  "fail_count": 0,
+  "required_tags": [
+    "tc.2.0",
+    "tc.2.1"
+  ],
+  "results": [
+    {
+      "case_ref_tag": "tc.2.0",
+      "case_title": "revision_save — snapshot before update",
+      "result": "PASS",
+      "expected_ok": true,
+      "actual_ok": true,
+      "expected_errors": [],
+      "actual_errors": [],
+      "reasons": [],
+      "detail": {
+        "update": {
+          "revision_id": "orev_93d08a317828",
+          "name": "Revision Probe Capability (mutated)",
+          "version": "2"
+        },
+        "revisions_n": 5,
+        "latest_revision_id": "orev_93d08a317828",
+        "pre_image_name": "Revision Probe Capability"
+      }
+    },
+    {
+      "case_ref_tag": "tc.2.1",
+      "case_title": "rollback — restore prior revision snapshot",
+      "result": "PASS",
+      "expected_ok": true,
+      "actual_ok": true,
+      "expected_errors": [],
+      "actual_errors": [],
+      "reasons": [],
+      "detail": {
+        "revisions_n": 6,
+        "rolled_back_to": "orev_93d08a317828",
+        "new_revision_id": "orev_0276ed578245",
+        "name": "Revision Probe Capability",
+        "latest_note": "rollback_to=orev_93d08a317828; tc.2.1 rollback"
+      }
+    }
+  ],
+  "started_at": "2026-09-16T08:32:39.666500+00:00",
+  "finished_at": "2026-09-16T08:32:39.692459+00:00",
+  "source": "test_case_registry",
+  "note": "tc.2.* from test_case_registry; mutate/rollback helpers only; validate_new_task not invoked",
+  "report_path": "C:\\projects\\agent_system\\qc_evidence\\ontology_revision_run.json"
+}

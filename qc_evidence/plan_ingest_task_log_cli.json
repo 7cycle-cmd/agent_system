@@ -1,0 +1,72 @@
+{
+  "task_id": "ingest_task_log_cli",
+  "checklist_id": "qc.ingest_task_log_cli.v1",
+  "skill_name": "ide_execution_worker",
+  "skill_version": "1",
+  "scope": {
+    "in_scope": [
+      "Create ingest_task_log.py",
+      "Scan qc_evidence plan/agent_log/qc_report JSON triples",
+      "Validate and insert task_run_logs via CREATE TABLE IF NOT EXISTS in script",
+      "Marker qc_evidence/.ingested_tasks.json",
+      "Logs qc_evidence/ingest_logs/",
+      "CLI --scan --dry-run --list"
+    ],
+    "out_of_scope": [
+      "Template/protocol MD edits",
+      "init_db.sql / db_schema.py schema migrations",
+      "UI",
+      "validate_new_task changes"
+    ]
+  },
+  "step_list": [
+    "Implement ingest_task_log.py",
+    "Seed .ingested_tasks.json and ingest_logs dir",
+    "py_compile and CLI smoke",
+    "Write agent_log artifacts",
+    "Stop for QC"
+  ],
+  "locked_qc_checklist": [
+    {"id": "QC-01", "criterion": "ingest_task_log.py exists", "method": "Test-Path"},
+    {"id": "QC-02", "criterion": "CLI --scan --dry-run --list", "method": "help/content"},
+    {"id": "QC-03", "criterion": "qc_evidence JSON patterns", "method": "content"},
+    {"id": "QC-04", "criterion": ".ingested_tasks.json marker", "method": "content"},
+    {"id": "QC-05", "criterion": "ingest_logs/", "method": "content+dir"},
+    {"id": "QC-06", "criterion": "task_run_logs columns in CREATE IF NOT EXISTS", "method": "content"},
+    {"id": "QC-07", "criterion": "no template edits", "method": "allowlist"},
+    {"id": "QC-08", "criterion": "no protocol SSOT edit", "method": "allowlist"},
+    {"id": "QC-09", "criterion": "no init_db/db_schema/validate edits", "method": "allowlist"},
+    {"id": "QC-10", "criterion": "py_compile exit 0", "method": "terminal"},
+    {"id": "QC-11", "criterion": "--list exit 0", "method": "terminal"},
+    {"id": "QC-12", "criterion": "--scan --dry-run no marker growth", "method": "terminal"},
+    {"id": "QC-13", "criterion": "--scan inserts or skip reason", "method": "terminal+db"},
+    {"id": "QC-14", "criterion": "incomplete triples not inserted", "method": "logic/output"},
+    {"id": "QC-15", "criterion": "rescan no duplicate", "method": "terminal"},
+    {"id": "QC-16", "criterion": "plan JSON exists", "method": "Test-Path"},
+    {"id": "QC-17", "criterion": "agent_log JSON no final_verdict", "method": "keys"},
+    {"id": "QC-18", "criterion": "agent_log MD exists", "method": "Test-Path"},
+    {"id": "QC-19", "criterion": "QC report scores QC-01..18", "method": "QC"},
+    {"id": "QC-20", "criterion": "final_verdict only in QC", "method": "keys"}
+  ],
+  "file_allowlist": [
+    {"path": "ingest_task_log.py", "action": "create"},
+    {"path": "qc_evidence/.ingested_tasks.json", "action": "create/update"},
+    {"path": "qc_evidence/ingest_logs/", "action": "create"},
+    {"path": "qc_evidence/plan_ingest_task_log_cli.json", "action": "create"},
+    {"path": "qc_evidence/agent_log_ingest_task_log_cli.md", "action": "create"},
+    {"path": "qc_evidence/agent_log_ingest_task_log_cli.json", "action": "create"}
+  ],
+  "allowed_commands": [
+    "python -m py_compile ingest_task_log.py",
+    "python ingest_task_log.py -h",
+    "python ingest_task_log.py --list",
+    "python ingest_task_log.py --scan --dry-run",
+    "python ingest_task_log.py --scan"
+  ],
+  "forbidden_actions": [
+    "Edit templates/protocol SSOT",
+    "Edit init_db.sql db_schema.py skill_task_validate.py",
+    "AGENT final_verdict",
+    "DROP TABLE task_run_logs"
+  ]
+}
