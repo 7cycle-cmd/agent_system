@@ -149,10 +149,43 @@ class McpClient:
         }
         if params is not None:
             payload["params"] = params
-        resp = self._post(payload)
+        try:
+            resp = self._post(payload)
+        except RuntimeError as e:
+            # A cached session goes stale when the server restarts: the old
+            # Mcp-Session-Id is rejected (or the port was briefly closed), and
+            # without this the client would fail FOREVER because _initialized
+            # stays True. Drop the session and retry the call exactly once.
+            if not self._is_stale_session_error(e):
+                raise
+            self.reset()
+            if method == "initialize":
+                raise
+            resp = self._post(payload)
         if "error" in resp and resp["error"]:
             raise RuntimeError(f"MCP error: {resp['error']}")
         return resp.get("result")
+
+    @staticmethod
+    def _is_stale_session_error(err: Exception) -> bool:
+        """True when the failure is a dead session/connection, not a bad call."""
+        msg = str(err).lower()
+        markers = (
+            "connection failed",      # WinError 10061 / refused
+            "session",                # invalid/expired Mcp-Session-Id
+            "connection reset",
+            "connection aborted",
+            "broken pipe",
+            "timed out",
+            "eof",
+        )
+        return any(m in msg for m in markers)
+
+    def reset(self) -> None:
+        """Forget the cached session so the next call re-initializes."""
+        self._initialized = False
+        self._session_id = None
+        self._tools = {}
 
     def initialize(self) -> Any:
         result = self.request(
@@ -198,7 +231,16 @@ class McpClient:
                 self._tools[name] = t
         return self._tools
 
-    def list_tool_names(self) -> list[str]:
+    def list_tool_names(self, refresh: bool = False) -> list[str]:
+        """Tool names. `refresh=True` forces a network round-trip.
+
+        WHY the flag: once _initialized is True this returns the CACHED list
+        without touching the network, so a dead server still reports its old
+        tool count. A health check must pass refresh=True or it can report a
+        false "ok".
+        """
+        if refresh:
+            self.reset()
         self.ensure_ready()
         return sorted(self._tools.keys())
 

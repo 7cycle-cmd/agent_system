@@ -43,5 +43,3 @@ prg.vec_add(queue, a.shape, None, a_g, b_g, c_g)
 cl.enqueue_copy(queue, c, c_g)
 
 print("Result:", c)
-
-python src/main.py

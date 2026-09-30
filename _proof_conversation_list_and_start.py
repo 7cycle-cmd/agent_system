@@ -6,7 +6,7 @@
 THE HUMAN (2026-09-27), verbatim
 --------------------------------
     "path : http://127.0.0.1:18765/llm-tasks/conversation -> http://127.0.0.1:18765/llm-tasks/conversation/list"
-    "+UI (image design): http://127.0.0.1:18765/llm-tasks/conversation/start having a new conversaction"
+    "+UI (image design): http://127.0.0.1:18765/llm-tasks/conversation/start having a new conversation"
 
 THE PROBLEM, MEASURED
 ---------------------
@@ -81,7 +81,7 @@ OTHER_PAGES_BEFORE = {
 
 ALLOWLIST = {
     "llm_task_monitor_ui/src/conversation-center.js",
-    "_register_conversation_step_terms.py",
+    "_registry_conversation_step_terms.py",
     "_proof_conversation_list_and_start.py",
     "qc_evidence/plan_CONVERSATION.LIST.AND.START.ADDRESS.md",
     "qc_evidence/plan_CONVERSATION.LIST.AND.START.ADDRESS.json",
@@ -114,7 +114,7 @@ def main() -> int:
         bad1 = []
         for k in TERMS:
             r = conn.execute(
-                "SELECT term_id, definition, cite_ref FROM terminology_register "
+                "SELECT term_id, definition, cite_ref FROM terminology_registry "
                 "WHERE term_key=? AND is_active=1", (k,)).fetchone()
             if not r or not str(r["definition"] or "").strip() \
                     or not str(r["cite_ref"] or "").strip():
@@ -130,7 +130,7 @@ def main() -> int:
         bad2 = []
         for k in TERMS:
             r = conn.execute(
-                "SELECT definition, definition_sha256 FROM terminology_register "
+                "SELECT definition, definition_sha256 FROM terminology_registry "
                 "WHERE term_key=?", (k,)).fetchone()
             if not r:
                 bad2.append(k + " (missing)")
@@ -251,7 +251,7 @@ def main() -> int:
         # and the change is NAMED, not deleted quietly.**
         rows = conn.execute(
             "SELECT element_key, element_kind, rendered_text, term_key, unit_key "
-            "FROM ui_element_register WHERE page_key=? AND is_active=1 "
+            "FROM ui_element_registry WHERE page_key=? AND is_active=1 "
             "ORDER BY element_key",
             (PAGE_KEY,)).fetchall()
         # THE COUNT IS NOT ASSERTED -- THE PROPERTY IS.
@@ -284,18 +284,18 @@ def main() -> int:
         print("\nQC-13  every seeded element's term_key resolves")
         bad13 = [r["element_key"] for r in rows
                  if not conn.execute(
-                     "SELECT 1 FROM terminology_register WHERE term_key=?",
+                     "SELECT 1 FROM terminology_registry WHERE term_key=?",
                      (r["term_key"],)).fetchone()]
-        check("QC-13", "every term_key resolves in terminology_register", not bad13,
+        check("QC-13", "every term_key resolves in terminology_registry", not bad13,
               "unresolved=%s" % bad13)
 
         # ---- QC-14 -------------------------------------------------------
         print("\nQC-14  every seeded element's unit_key resolves")
         bad14 = [r["element_key"] for r in rows
                  if not conn.execute(
-                     "SELECT 1 FROM unit_register WHERE unit_key=? AND is_active=1",
+                     "SELECT 1 FROM unit_registry WHERE unit_key=? AND is_active=1",
                      (r["unit_key"],)).fetchone()]
-        check("QC-14", "every unit_key resolves in unit_register (active)", not bad14,
+        check("QC-14", "every unit_key resolves in unit_registry (active)", not bad14,
               "unresolved=%s" % bad14)
 
         # ---- QC-15 -------------------------------------------------------
@@ -329,7 +329,7 @@ def main() -> int:
         #       -- its epoch is ITS OWN plan's mtime, so a LATER plan's edits to
         #       the same files read as "not written after approval".
         #   _proof_playwright_tabs_registered.py QC-11  "the other page still has
-        #       its 18 rows" -- a CEILING on `ui_element_register`; this plan
+        #       its 18 rows" -- a CEILING on `ui_element_registry`; this plan
         #       adds 3 rows to a DIFFERENT page key.
         #
         # The check is therefore: no failure OTHER than a named ceiling.
@@ -386,9 +386,9 @@ def main() -> int:
               not bad18, "diff=%s" % bad18)
 
         # ---- QC-19 -------------------------------------------------------
-        print("\nQC-19  terminology_register only GROWS; no id renumbered")
-        n = conn.execute("SELECT COUNT(*) FROM terminology_register").fetchone()[0]
-        lo = conn.execute("SELECT MIN(term_id) FROM terminology_register").fetchone()[0]
+        print("\nQC-19  terminology_registry only GROWS; no id renumbered")
+        n = conn.execute("SELECT COUNT(*) FROM terminology_registry").fetchone()[0]
+        lo = conn.execute("SELECT MIN(term_id) FROM terminology_registry").fetchone()[0]
         check("QC-19", "row count is >= 1501 (the before count)", int(n) >= 1501,
               "rows=%d" % n)
         check("QC-19", "min(term_id) is still 1 (no renumber)", int(lo) == 1,

@@ -74,7 +74,7 @@
       "expected_errors": [],
       "actual_errors": [],
       "reasons": [],
-      "audit_trace_id": "atr_c003c38a7ef6",
+      "audit_trace_id": "atr_5cf3131d3bef",
       "audit_insert_ok": true
     },
     {
@@ -92,7 +92,7 @@
         "API: 'POST /api/tasks/validate' not registered under capability 'task_center.unknown_capability' (api_registry)"
       ],
       "reasons": [],
-      "audit_trace_id": "atr_c653afacfe7a",
+      "audit_trace_id": "atr_5b467bb37e25",
       "audit_insert_ok": true
     },
     {
@@ -108,7 +108,7 @@
         "API: 'POST /api/tasks/__invalid__' not registered under capability 'task_center.validate_new_task' (api_registry)"
       ],
       "reasons": [],
-      "audit_trace_id": "atr_6297cb6be490",
+      "audit_trace_id": "atr_5990a00eb268",
       "audit_insert_ok": true
     },
     {
@@ -124,7 +124,7 @@
         "Function: 'task_center.__invalid_fn__' not registered under capability 'task_center.validate_new_task' (function_registry)"
       ],
       "reasons": [],
-      "audit_trace_id": "atr_c21d9fa9a099",
+      "audit_trace_id": "atr_9b033553ad19",
       "audit_insert_ok": true
     },
     {
@@ -140,7 +140,7 @@
         "Field: unknown on 'code_register' (db_field_registry): bad_column"
       ],
       "reasons": [],
-      "audit_trace_id": "atr_43295ee8a5ed",
+      "audit_trace_id": "atr_3f48c80b1e8a",
       "audit_insert_ok": true
     },
     {
@@ -156,7 +156,7 @@
         "Channel: unknown or inactive 'wrong_channel' (channel_registry)"
       ],
       "reasons": [],
-      "audit_trace_id": "atr_37dce69e3d35",
+      "audit_trace_id": "atr_ac4f4d236f21",
       "audit_insert_ok": true
     },
     {
@@ -173,7 +173,7 @@
         "Capability: 'task_center.validate_new_task' belongs to module 'task_center', not 'wrong_module'"
       ],
       "reasons": [],
-      "audit_trace_id": "atr_2e5d29de2528",
+      "audit_trace_id": "atr_1d7763b38acb",
       "audit_insert_ok": true
     },
     {
@@ -191,7 +191,7 @@
         "API: cannot validate without capability"
       ],
       "reasons": [],
-      "audit_trace_id": "atr_2f5c40e99f33",
+      "audit_trace_id": "atr_24b47cecfc0f",
       "audit_insert_ok": true
     },
     {
@@ -208,7 +208,7 @@
         "Payload: unknown top-level field(s): unexpected_meta"
       ],
       "reasons": [],
-      "audit_trace_id": "atr_4888907470a8",
+      "audit_trace_id": "atr_aaa29efb28a7",
       "audit_insert_ok": true
     },
     {
@@ -226,7 +226,7 @@
         "API: cannot validate without capability"
       ],
       "reasons": [],
-      "audit_trace_id": "atr_fb37b98712f3",
+      "audit_trace_id": "atr_44744464a017",
       "audit_insert_ok": true
     },
     {
@@ -243,7 +243,7 @@
         "Capability: 'task_center.validate_new_task' belongs to module 'task_center', not '12345'"
       ],
       "reasons": [],
-      "audit_trace_id": "atr_1c19904a3cfc",
+      "audit_trace_id": "atr_70bff7249126",
       "audit_insert_ok": true
     },
     {
@@ -259,7 +259,7 @@
         "Table: blank not allowed — use 'n/a' if no table"
       ],
       "reasons": [],
-      "audit_trace_id": "atr_58b5cfc2bd5b",
+      "audit_trace_id": "atr_0785efda4f56",
       "audit_insert_ok": true
     },
     {
@@ -275,7 +275,7 @@
         "Field: unknown on 'code_register' (db_field_registry): DROP TABLE code_register, --"
       ],
       "reasons": [],
-      "audit_trace_id": "atr_97770c9a3ed4",
+      "audit_trace_id": "atr_db794e81e5b7",
       "audit_insert_ok": true
     },
     {
@@ -291,7 +291,7 @@
         "Channel: unknown or inactive 'channel.__unknown__' (channel_registry)"
       ],
       "reasons": [],
-      "audit_trace_id": "atr_0d8e68afe701",
+      "audit_trace_id": "atr_1853689748ff",
       "audit_insert_ok": true
     },
     {
@@ -307,7 +307,7 @@
         "Channel: empty — required"
       ],
       "reasons": [],
-      "audit_trace_id": "atr_7617198255e9",
+      "audit_trace_id": "atr_ac9d4bb33ae7",
       "audit_insert_ok": true
     },
     {
@@ -324,7 +324,7 @@
         "Capability: 'task_center.validate_new_task' belongs to module 'task_center', not 'module.__unknown__'"
       ],
       "reasons": [],
-      "audit_trace_id": "atr_bf9aae337893",
+      "audit_trace_id": "atr_3ed8d972ea91",
       "audit_insert_ok": true
     },
     {
@@ -340,7 +340,7 @@
         "Module: empty — required"
       ],
       "reasons": [],
-      "audit_trace_id": "atr_213601aa2e3f",
+      "audit_trace_id": "atr_97182db39f4c",
       "audit_insert_ok": true
     },
     {
@@ -356,7 +356,7 @@
         "API: 'POST /api/__unknown__/edge' not registered under capability 'task_center.validate_new_task' (api_registry)"
       ],
       "reasons": [],
-      "audit_trace_id": "atr_779572b8bdb4",
+      "audit_trace_id": "atr_59f735569101",
       "audit_insert_ok": true
     },
     {
@@ -372,7 +372,7 @@
         "API: blank not allowed — use 'none' if no HTTP API"
       ],
       "reasons": [],
-      "audit_trace_id": "atr_abacaf4007b3",
+      "audit_trace_id": "atr_6c7ee97531e3",
       "audit_insert_ok": true
     },
     {
@@ -388,7 +388,7 @@
         "Function: 'task_center.__unknown_fn_edge__' not registered under capability 'task_center.validate_new_task' (function_registry)"
       ],
       "reasons": [],
-      "audit_trace_id": "atr_524959f6a568",
+      "audit_trace_id": "atr_a738d3ddb4a6",
       "audit_insert_ok": true
     },
     {
@@ -404,7 +404,7 @@
         "Function: empty — required"
       ],
       "reasons": [],
-      "audit_trace_id": "atr_208e57b836d9",
+      "audit_trace_id": "atr_bb1bb7ae4f4c",
       "audit_insert_ok": true
     },
     {
@@ -420,7 +420,7 @@
         "Table: unknown or inactive 'table.__unknown__' (db_table_registry)"
       ],
       "reasons": [],
-      "audit_trace_id": "atr_76f1947d4a1d",
+      "audit_trace_id": "atr_37c22c432898",
       "audit_insert_ok": true
     },
     {
@@ -436,7 +436,7 @@
         "Table: blank not allowed — use 'n/a' if no table"
       ],
       "reasons": [],
-      "audit_trace_id": "atr_256fbc6c260f",
+      "audit_trace_id": "atr_4b14064ed58e",
       "audit_insert_ok": true
     },
     {
@@ -452,7 +452,7 @@
         "Field: unknown on 'code_register' (db_field_registry): field.__unknown_col__"
       ],
       "reasons": [],
-      "audit_trace_id": "atr_3482d9d41183",
+      "audit_trace_id": "atr_c031dc740960",
       "audit_insert_ok": true
     },
     {
@@ -468,7 +468,7 @@
         "Field: blank not allowed when Table is set — use 'n/a' only if no fields"
       ],
       "reasons": [],
-      "audit_trace_id": "atr_9260bfe45227",
+      "audit_trace_id": "atr_97a0c5eb6028",
       "audit_insert_ok": true
     },
     {
@@ -484,7 +484,7 @@
         "Channel: unknown or inactive '99901' (channel_registry)"
       ],
       "reasons": [],
-      "audit_trace_id": "atr_0822ca9fb828",
+      "audit_trace_id": "atr_b6edcb1bddc3",
       "audit_insert_ok": true
     },
     {
@@ -501,105 +501,105 @@
         "Capability: 'task_center.validate_new_task' belongs to module 'task_center', not 'task_center\u0000'"
       ],
       "reasons": [],
-      "audit_trace_id": "atr_778235c394e4",
+      "audit_trace_id": "atr_7ad107109d5a",
       "audit_insert_ok": true
     }
   ],
   "audit_trace_ids": [
-    "atr_c003c38a7ef6",
-    "atr_c653afacfe7a",
-    "atr_6297cb6be490",
-    "atr_c21d9fa9a099",
-    "atr_43295ee8a5ed",
-    "atr_37dce69e3d35",
-    "atr_2e5d29de2528",
-    "atr_2f5c40e99f33",
-    "atr_4888907470a8",
-    "atr_fb37b98712f3",
-    "atr_1c19904a3cfc",
-    "atr_58b5cfc2bd5b",
-    "atr_97770c9a3ed4",
-    "atr_0d8e68afe701",
-    "atr_7617198255e9",
-    "atr_bf9aae337893",
-    "atr_213601aa2e3f",
-    "atr_779572b8bdb4",
-    "atr_abacaf4007b3",
-    "atr_524959f6a568",
-    "atr_208e57b836d9",
-    "atr_76f1947d4a1d",
-    "atr_256fbc6c260f",
-    "atr_3482d9d41183",
-    "atr_9260bfe45227",
-    "atr_0822ca9fb828",
-    "atr_778235c394e4"
+    "atr_5cf3131d3bef",
+    "atr_5b467bb37e25",
+    "atr_5990a00eb268",
+    "atr_9b033553ad19",
+    "atr_3f48c80b1e8a",
+    "atr_ac4f4d236f21",
+    "atr_1d7763b38acb",
+    "atr_24b47cecfc0f",
+    "atr_aaa29efb28a7",
+    "atr_44744464a017",
+    "atr_70bff7249126",
+    "atr_0785efda4f56",
+    "atr_db794e81e5b7",
+    "atr_1853689748ff",
+    "atr_ac9d4bb33ae7",
+    "atr_3ed8d972ea91",
+    "atr_97182db39f4c",
+    "atr_59f735569101",
+    "atr_6c7ee97531e3",
+    "atr_a738d3ddb4a6",
+    "atr_bb1bb7ae4f4c",
+    "atr_37c22c432898",
+    "atr_4b14064ed58e",
+    "atr_c031dc740960",
+    "atr_97a0c5eb6028",
+    "atr_b6edcb1bddc3",
+    "atr_7ad107109d5a"
   ],
   "audit_verify": {
     "ok": true,
     "audit_ids_written": [
-      "atr_c003c38a7ef6",
-      "atr_c653afacfe7a",
-      "atr_6297cb6be490",
-      "atr_c21d9fa9a099",
-      "atr_43295ee8a5ed",
-      "atr_37dce69e3d35",
-      "atr_2e5d29de2528",
-      "atr_2f5c40e99f33",
-      "atr_4888907470a8",
-      "atr_fb37b98712f3",
-      "atr_1c19904a3cfc",
-      "atr_58b5cfc2bd5b",
-      "atr_97770c9a3ed4",
-      "atr_0d8e68afe701",
-      "atr_7617198255e9",
-      "atr_bf9aae337893",
-      "atr_213601aa2e3f",
-      "atr_779572b8bdb4",
-      "atr_abacaf4007b3",
-      "atr_524959f6a568",
-      "atr_208e57b836d9",
-      "atr_76f1947d4a1d",
-      "atr_256fbc6c260f",
-      "atr_3482d9d41183",
-      "atr_9260bfe45227",
-      "atr_0822ca9fb828",
-      "atr_778235c394e4"
+      "atr_5cf3131d3bef",
+      "atr_5b467bb37e25",
+      "atr_5990a00eb268",
+      "atr_9b033553ad19",
+      "atr_3f48c80b1e8a",
+      "atr_ac4f4d236f21",
+      "atr_1d7763b38acb",
+      "atr_24b47cecfc0f",
+      "atr_aaa29efb28a7",
+      "atr_44744464a017",
+      "atr_70bff7249126",
+      "atr_0785efda4f56",
+      "atr_db794e81e5b7",
+      "atr_1853689748ff",
+      "atr_ac9d4bb33ae7",
+      "atr_3ed8d972ea91",
+      "atr_97182db39f4c",
+      "atr_59f735569101",
+      "atr_6c7ee97531e3",
+      "atr_a738d3ddb4a6",
+      "atr_bb1bb7ae4f4c",
+      "atr_37c22c432898",
+      "atr_4b14064ed58e",
+      "atr_c031dc740960",
+      "atr_97a0c5eb6028",
+      "atr_b6edcb1bddc3",
+      "atr_7ad107109d5a"
     ],
     "audit_count_by_test_case": {
-      "tc.1.0": 12,
-      "tc.1.1": 12,
-      "tc.1.2": 12,
-      "tc.1.3": 12,
-      "tc.1.4": 12,
-      "tc.1.5": 12,
-      "tc.1.6": 12,
-      "tc.1.7": 12,
-      "tc.1.8": 6,
-      "tc.1.9": 6,
-      "tc.1.10": 6,
-      "tc.1.11": 6,
-      "tc.1.12": 6,
-      "tc.3.0": 5,
-      "tc.3.1": 5,
-      "tc.3.2": 5,
-      "tc.3.3": 5,
-      "tc.3.4": 5,
-      "tc.3.5": 5,
-      "tc.3.6": 5,
-      "tc.3.7": 5,
-      "tc.3.8": 5,
-      "tc.3.9": 5,
-      "tc.3.10": 5,
-      "tc.3.11": 5,
-      "tc.3.12": 5,
-      "tc.3.13": 5
+      "tc.1.0": 106,
+      "tc.1.1": 102,
+      "tc.1.2": 102,
+      "tc.1.3": 102,
+      "tc.1.4": 102,
+      "tc.1.5": 102,
+      "tc.1.6": 102,
+      "tc.1.7": 102,
+      "tc.1.8": 96,
+      "tc.1.9": 96,
+      "tc.1.10": 96,
+      "tc.1.11": 96,
+      "tc.1.12": 96,
+      "tc.3.0": 95,
+      "tc.3.1": 95,
+      "tc.3.2": 95,
+      "tc.3.3": 95,
+      "tc.3.4": 95,
+      "tc.3.5": 95,
+      "tc.3.6": 95,
+      "tc.3.7": 95,
+      "tc.3.8": 95,
+      "tc.3.9": 95,
+      "tc.3.10": 95,
+      "tc.3.11": 95,
+      "tc.3.12": 95,
+      "tc.3.13": 95
     },
     "recent_count": 32,
     "missing_tag_audits": [],
     "missing_ids_in_recent_window": []
   },
-  "started_at": "2026-09-16T09:09:58.898827+00:00",
-  "finished_at": "2026-09-16T09:09:59.856891+00:00",
+  "started_at": "2026-09-28T04:26:45.158168+00:00",
+  "finished_at": "2026-09-28T04:27:20.000008+00:00",
   "source": "test_case_registry",
   "note": "cases filtered to REQUIRED_VALIDATE_TEST_TAGS (tc.1.*); validate_new_task read-only; audit_trace written by runner only",
   "report_path": "C:\\projects\\agent_system\\qc_evidence\\test_case_registry_run.json"

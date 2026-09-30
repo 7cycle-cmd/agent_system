@@ -5,18 +5,18 @@ THE USER'S REQUIREMENT (2026-09-22)
 -----------------------------------
     "100_ run services / -> 100_ run / -> services / it is meaningful, can help us"
     "factor defination is correct ot not!!! that is the key"
-    "how to proof is name_register!!!!!"
+    "how to proof is name_registry!!!!!"
 
 and the RENAME:
 
-    "name _register rename to `terminology_register` / this name is more
+    "name _register rename to `terminology_registry` / this name is more
      representative, do u agree?"
 
 AGREED, and the reason is substantive: the table holds a `definition` and a
 `cite_ref`, so its subject is MEANING, not spelling. The user's own key sentence
 is about the DEFINITION ("factor defination is correct ot not"), and a term + its
-definition IS a terminology. `name_register` described the identity column;
-`terminology_register` describes what the table IS.
+definition IS a terminology. `name_registry` described the identity column;
+`terminology_registry` describes what the table IS.
 
 So a term is NOT a string. It is a structure whose PARTS must each be registered:
 
@@ -28,7 +28,7 @@ So a term is NOT a string. It is a structure whose PARTS must each be registered
       -> run            (an action)
 
 "Is this term correct?" then becomes CHECKABLE: does every part resolve in
-`terminology_register`? A part that does not resolve was never registered, and an
+`terminology_registry`? A part that does not resolve was never registered, and an
 unregistered part is an INVENTED WORD.
 
 WHY THIS PROVES A FACTOR DEFINITION
@@ -251,13 +251,40 @@ def misspelling_in(name: Any) -> tuple[str, str] | None:
     return None
 
 
-def check_spelling(name: Any) -> dict[str, Any]:
+def check_spelling(name: Any,
+                   conn: "sqlite3.Connection | None" = None) -> dict[str, Any]:
     """The verdict on ONE name. `{ok, code, typo, correct, message}`.
 
     `ok=True` means "no DECLARED misspelling found" — it is NOT a claim that the
     name is a real English word. The check refuses what it can prove is wrong and
     stays silent about what it cannot judge.
+
+    THE TABLE IS THE SSOT (added 2026-09-28). THE HUMAN: "+ blacklist and
+    whitelist for terminontology, can help you have the work easy".
+
+    When a `conn` is given, the DECLARED table `terminology_blacklist` is read
+    instead of the Python dict, so adding a typo is an INSERT with a citation
+    rather than a code edit, and EVERY caller is covered with no new call site.
+    MEASURED reason this matters: the dict was a CLOSED set of 32 pairs read from
+    only TWO sites, and `update_term` (the rename path) had no check at all.
+
+    The dict remains the SEED the table is filled from (`terminology_blacklist.seed`
+    imports it), so a checkout with no table yet still refuses the 32.
     """
+    if conn is not None:
+        try:
+            import terminology_blacklist as _bl
+            r = _bl.check(conn, str(name or ""))
+            if not r["ok"]:
+                return {"ok": False, "code": r["code"], "name": r["name"],
+                        "typo": r.get("wrong"), "correct": r.get("correction"),
+                        "match": r.get("match"), "cite_ref": r.get("cite_ref"),
+                        "message": r.get("message")}
+            return {"ok": True, "code": None, "name": str(name or "")}
+        except Exception:
+            # A missing/unreadable table must NOT become a silent pass: fall
+            # through to the dict, which is the same rule's own seed.
+            pass
     hit = misspelling_in(name)
     if not hit:
         return {"ok": True, "code": None, "name": str(name or "")}
@@ -300,16 +327,16 @@ def check_naming(name: Any) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # THE CONFUSABLE-NAME GATE (added 2026-09-27), now DIRECTIONAL
 # ---------------------------------------------------------------------------
-# THE HUMAN, first: "how terminontology_register can smart to help me wrong
+# THE HUMAN, first: "how terminontology_registry can smart to help me wrong
 # describe by similar name to classify it is registry not register".
 # THE HUMAN, then the RULING: "be unified by registry not register".
 #
 # WHY THE REGISTER COULD NOT HELP, MEASURED: it held BOTH spellings of the same
 # concept --
 #
-#     channel_register     (a term)      <-- NOT a table
+#     channel_registry     (a term)      <-- NOT a table
 #     channel_registry     (a table)     <-- the REAL thing
-#     terminology_register (a table)
+#     terminology_registry (a table)
 #     terminology_registry (a term)      <-- NOT a table
 #
 # so there was nothing in the register to contradict the non-standard name.
@@ -382,11 +409,11 @@ def real_object_names(conn: sqlite3.Connection) -> set[str]:
 # already `module_registry` / `capability_registry`.
 #
 # MEASURED WHEN THE RULING WAS MADE (so the scale is a fact, not a guess):
-#   * `_register` objects: **29**   (incl. `version_register`, `code_register`,
-#     `terminology_register`, `entity_type_register`)
+#   * `_register` objects: **29**   (incl. `version_registry`, `code_registry`,
+#     `terminology_registry`, `entity_type_registry`)
 #   * `_registry` objects: **17**   (incl. `db_table_registry`, `channel_registry`)
 #   * `*_register` code references: **5984** in **569** files
-#   * `entity_type_register.register_table` binds **8 letters** to a `_register`
+#   * `entity_type_registry.register_table` binds **8 letters** to a `_register`
 #     name, so a rename changes entity id resolution -- NOT a cosmetic change.
 #
 # WHY THE GATE IS A FLAG, NOT A REFUSAL, FOR EXISTING NAMES
@@ -396,20 +423,20 @@ def real_object_names(conn: sqlite3.Connection) -> set[str]:
 #
 #   * a NEW term using `_register`  -> REFUSED (the standard is enforceable now)
 #   * an EXISTING `_register` name  -> REPAIRED by the migration
-#     (`_unify_registry_naming.py`), and REPORTED by `nonstandard_register_names`
+#     (`name_unify.py (SUPERSEDED: _unify_registry_naming.py)`), and REPORTED by `nonstandard_registry_names`
 #     until it is.
 #
 # THE DIRECTION IS THE POINT, AND I GOT IT BACKWARDS FIRST: my first version of
 # this gate treated `register` as CORRECT and refused `registry`
-# (`version_registry` -> "did you mean version_register"). That enforced the
+# (`version_registry` -> "did you mean version_registry"). That enforced the
 # OPPOSITE of the ruling. A gate that enforces the wrong direction is worse than
 # no gate: it makes the correct name look like the error.
 
 REGISTRY_STANDARD_SUFFIX = "_registry"
-NONSTANDARD_REGISTER_SUFFIX = "_register"
+NONSTANDARD_registry_SUFFIX = "_register"
 
 
-def looks_like_a_register(name: Any) -> bool:
+def looks_like_a_registry(name: Any) -> bool:
     """Does `name` CLAIM to be a register, by its own spelling?
 
     EITHER spelling, because a NON-standard name still claims the role -- that is
@@ -431,26 +458,26 @@ def is_registry_standard(name: Any) -> bool:
     `_registry`.
     """
     low = str(name or "").strip().lower()
-    if not looks_like_a_register(low):
+    if not looks_like_a_registry(low):
         return True
     return (low.endswith(REGISTRY_STANDARD_SUFFIX)
             or low.startswith("registry_"))
 
 
 def standard_registry_name(name: Any) -> str:
-    """The STANDARD spelling of `name`. `x_register` -> `x_registry`.
+    """The STANDARD spelling of `name`. `x_registry` -> `x_registry`.
 
     A MECHANICAL mapping, so it is one rule and not a judgement per name.
     """
     low = str(name or "").strip()
-    if low.endswith(NONSTANDARD_REGISTER_SUFFIX):
-        return low[:-len(NONSTANDARD_REGISTER_SUFFIX)] + REGISTRY_STANDARD_SUFFIX
+    if low.endswith(NONSTANDARD_registry_SUFFIX):
+        return low[:-len(NONSTANDARD_registry_SUFFIX)] + REGISTRY_STANDARD_SUFFIX
     if low.startswith("register_"):
         return "registry_" + low[len("register_"):]
     return low
 
 
-def check_register_name(conn: sqlite3.Connection, name: Any) -> dict[str, Any]:
+def check_registry_name(conn: sqlite3.Connection, name: Any) -> dict[str, Any]:
     """The verdict on ONE register-like name against the human's ruling.
 
     THE RULING (2026-09-27): "be unified by registry not register".
@@ -463,16 +490,16 @@ def check_register_name(conn: sqlite3.Connection, name: Any) -> dict[str, Any]:
 
     MEASURED DEFECT IN MY OWN FIRST VERSION, and it is why this docstring is
     explicit: I treated `register` as correct and refused `registry`
-    (`version_registry` -> "did you mean version_register"). That enforced the
+    (`version_registry` -> "did you mean version_registry"). That enforced the
     OPPOSITE of the ruling, and a gate that enforces the wrong direction makes the
     CORRECT name look like the error.
 
     A real object is NOT required to be suggested, but when a real object with the
-    standard spelling EXISTS (e.g. `channel_registry` for `channel_register`) it is
+    standard spelling EXISTS (e.g. `channel_registry` for `channel_registry`) it is
     named -- that is the evidence behind the suggestion, not an opinion.
     """
     key = str(name or "").strip()
-    if not looks_like_a_register(key):
+    if not looks_like_a_registry(key):
         return {"ok": True, "code": None, "name": key, "applies": False,
                 "why": "the name does not claim to be a register"}
     if is_registry_standard(key):
@@ -481,7 +508,7 @@ def check_register_name(conn: sqlite3.Connection, name: Any) -> dict[str, Any]:
                        % (key, REGISTRY_STANDARD_SUFFIX)}
     target = standard_registry_name(key)
     names = real_object_names(conn)
-    return {"ok": False, "code": "NONSTANDARD_REGISTER_NAME", "name": key,
+    return {"ok": False, "code": "NONSTANDARD_registry_NAME", "name": key,
             "applies": True, "near": target,
             "target_exists": target in names,
             "message": (
@@ -489,23 +516,23 @@ def check_register_name(conn: sqlite3.Connection, name: Any) -> dict[str, Any]:
                 "by registry not register\", so the standard spelling is %r%s. "
                 "A register-like name in the wrong spelling makes every later "
                 "reader pick the wrong object."
-                % (key, NONSTANDARD_REGISTER_SUFFIX, target,
+                % (key, NONSTANDARD_registry_SUFFIX, target,
                    " (and %r IS a real object)" % target
                    if target in names else ""))}
 
 
-def nonstandard_register_names(conn: sqlite3.Connection) -> list[dict[str, Any]]:
+def nonstandard_registry_names(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     """EXISTING objects and terms that use the non-standard `_register` spelling.
 
     REPORTED, never silently deleted: they are live, so a retro-refusal would be a
-    mass refusal. This is the list the migration (`_unify_registry_naming.py`)
+    mass refusal. This is the list the migration (`name_unify.py (SUPERSEDED: _unify_registry_naming.py)`)
     repairs, and it is the SCALE of the ruling made visible.
     """
     out: list[dict[str, Any]] = []
     for kind, sql in (("object",
                        "SELECT name FROM sqlite_master WHERE name LIKE '%_register'"),
                       ("term",
-                       "SELECT term_key AS name FROM terminology_register "
+                       "SELECT term_key AS name FROM terminology_registry "
                        "WHERE is_active=1 AND term_key LIKE '%_register'")):
         try:
             rows = list(conn.execute(sql))
@@ -513,13 +540,13 @@ def nonstandard_register_names(conn: sqlite3.Connection) -> list[dict[str, Any]]
             continue
         for r in rows:
             n = str(r["name"])
-            if n.endswith(NONSTANDARD_REGISTER_SUFFIX):
+            if n.endswith(NONSTANDARD_registry_SUFFIX):
                 out.append({"kind": kind, "name": n,
                             "standard": standard_registry_name(n)})
     return sorted(out, key=lambda d: (d["kind"], d["name"]))
 
 
-def _nearest_register_twin(name: str,
+def _nearest_registry_twin(name: str,
                            names: set[str]) -> tuple[str | None, int | None]:
     """The closest REAL, register-SHAPED name to `name`, within the threshold.
 
@@ -528,7 +555,7 @@ def _nearest_register_twin(name: str,
     """
     best, best_d = None, None
     for cand in names:
-        if not looks_like_a_register(cand):
+        if not looks_like_a_registry(cand):
             continue
         d = _edit_distance(name, cand)
         if d == 0 or d > CONFUSABLE_DISTANCE:
@@ -547,12 +574,12 @@ def confusable_name_report(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     names = real_object_names(conn)
     for r in conn.execute(
-            "SELECT term_id, term_key, term_kind FROM terminology_register "
+            "SELECT term_id, term_key, term_kind FROM terminology_registry "
             "WHERE is_active = 1 ORDER BY term_key"):
         key = str(r["term_key"])
-        if not looks_like_a_register(key):
+        if not looks_like_a_registry(key):
             continue
-        twin, dist = _nearest_register_twin(key, names)
+        twin, dist = _nearest_registry_twin(key, names)
         if twin is None:
             continue
         out.append({"term_id": int(r["term_id"]), "term_key": key,
@@ -600,6 +627,66 @@ BOILERPLATE_DEFINITION_PREFIXES = (
     "placeholder",
 )
 
+# ---------------------------------------------------------------------------
+# THE STATISTIC RULE — a definition must say what the thing IS, not how often
+# the WORD is used (added 2026-09-28, SCOPE L)
+# ---------------------------------------------------------------------------
+#
+# THE HUMAN, verbatim
+# -------------------
+#     "The word 'ui' appears as the prefix of a name in 14 of the 27 registered
+#      names that use it (prefix 14, suffix 9, middle 4, alone 0)."
+#
+# He attached a screenshot of the Build Steps tab. The `layer` column rendered
+# that sentence, because `build_step_view` reads
+# `COALESCE(t.definition, 'NA') AS layer` from `terminology_registry` for
+# `term_key='ui'`. So the cell that should say what a LAYER is said how often
+# the WORD `ui` appears.
+#
+# MEASURED (live DB, this session)
+# --------------------------------
+#   `terminology_registry` active terms ................ 2384
+#   definitions starting with `The word ` ............. 803
+#     shape A `appears as the ... of a name` .......... 223
+#     shape B `is a ... of a name: by the declared ...` 580
+#     other ............................................. 0
+#   all 803 cite `unified_language.py:220`
+#   of those, rendered by a UI view .................... 1 (`ui`)
+#
+# AND THE STATISTIC IS ALSO STALE. Recomputed live: 34 names use `ui` as a
+# token (prefix 21, suffix 10, middle 4, alone 1), while the definition claims
+# 27 (prefix 14, suffix 9, middle 4, alone 0). So the cell is wrong TWICE: it is
+# not a definition, and its number is out of date.
+#
+# WHY THE EXISTING RULES MISS IT
+# ------------------------------
+# The rules run `restates_the_name -> boilerplate -> too_short`. A word-usage
+# statistic hits NONE of the three: it does not restate the term_key, it is not
+# in `BOILERPLATE_DEFINITION_PREFIXES`, and it is far longer than
+# `MIN_DEFINITION_CHARS=20`. **This is a blind spot in the RULE, not bad data.**
+#
+# THE PATTERNS ARE DECLARED, NOT GUESSED. Both are anchored at the start and
+# name the exact shape, so a real definition that happens to mention a word's
+# position is not caught. The rule is NARROW (a NEW term only, the same
+# narrowness `check_spelling` and `check_instance_name` use) so it cannot
+# mass-refuse the 803 live rows.
+STATISTIC_DEFINITION_PATTERNS = (
+    # shape A: "The word 'ui' appears as the prefix of a name in 14 of the 27
+    # registered names that use it (prefix 14, suffix 9, middle 4, alone 0)."
+    re.compile(
+        r"^the\s+word\s+['\"]?[^'\"]+['\"]?\s+appears\s+as\s+the\s+"
+        r"(prefix|suffix|middle)\s+of\s+a\s+name\b",
+        re.IGNORECASE,
+    ),
+    # shape B: "The word 'layer' is a qualifier of a name: by the declared
+    # position-role convention (the word QUALIFIES between a family and a kind)."
+    re.compile(
+        r"^the\s+word\s+['\"]?[^'\"]+['\"]?\s+is\s+a\s+"
+        r"(qualifier|kind|family|inconsistent)\s+of\s+a\s+name\b",
+        re.IGNORECASE,
+    ),
+)
+
 
 def check_definition(definition: Any, term_key: Any = "") -> dict[str, Any]:
     """The verdict on ONE definition. `{ok, code, rule, message}`.
@@ -643,6 +730,27 @@ def check_definition(definition: Any, term_key: Any = "") -> dict[str, Any]:
                     "message": ("the definition starts with the declared "
                                 "boilerplate %r. A placeholder is not a "
                                 "definition." % p)}
+
+    # RULE 4 -- a WORD-USAGE STATISTIC is not a definition (added 2026-09-28).
+    #
+    # THE HUMAN pointed at a screenshot where the `layer` column rendered
+    # "The word 'ui' appears as the prefix of a name in 14 of the 27 registered
+    # names that use it". A definition must say what the thing IS; a count of
+    # how often the WORD appears says nothing about the thing, and it goes stale
+    # the moment a name is added (MEASURED: the claim says 27, the live count is
+    # 34). The patterns are DECLARED (see STATISTIC_DEFINITION_PATTERNS) and the
+    # rule is NARROW (a NEW term only), so it cannot mass-refuse the 803 live
+    # rows -- those are REPORTED by `audit_statistic_definitions` instead.
+    for pat in STATISTIC_DEFINITION_PATTERNS:
+        if pat.match(text):
+            return {"ok": False, "code": "DEFINITION_IS_A_STATISTIC",
+                    "rule": "word_usage_statistic",
+                    "message": ("the definition is a WORD-USAGE STATISTIC, not "
+                                "a definition: it counts how often the word %r "
+                                "appears in other names. A definition must say "
+                                "what the thing IS. MEASURED: 803 live terms "
+                                "carry this shape, and the count goes stale as "
+                                "names are added." % (key or "?"))}
 
     # RULE 1 -- the length floor, LAST, because it is the vaguest.
     if len(text) < MIN_DEFINITION_CHARS:
@@ -851,9 +959,9 @@ def check_instance_name(conn: sqlite3.Connection, term_key: Any) -> dict[str, An
 # **THE ANSWER TO "how to have correct 5W1H in easy": a name answers WHAT; a
 # FIELD answers WHICH.**
 #
-# WHY THE MIGRATION IS HERE AND NOT IN `target_register.py`
+# WHY THE MIGRATION IS HERE AND NOT IN `target_registry.py`
 # ---------------------------------------------------------
-# MEASURED: `target_register.py` holds `target_template`'s DDL, and it is NOT in
+# MEASURED: `target_registry.py` holds `target_template`'s DDL, and it is NOT in
 # this plan's allowlist. So the columns are added by a MIGRATION function here --
 # the same pattern `ensure_instance_schema` already uses. **A migration that
 # lives beside the gate is a migration the gate can prove.**
@@ -932,7 +1040,7 @@ def scratch_citation_report(conn: sqlite3.Connection) -> dict[str, Any]:
     """
     rows = [dict(r) for r in conn.execute(
         "SELECT term_key, term_kind, cite_ref, definition, is_active "
-        "FROM terminology_register")]
+        "FROM terminology_registry")]
     scratch = [r for r in rows if is_scratch_cite(r.get("cite_ref"))]
     auto = [r for r in rows if is_auto_definition(r.get("definition"))]
     files: dict[str, int] = {}
@@ -957,13 +1065,103 @@ def scratch_citation_report(conn: sqlite3.Connection) -> dict[str, Any]:
     }
 
 
+def is_statistic_definition(definition: Any) -> bool:
+    """True when a definition is a WORD-USAGE STATISTIC, not a definition.
+
+    The single predicate behind both the write-site refusal (`check_definition`
+    rule 4, `update_term`) and the report below, so the rule and the report can
+    never disagree about what a statistic is.
+    """
+    text = str(definition or "").strip()
+    if not text:
+        return False
+    return any(p.match(text) for p in STATISTIC_DEFINITION_PATTERNS)
+
+
+def audit_statistic_definitions(conn: sqlite3.Connection) -> dict[str, Any]:
+    """The statistic-definition population, REPORTED and never auto-rewritten.
+
+    THE HUMAN'S RULING (2026-09-28), verbatim:
+      > "每條都要一個來源, all can be tracable and measureable"
+
+    So every one of the 803 needs a SOURCE. This function does NOT invent one:
+    it reports the population, split by the two DECLARED shapes, with the terms
+    that a UI actually renders called out first, because those are the ones a
+    reader sees today.
+
+    MEASURED (live DB, 2026-09-28):
+      * 803 active terms carry a statistic definition
+      * shape A (`appears as the ... of a name`) .......... 223
+      * shape B (`is a ... of a name: by the declared ...`) 580
+      * all 803 cite `unified_language.py:220`
+      * rendered by a UI view ............................. 1 (`ui`)
+    """
+    rows = [dict(r) for r in conn.execute(
+        "SELECT term_id, term_key, definition, cite_ref, is_active "
+        "FROM terminology_registry WHERE is_active = 1")]
+    stat = [r for r in rows if is_statistic_definition(r.get("definition"))]
+    shape_a = [r for r in stat
+               if STATISTIC_DEFINITION_PATTERNS[0].match(str(r["definition"]).strip())]
+    shape_b = [r for r in stat
+               if STATISTIC_DEFINITION_PATTERNS[1].match(str(r["definition"]).strip())]
+
+    # WHICH ONES A UI RENDERS. Read from the live view, not assumed: the view is
+    # the thing that put the sentence on the human's screen.
+    rendered: list[str] = []
+    try:
+        rendered = [str(r[0]) for r in conn.execute(
+            "SELECT DISTINCT layer_key FROM build_step_registry "
+            "WHERE layer_key IS NOT NULL AND layer_key <> 'NA'")]
+    except sqlite3.Error:
+        rendered = []
+    rendered_stat = [r for r in stat if str(r["term_key"]) in set(rendered)]
+
+    cites: dict[str, int] = {}
+    for r in stat:
+        c = str(r["cite_ref"] or "NA")
+        cites[c] = cites.get(c, 0) + 1
+
+    return {
+        "ok": True,
+        "total_active_terms": len(rows),
+        "statistic_definition_count": len(stat),
+        "shape_a_appears_as": len(shape_a),
+        "shape_b_is_a_of_a_name": len(shape_b),
+        "shape_other": len(stat) - len(shape_a) - len(shape_b),
+        "rendered_by_a_ui_view": len(rendered_stat),
+        "rendered_terms": [str(r["term_key"]) for r in rendered_stat],
+        "cite_refs": sorted(cites.items(), key=lambda x: -x[1]),
+        "terms": [str(r["term_key"]) for r in stat],
+        "rewritten": 0,
+        "why_not_rewritten": (
+            "the human's ruling is that EVERY one needs a SOURCE. A rewrite "
+            "without a measured source is an INVENTED definition -- the exact "
+            "defect this rule exists to stop. The population is reported so each "
+            "term can be given its own source."),
+    }
+
+
 # ---------------------------------------------------------------------------
 # Registration
 # ---------------------------------------------------------------------------
 
 def ensure_schema(conn: sqlite3.Connection) -> dict[str, Any]:
-    from db_schema import TERMINOLOGY_REGISTER_DDL
-    conn.executescript(TERMINOLOGY_REGISTER_DDL)
+    # 🔴 THE IMPORT NAMED A CONSTANT THAT DOES NOT EXIST. MEASURED 2026-09-29:
+    # this line read `from db_schema import terminology_registry_DDL`, but the
+    # real constant is `TERMINOLOGY_registry_DDL` (`db_schema.py:2065`) — the
+    # module's own naming convention is `{UPPER}_registry_DDL`. So this function
+    # raised `ImportError` on EVERY call, and it has 20 call sites
+    # (`chat_level.py:342`, `chat_report.py:88`, `goal_inference.py:183`,
+    # `runtime_trace.py:128`, `structure_contract.py:529`, ...).
+    #
+    # It was INVISIBLE because `db_schema.py:4480` already executes
+    # `TERMINOLOGY_registry_DDL`, so the table exists on any database that ran
+    # `ensure_schema()` — the caller's own goal was met by someone else, and the
+    # ImportError was swallowed by the callers' `except Exception: pass`.
+    #
+    # MEASURED: this is the ONLY place the wrong spelling appears in the repo.
+    from db_schema import TERMINOLOGY_registry_DDL
+    conn.executescript(TERMINOLOGY_registry_DDL)
     conn.commit()
     return {"ok": True}
 
@@ -1000,7 +1198,7 @@ def add_term(
     `0`, which is the ONE default this function must not have: registering a term
     is the act of making a name RECOGNISEABLE, so a new term that resolves to
     nothing is a silent failure of that exact purpose. MEASURED before the change:
-    `terminology_register` held 71 active / 3 inactive, so 3 terms had been
+    `terminology_registry` held 71 active / 3 inactive, so 3 terms had been
     registered by the book and were invisible. `None` now means "the caller did
     not say", and that is `1`. Pass `is_active=0` explicitly to hide one, and the
     reason is then the caller's to state.
@@ -1016,7 +1214,7 @@ def add_term(
     # NO spelling check at all, so `enviornment_playwright` entered it and 357 real
     # identifiers used the typo. The rule is NARROW (a NEW term only) so it cannot
     # mass-refuse live data.
-    sp = check_spelling(key)
+    sp = check_spelling(key, conn)
     if not sp["ok"]:
         return {"ok": False, "code": sp["code"], "message": sp["message"],
                 "typo": sp["typo"], "correct": sp["correct"]}
@@ -1140,14 +1338,14 @@ def add_term(
                     "message": "taxonomy_level must be one of %s (or 'NA'), got %r"
                                % (list(TAXONOMY_LEVELS), lvl)}
     if parent_term_id is not None:
-        if not conn.execute("SELECT 1 FROM terminology_register WHERE term_id=?",
+        if not conn.execute("SELECT 1 FROM terminology_registry WHERE term_id=?",
                             (int(parent_term_id),)).fetchone():
             return {"ok": False, "code": "UNKNOWN_PARENT",
-                    "message": "no terminology_register row with term_id=%d"
+                    "message": "no terminology_registry row with term_id=%d"
                                % int(parent_term_id)}
 
     existing = conn.execute(
-        "SELECT term_id FROM terminology_register WHERE "
+        "SELECT term_id FROM terminology_registry WHERE "
         "IFNULL(parent_term_id, -1) = IFNULL(?, -1) AND term_key = ?",
         (parent_term_id, key)).fetchone()
     if existing:
@@ -1164,13 +1362,57 @@ def add_term(
     # be standard now"; the second is the migration's job, not this gate's.
     #
     # The check is NARROW (a NEW term only) so it cannot mass-refuse live data; the
-    # 29 existing `_register` objects are REPORTED by `nonstandard_register_names`
-    # and repaired by `_unify_registry_naming.py`.
-    rn = check_register_name(conn, key)
+    # 29 existing `_register` objects are REPORTED by `nonstandard_registry_names`
+    # and repaired by `name_unify.py (SUPERSEDED: _unify_registry_naming.py)`.
+    rn = check_registry_name(conn, key)
     if not rn["ok"]:
         return {"ok": False, "code": rn["code"], "message": rn["message"],
                 "standard": rn.get("near"),
                 "target_exists": rn.get("target_exists")}
+
+    # A NEW NAME MUST DECOMPOSE INTO REGISTERED WORDS (added 2026-09-27).
+    #
+    # THE HUMAN: "unified language is the first for all!" / "single word + single word
+    # = must under terminotlogy".
+    #
+    # THE LAW IS WIRED IN **AFTER** THE REGISTER REACHED 100% — MEASURED this session:
+    # 197 of 197 real names legal, term vocabulary 770/921 (83.6%). Before the
+    # vocabulary existed the same check would have refused almost every name, which is
+    # a worse defect than the one it fixes. The ORDER was the whole plan, and the
+    # number is why the switch is safe NOW and was not before.
+    #
+    # IT RUNS AFTER the existing-term check and the `_registry` gate, so an ALREADY
+    # PRESENT term is still answered `created=False` rather than refused, and the
+    # narrow scope (a NEW term only) cannot mass-refuse live data — the same
+    # narrowness `check_spelling`, `check_definition` and `check_registry_name` use.
+    #
+    # THE VALVE: `TERMINOLOGY_LANGUAGE_GATE` may be `report` to warn instead of
+    # refuse (and anything else, including unset, means REFUSE). A gate that cannot be
+    # traced away fails closed on an unexpected value, the same rule `plan_gate` uses.
+    import os
+    if os.environ.get("TERMINOLOGY_LANGUAGE_GATE", "enforce").strip().lower() != "report":
+        try:
+            import unified_language as _ul
+            lc = _ul.check_composite(conn, key)
+            if not lc["ok"]:
+                return {"ok": False, "code": "NON_DECOMPOSABLE_NAME",
+                        "head": lc["head"], "missing_words": lc["missing_words"],
+                        "duplicate_of": lc["duplicate_of"],
+                        "message": (
+                            "the NEW name %r does not decompose (HEAD %s, %s): %s. "
+                            "The ruling is \"unified language is the first for all\": "
+                            "every word of a name must be a registered term, layer or "
+                            "unit. Register the missing word(s) first — a name nobody "
+                            "can decompose is a name a reader has to guess."
+                            % (key, lc["head"], lc["code"],
+                               ("unregistered word(s): " + ", ".join(lc["missing_words"]))
+                               if lc["missing_words"]
+                               else ("also named " + ", ".join(lc["duplicate_of"] or []))))}
+        except ImportError:
+            # `unified_language` absent (an older checkout): fall back rather than
+            # refusing every name, and the fallback is silent ONLY because the law
+            # module is this repo's own file.
+            pass
 
     aliases = alias_list
     if aliases is None:
@@ -1181,7 +1423,7 @@ def add_term(
         aliases_json = json.dumps(list(aliases), ensure_ascii=False)
 
     cur = conn.execute(
-        "INSERT INTO terminology_register (term_key, term_kind, parent_term_id, "
+        "INSERT INTO terminology_registry (term_key, term_kind, parent_term_id, "
         "taxonomy_level, taxonomy_path, entity_ref_key, definition, "
         "definition_sha256, alias_list, version, cite_ref, is_active) "
         "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
@@ -1237,7 +1479,7 @@ def update_term(
     """
     row = conn.execute(
         "SELECT term_id, term_key, definition, alias_list, is_active "
-        "FROM terminology_register WHERE term_id = ?", (int(term_id),)
+        "FROM terminology_registry WHERE term_id = ?", (int(term_id),)
     ).fetchone()
     if row is None:
         return {"ok": False, "reason": "NOT_A_TERM", "term_id": int(term_id)}
@@ -1260,7 +1502,7 @@ def update_term(
                 return {"ok": False, "reason": "UNCITED_RENAME",
                         "term_id": int(term_id), "from": cur_key, "to": new_key}
             clash = conn.execute(
-                "SELECT term_id FROM terminology_register "
+                "SELECT term_id FROM terminology_registry "
                 "WHERE term_key = ? AND term_id != ? AND is_active = 1",
                 (new_key, int(term_id))).fetchone()
             if clash is not None:
@@ -1277,6 +1519,22 @@ def update_term(
         if not d:
             return {"ok": False, "reason": "EMPTY_DEFINITION",
                     "term_id": int(term_id)}
+        # A REWRITE MUST NOT RE-INTRODUCE A STATISTIC (added 2026-09-28, SCOPE L).
+        #
+        # `add_term` refuses a word-usage statistic, but `update_term` did NOT
+        # check the definition at all -- so the ONE path that rewrites the 803
+        # live rows could write statistic #804 with nothing to stop it. The
+        # check is the STATISTIC rule ONLY, not the whole `check_definition`:
+        # the full check would mass-refuse live rows being updated for an
+        # unrelated reason (a rename), which is the mass-refusal this module's
+        # narrowness rule exists to avoid.
+        for pat in STATISTIC_DEFINITION_PATTERNS:
+            if pat.match(d):
+                return {"ok": False, "reason": "DEFINITION_IS_A_STATISTIC",
+                        "term_id": int(term_id), "term_key": cur_key,
+                        "message": ("the new definition is a WORD-USAGE "
+                                    "STATISTIC, not a definition. A rewrite "
+                                    "must say what the thing IS.")}
         sets.append("definition = ?")
         params.append(d)
         sets.append("definition_sha256 = ?")
@@ -1310,13 +1568,13 @@ def update_term(
     sets.append("updated_at = datetime('now')")
     params.append(int(term_id))
     conn.execute(
-        "UPDATE terminology_register SET %s WHERE term_id = ?" % ", ".join(sets),
+        "UPDATE terminology_registry SET %s WHERE term_id = ?" % ", ".join(sets),
         tuple(params))
     if commit:
         conn.commit()
 
     after = conn.execute(
-        "SELECT term_key, alias_list FROM terminology_register WHERE term_id = ?",
+        "SELECT term_key, alias_list FROM terminology_registry WHERE term_id = ?",
         (int(term_id),)).fetchone()
     return {"ok": True, "term_id": int(term_id), "moved": moved,
             "term_key": str(after["term_key"]),
@@ -1346,7 +1604,7 @@ def _as_alias_list(raw: Any) -> list[str]:
 def get_term(conn: sqlite3.Connection, term_key: str,
              parent_term_id: int | None = None) -> dict[str, Any] | None:
     row = conn.execute(
-        "SELECT * FROM terminology_register WHERE "
+        "SELECT * FROM terminology_registry WHERE "
         "IFNULL(parent_term_id, -1) = IFNULL(?, -1) AND term_key = ?",
         (parent_term_id, str(term_key).strip())).fetchone()
     return dict(row) if row else None
@@ -1421,7 +1679,7 @@ def alias_index(conn: sqlite3.Connection) -> dict[str, str]:
     """
     out: dict[str, str] = {}
     rows = [dict(r) for r in conn.execute(
-        "SELECT term_key, alias_list FROM terminology_register")]
+        "SELECT term_key, alias_list FROM terminology_registry")]
     for r in rows:
         owner = str(r["term_key"])
         for a in _as_alias_list(r.get("alias_list")):
@@ -1457,7 +1715,7 @@ def alias_problems(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     """
     out: list[dict[str, Any]] = []
     rows = [dict(r) for r in conn.execute(
-        "SELECT term_key, alias_list FROM terminology_register")]
+        "SELECT term_key, alias_list FROM terminology_registry")]
     claims: dict[str, list[str]] = {}
     for r in rows:
         owner = str(r["term_key"])
@@ -1515,14 +1773,14 @@ def list_terms(conn: sqlite3.Connection, *,
                taxonomy_level: str | None = None) -> list[dict[str, Any]]:
     if taxonomy_level:
         rows = conn.execute(
-            "SELECT * FROM terminology_register WHERE taxonomy_level=? "
+            "SELECT * FROM terminology_registry WHERE taxonomy_level=? "
             "ORDER BY term_key", (str(taxonomy_level),))
     elif parent_term_id is None:
         rows = conn.execute(
-            "SELECT * FROM terminology_register ORDER BY term_key")
+            "SELECT * FROM terminology_registry ORDER BY term_key")
     else:
         rows = conn.execute(
-            "SELECT * FROM terminology_register WHERE parent_term_id=? "
+            "SELECT * FROM terminology_registry WHERE parent_term_id=? "
             "ORDER BY term_key", (int(parent_term_id),))
     return [dict(r) for r in rows]
 
@@ -1531,7 +1789,7 @@ def terms_for_entity(conn: sqlite3.Connection,
                      entity_ref_key: str) -> list[dict[str, Any]]:
     """Every term that names one entity — the reverse lookup the taxonomy gives."""
     rows = conn.execute(
-        "SELECT * FROM terminology_register WHERE entity_ref_key=? "
+        "SELECT * FROM terminology_registry WHERE entity_ref_key=? "
         "ORDER BY term_key", (str(entity_ref_key),))
     return [dict(r) for r in rows]
 
@@ -1544,7 +1802,7 @@ def parts_of(conn: sqlite3.Connection,
              term_id: int) -> list[dict[str, Any]]:
     """The DIRECT parts of a composite term, read from the register."""
     rows = conn.execute(
-        "SELECT * FROM terminology_register WHERE parent_term_id=? "
+        "SELECT * FROM terminology_registry WHERE parent_term_id=? "
         "ORDER BY term_key", (int(term_id),))
     return [dict(r) for r in rows]
 
@@ -1562,7 +1820,7 @@ def _children_of_term(conn: sqlite3.Connection, key: str) -> list[str]:
     """
     kids: list[str] = []
     for row_k in conn.execute(
-            "SELECT term_id FROM terminology_register WHERE term_key=?", (key,)):
+            "SELECT term_id FROM terminology_registry WHERE term_key=?", (key,)):
         for k in parts_of(conn, int(row_k[0])):
             kk = str(k["term_key"])
             if kk not in kids:
@@ -1597,7 +1855,7 @@ def decompose(conn: sqlite3.Connection, term: str) -> dict[str, Any]:
     row = get_term(conn, raw)
     if not row:
         row = conn.execute(
-            "SELECT * FROM terminology_register WHERE term_key=? "
+            "SELECT * FROM terminology_registry WHERE term_key=? "
             "ORDER BY term_id LIMIT 1", (raw,)).fetchone()
         row = dict(row) if row else None
     if not row:
@@ -1637,7 +1895,7 @@ def assert_decomposable(conn: sqlite3.Connection, term: str) -> tuple[bool, str]
                           "word, not a composition" % term)
         return True, ("%r decomposes into %s"
                       % (term, " + ".join(res["parts"])))
-    return False, ("term %r is NOT in terminology_register — a term that was "
+    return False, ("term %r is NOT in terminology_registry — a term that was "
                    "never registered is an invented word" % term)
 
 
@@ -1658,7 +1916,7 @@ def assert_named(conn: sqlite3.Connection, term: str) -> tuple[bool, str]:
     WHY THIS EXISTS (the user, 2026-09-23):
 
         "too easy to have name mis-understand problem, you need to register at
-         terminology_register!!!"
+         terminology_registry!!!"
         "so wrong name can be applyed to qc skill to help proofed your mistake
          before report done"
 
@@ -1689,7 +1947,7 @@ def assert_named(conn: sqlite3.Connection, term: str) -> tuple[bool, str]:
         # MEASURED: `route` x2 is the ONLY term_key with more than one row, so
         # this branch is narrow and cannot mass-refuse live data.
         multi = conn.execute(
-            "SELECT * FROM terminology_register WHERE term_key=? "
+            "SELECT * FROM terminology_registry WHERE term_key=? "
             "ORDER BY term_id", (raw,)).fetchall()
         if len(multi) > 1:
             senses = []
@@ -1699,7 +1957,7 @@ def assert_named(conn: sqlite3.Connection, term: str) -> tuple[bool, str]:
                 pkey = ""
                 if parent:
                     pr = conn.execute(
-                        "SELECT term_key FROM terminology_register "
+                        "SELECT term_key FROM terminology_registry "
                         "WHERE term_id=?", (parent,)).fetchone()
                     pkey = pr[0] if pr else "?"
                 senses.append("%s (under %s): %s"
@@ -1729,7 +1987,7 @@ def assert_named(conn: sqlite3.Connection, term: str) -> tuple[bool, str]:
                            "exists, and picking one would be a guess" % (raw, e))
         if canon != raw:
             crow = conn.execute(
-                "SELECT * FROM terminology_register WHERE term_key=? "
+                "SELECT * FROM terminology_registry WHERE term_key=? "
                 "ORDER BY term_id LIMIT 1", (canon,)).fetchone()
             crow = dict(crow) if crow else None
             if crow and str(crow.get("definition") or "").strip() \
@@ -1738,7 +1996,7 @@ def assert_named(conn: sqlite3.Connection, term: str) -> tuple[bool, str]:
                               % (raw, canon, crow.get("term_kind"),
                                  crow.get("definition")))
         return False, (
-            "name %r is NOT in terminology_register — a name that was never "
+            "name %r is NOT in terminology_registry — a name that was never "
             "registered is an invented word. Register it with a definition and "
             "a cite_ref before using it." % raw)
     if not str(row.get("definition") or "").strip():
@@ -1791,7 +2049,7 @@ def main(argv: list[str] | None = None) -> int:
             return 0 if res["ok"] else 1
         if args.list or args.level:
             rows = list_terms(conn, taxonomy_level=args.level)
-            print("terminology_register: %d rows" % len(rows))
+            print("terminology_registry: %d rows" % len(rows))
             for r in rows:
                 print("  %-24s %-10s lvl=%-10s parent=%s active=%s"
                       % (r["term_key"], r["term_kind"], r["taxonomy_level"],

@@ -53,7 +53,16 @@ Thumbs.db
 # Project specific
 hb_snapshots/
 fault_evidence/
-qc_evidence/
+# qc_evidence: ignore the CONTENTS, not the dir, so the plan/agent-log
+# deliverable can be re-included by pattern. A negation CANNOT re-include a
+# file inside an excluded PARENT dir (MEASURED 2026-09-30), so `qc_evidence/`
+# would make the `!` lines below no-ops. `qc_evidence/*` excludes the contents
+# while leaving the dir itself traversable.
+qc_evidence/*
+!qc_evidence/plan_*.md
+!qc_evidence/agent_log_*.md
+!qc_evidence/plan_*.json
+!qc_evidence/agent_log_*.json
 hko_proof/
 helper_watchdog.pid
 
@@ -67,3 +76,6 @@ mouse_spot_screenshot.png
 server.log
 helper_watchdog_events.json
 helper_watchdog_snaps/
+
+# Cline CLI isolated data dir (created by llm_service_store._serve_code)
+.cline_data/

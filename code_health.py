@@ -88,7 +88,7 @@ WHY_CATALOG: dict[str, dict[str, str]] = {
     },
     "W11": {
         "need": "Where is the code (file + line range + optional body)?",
-        "build": "code_register.file_path/line_start/line_end/code_span",
+        "build": "code_registry.file_path/line_start/line_end/code_span",
         "not": "Guess from import graph only",
     },
     "W12": {
@@ -101,7 +101,7 @@ WHY_CATALOG: dict[str, dict[str, str]] = {
 # Vocabulary aliases (plan term → repo)
 VOCAB = {
     "TACID": "dev_task.task_label (+ optional dev_task.id)",
-    "action_register": "task_action_name",
+    "action_registry": "task_action_name",
     "static_require": "task_ssot dim_key impl.module|impl.function|impl.required",
     "dynamic_hit": "function_invoke_trace.tacid",
     "score_table": "function_scoring",
@@ -172,7 +172,7 @@ def contracts_doc() -> dict[str, Any]:
                 "mode": "rollup_unique_module_function",
                 "note": "UPDATE counters/status only; hits stay in trace forever; optional file/line mirror",
             },
-            "code_register": {
+            "code_registry": {
                 "why": ["W1", "W11"],
                 "mode": "identity_plus_source_location",
                 "note": "file_path + line_start/line_end + optional code_span",
@@ -298,7 +298,7 @@ def verify_code_health_schema(conn: sqlite3.Connection) -> dict[str, Any]:
 
     def _exists(table: str) -> bool:
         row = conn.execute(
-            "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+            "SELECT 1 FROM sqlite_master WHERE type IN ('table','view') AND name=?",
             (table,),
         ).fetchone()
         return row is not None
@@ -837,7 +837,7 @@ def allocate_unique_function_name(
     raise RuntimeError(f"cannot allocate unique function_name under {mod}.{base}")
 
 
-def ensure_demo_register_task(
+def ensure_demo_registry_task(
     conn: sqlite3.Connection,
     *,
     tacid: str = DEMO_TACID,
@@ -915,7 +915,7 @@ def ensure_demo_register_task(
         "pipeline": PIPELINE_ID,
         "gate": GATE_POLICY,
         "why": ["W1", "W2", "W8"],
-        "goal_type": "code_health_demo_register",
+        "goal_type": "code_health_demo_registry",
         "goal_text": "DB-driven unique function register + invoker demo",
     }
     cur = conn.execute(
@@ -963,14 +963,14 @@ def register_impl_function(
     commit: bool = True,
     system_key: str | None = None,
     slice_key: str | None = None,
-    ensure_register_id: bool = True,
+    ensure_registry_id: bool = True,
 ) -> dict[str, Any]:
     """W1 — write task_ssot impl.* and reserve UNIQUE row in function_scoring.
 
     Uniqueness is enforced by function_scoring UNIQUE(module_name, function_name)
     via ensure_scoring_placeholder / allocate_unique_function_name — not timestamps.
 
-    When ensure_register_id=True (default), also enroll Pipeline D code_register so
+    When ensure_registry_id=True (default), also enroll Pipeline D code_registry so
     all coding stays tracable (register_id law).
     """
     from db_schema import upsert_task_ssot
@@ -982,7 +982,7 @@ def register_impl_function(
 
     register_meta: dict[str, Any] | None = None
     register_id: str | None = None
-    if ensure_register_id:
+    if ensure_registry_id:
         try:
             from managed_coding import register_managed_function
 
@@ -1005,7 +1005,7 @@ def register_impl_function(
             register_meta = {
                 "ok": False,
                 "error": f"{type(exc).__name__}: {exc}",
-                "note": "code_register optional if MCS not migrated yet",
+                "note": "code_registry optional if MCS not migrated yet",
             }
 
     dims = [
@@ -1094,13 +1094,13 @@ def register_impl_function(
         "function_name": fn,
         "required": bool(required),
         "register_id": register_id,
-        "code_register": register_meta,
+        "code_registry": register_meta,
         "dims": written,
         "scoring": scoring2,
     }
 
 
-def allocate_and_register_function(
+def allocate_and_registry_function(
     conn: sqlite3.Connection,
     *,
     task_id: int,
@@ -1380,22 +1380,22 @@ def get_tacid_branch_function_report(
 
 
 def _location_lookup(conn: sqlite3.Connection) -> dict[tuple[str, str], dict[str, Any]]:
-    """Map (module, function) → file/line/register from code_register + scoring."""
+    """Map (module, function) → file/line/register from code_registry + scoring."""
     out: dict[tuple[str, str], dict[str, Any]] = {}
     try:
         if conn.execute(
-            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='code_register'"
+            "SELECT 1 FROM sqlite_master WHERE type IN ('table','view') AND name='code_registry'"
         ).fetchone():
             has_loc = "file_path" in {
                 str(r[1])
-                for r in conn.execute("PRAGMA table_info(code_register)").fetchall()
+                for r in conn.execute("PRAGMA table_info(code_registry)").fetchall()
             }
             if has_loc:
                 for r in conn.execute(
                     """
                     SELECT module_name, function_name, register_id,
                            file_path, line_start, line_end, code_span, status
-                    FROM code_register
+                    FROM code_registry
                     """
                 ).fetchall():
                     key = (str(r[0]), str(r[1]))
@@ -1768,7 +1768,7 @@ def run_demo(
         if not schema.get("ok"):
             return {"ok": False, "gate": GATE_POLICY, "error": "schema_missing", "schema": schema}
 
-        task_info = ensure_demo_register_task(conn, tacid=tacid, commit=True)
+        task_info = ensure_demo_registry_task(conn, tacid=tacid, commit=True)
         task_id = int(task_info["task_id"])
 
         # DB-driven unique names via function_scoring UNIQUE (not wall-clock).
@@ -1977,7 +1977,7 @@ def run_demo(
             "probe_function": probe_fn,
             "parent_function": parent_fn,
             "zombie_function": zombie_fn,
-            "probe_register": {
+            "probe_registry": {
                 "task_id": probe_task_id,
                 "function_name": probe_fn,
                 "scoring": probe_reg.get("scoring"),
@@ -2170,11 +2170,11 @@ def main(argv: list[str] | None = None) -> int:
         ap.add_argument("--code", default=None, help="optional code span text")
         ns = ap.parse_args(args[1:])
         db = ns.db or os.path.join(os.path.dirname(os.path.abspath(__file__)), "agent.db")
-        from managed_coding import bind_register_source_location
+        from managed_coding import bind_registry_source_location
 
         conn = sqlite3.connect(db)
         try:
-            result = bind_register_source_location(
+            result = bind_registry_source_location(
                 conn,
                 register_id=ns.register_id,
                 module_name=ns.module,
@@ -2199,3 +2199,5 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+# object_door: kind-agnostic by definition (no DDL in this file)

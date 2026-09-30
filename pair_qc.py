@@ -34,6 +34,13 @@ ACTION_PAIR = "qc.pair_verify"
 FAIL_BUSINESS = "business_defect"
 FAIL_TRANSIENT = "transient_execution"
 
+# THE FAULT GROUP IS ONE NAME, declared ONCE. `fault_event.group_id` is the first
+# half of the dedup key, so repeating the literal at each site would be a second
+# copy of one fact and could drift from the closer. MEASURED: a first attempt at
+# this change used the literal in one place and the name in another, and the
+# NameError only surfaced in the selftest.
+GROUP_ID = "pair_qc"
+
 WHY = {
     "P1": "API success can hide UI render bugs — need dual independent paths",
     "P2": "Normalize before compare or phone format noise floods cases",
@@ -76,7 +83,7 @@ def contracts_doc() -> dict[str, Any]:
             "on fail → fault_event case + facts + optional qc.pair_verify task",
         ],
         "tables": ["pair_qc_run", "pair_value_ssot", "vision_asset", "fault_event"],
-        "reuses": ["code_register", "field_tdd_rule", "dev_task"],
+        "reuses": ["code_registry", "field_tdd_rule", "dev_task"],
         "not": [
             "schema hard gate",
             "auto-fix UI/backend",
@@ -874,7 +881,7 @@ def verify_pair_qc_schema(conn: sqlite3.Connection) -> dict[str, Any]:
     def _exists(t: str) -> bool:
         return (
             conn.execute(
-                "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (t,)
+                "SELECT 1 FROM sqlite_master WHERE type IN ('table','view') AND name=?", (t,)
             ).fetchone()
             is not None
         )
@@ -884,7 +891,7 @@ def verify_pair_qc_schema(conn: sqlite3.Connection) -> dict[str, Any]:
         "pair_value_ssot": _exists("pair_value_ssot"),
         "vision_asset": _exists("vision_asset"),
         "fault_event": _exists("fault_event"),
-        "code_register": _exists("code_register"),
+        "code_registry": _exists("code_registry"),
         "field_tdd_rule": _exists("field_tdd_rule"),
     }
     ok = tables["pair_qc_run"] and tables["pair_value_ssot"]
@@ -1125,23 +1132,93 @@ def open_pair_fail_case(
         module_id = int(mod[0])
 
     vision_id = ui_vision_id or mcp_vision_id
-    cur = conn.execute(
-        """
-        INSERT INTO fault_event
-            (worker_id, group_id, fault_type, status, detect_at,
-             channel_id, module_id, option_id, vision_id)
-        VALUES (NULL, 'pair_qc', ?, 'open', ?, ?, ?, ?, ?)
-        """,
-        (
-            FAULT_TYPE,
-            datetime.now(),
-            channel_id,
-            module_id,
-            option_id,
-            vision_id,
-        ),
-    )
-    case_id = int(cur.lastrowid)
+
+    # ---------------------------------------------------------------------
+    # DEDUP — ONE OPEN ROW PER ONGOING CONDITION.
+    #
+    # THE DEFECT THIS FIXES (MEASURED 2026-09-24): this function INSERTed a row
+    # every time, so ONE ongoing mismatch produced **12** `fault_event` rows, all
+    # `status='open'`, `resolved=0`, one `fault_type`, spanning 2h16m. Every reader
+    # that counts faults over-counted by the number of QC runs.
+    #
+    # THE KEY IS THE TABLE'S OWN STATE: `group_id='pair_qc'` + `status='open'`,
+    # READ THROUGH `runtime_trace.open_fault` so there is ONE implementation of
+    # "is this condition already open" and not a second rule here that could drift.
+    #
+    # WHY NOT `record_fault`: it writes only worker_id/group_id/fault_type/
+    # evidence_error/status. THIS function also writes channel_id/module_id/
+    # option_id/vision_id, and those are NOT dead columns (fail_handling.py reads
+    # vision_id, watchdog.py updates it, db_schema.py indexes the rest). Taking the
+    # dedup WITHOUT giving up the lane columns is the whole reason this is done here.
+    #
+    # A fault that was RESOLVED and RETURNS opens a NEW row: a recurrence is new
+    # information and is never merged into the old occurrence.
+    existing = None
+    try:
+        import runtime_trace as _rt
+        existing = _rt.open_fault(conn, GROUP_ID)
+    except Exception:
+        existing = None
+
+    if existing:
+        case_id = int(existing["event_id"])
+        conn.execute(
+            "UPDATE fault_event SET fault_type=?, option_id=? WHERE event_id=?",
+            (FAULT_TYPE, option_id, case_id),
+        )
+        # `detect_at` is NOT moved: the fault STARTED earlier and moving it would
+        # erase the duration. The LATEST sighting is recorded as a fact instead.
+        try:
+            import runtime_trace as _rt
+            seen = conn.execute(
+                "SELECT value_text FROM fault_event_fact WHERE event_id=? AND "
+                "keyword='sighting_count'", (case_id,)).fetchone()
+            n = int(seen[0]) + 1 if seen and str(seen[0]).isdigit() else 1
+            _rt._upsert_fact(conn, case_id, "latest_sighting_at",
+                             _rt._now_text(conn))
+            _rt._upsert_fact(conn, case_id, "sighting_count", n, "number")
+        except Exception:
+            pass
+        # The lane columns are topped up only when a caller supplies one, so a
+        # later run that HAS a vision_id can fill it without clearing it.
+        if vision_id is not None:
+            conn.execute("UPDATE fault_event SET vision_id=? WHERE event_id=?",
+                         (vision_id, case_id))
+        if channel_id is not None:
+            conn.execute("UPDATE fault_event SET channel_id=? WHERE event_id=?",
+                         (channel_id, case_id))
+        if module_id is not None:
+            conn.execute("UPDATE fault_event SET module_id=? WHERE event_id=?",
+                         (module_id, case_id))
+        deduped = True
+    else:
+        cur = conn.execute(
+            """
+            INSERT INTO fault_event
+                (worker_id, group_id, fault_type, status, detect_at,
+                 channel_id, module_id, option_id, vision_id)
+            VALUES (NULL, ?, ?, 'open', ?, ?, ?, ?, ?)
+            """,
+            (
+                GROUP_ID,
+                FAULT_TYPE,
+                datetime.now(),
+                channel_id,
+                module_id,
+                option_id,
+                vision_id,
+            ),
+        )
+        case_id = int(cur.lastrowid)
+        deduped = False
+        # THE FIRST SIGHTING IS A SIGHTING TOO. Without this the counter starts at
+        # 0 and the first dedup writes `1`, so a fault seen twice would report ONE
+        # sighting — MEASURED in this change's first version.
+        try:
+            import runtime_trace as _rt2
+            _rt2._upsert_fact(conn, case_id, "sighting_count", 1, "number")
+        except Exception:
+            pass
 
     fail_class = FAIL_BUSINESS
     if isinstance(diff, dict):
@@ -1183,14 +1260,27 @@ def open_pair_fail_case(
     for keyword, value_text, value_type, source in facts:
         if value_text is None or value_text == "":
             continue
-        conn.execute(
+        # UPSERT ON `(event_id, keyword)`. MEASURED: `fault_event_fact` indexes
+        # that pair with a NON-unique index, so a plain INSERT would accumulate a
+        # SECOND row per keyword on every deduped sighting — the dedup would then
+        # look like it worked (one fault_event row) while the facts grew anyway.
+        # A deduped sighting must REFRESH the evidence, not duplicate it.
+        updated = conn.execute(
             """
-            INSERT INTO fault_event_fact
-                (event_id, keyword, value_text, value_type, source)
-            VALUES (?, ?, ?, ?, ?)
+            UPDATE fault_event_fact SET value_text = ?, value_type = ?, source = ?
+            WHERE event_id = ? AND keyword = ?
             """,
-            (case_id, keyword, str(value_text), value_type, source),
-        )
+            (str(value_text), value_type, source, case_id, keyword),
+        ).rowcount
+        if not updated:
+            conn.execute(
+                """
+                INSERT INTO fault_event_fact
+                    (event_id, keyword, value_text, value_type, source)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (case_id, keyword, str(value_text), value_type, source),
+            )
 
     task_info = None
     if create_task:
@@ -1262,6 +1352,7 @@ def open_pair_fail_case(
         "task": task_info,
         "option_id": option_id,
         "gate": GATE_POLICY,
+        "deduped": deduped,
     }
 
 
@@ -1473,6 +1564,33 @@ def run_pair_qc(
             commit=False,
         )
 
+    # ---------------------------------------------------------------------
+    # THE CLOSER — the step the schema ALREADY DECLARED and nothing implemented.
+    #
+    # MEASURED (db_schema.py): "6) Re-run pair_qc until match_ok=1; resolve
+    # fault_event when done". Before this, NOTHING ever closed a pair_qc fault:
+    # 12 rows were all `status='open'` with `resolved=0`, so a reader could not
+    # tell a current mismatch from one fixed on 09-14.
+    #
+    # A PASS CLOSES the open row. A PASS WITH NOTHING OPEN IS NOT AN ERROR — it is
+    # the normal case for a field that never failed, so a `no open fault` refusal
+    # is CAUGHT and ignored, while any OTHER failure is surfaced rather than
+    # swallowed (a silent except here would hide a real defect).
+    resolve_info = None
+    if status == "pass":
+        try:
+            import runtime_trace as _rt
+            resolve_info = _rt.resolve_fault(
+                conn, GROUP_ID, cite_ref="pair_qc.py:1513", commit=False)
+        except Exception as e:
+            name = type(e).__name__
+            msg = str(e)
+            if "no OPEN fault" in msg:
+                resolve_info = {"ok": True, "resolved": False,
+                                "why": "nothing was open (the normal case)"}
+            else:
+                resolve_info = {"ok": False, "error": "%s: %s" % (name, msg)}
+
     if commit:
         conn.commit()
 
@@ -1487,6 +1605,8 @@ def run_pair_qc(
         "status": status,
         "match_ok": match_ok,
         "fail_class": fail_class,
+        "case": case_info,
+        "resolve": resolve_info,
         "field_name": field,
         "register_id": rid,
         "tdd_rule_id": tdd_id,
@@ -1939,3 +2059,5 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+# object_door: kind-agnostic by definition (no DDL in this file)

@@ -35,7 +35,9 @@ echo Keep this window open. Close it to stop the server.
 echo URL: %URL%
 echo.
 
-"%PY%" "%APP%"
+rem --open-browser: a human double-clicked this launcher, so they DO want the UI.
+rem The helper's default is now CLOSED (it used to pop a tab on every start).
+"%PY%" "%APP%" --open-browser
 set "EC=%ERRORLEVEL%"
 echo.
 echo Server stopped. Exit code: %EC%

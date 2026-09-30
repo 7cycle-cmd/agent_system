@@ -8,7 +8,7 @@ The entity ID format is `{TYPE}-{register_id}-{version}`, e.g. `T-4323-1`:
 
     T        the type letter          -> which register holds the entity
     4323     the register's own id    -> DB-driven PK (AUTOINCREMENT memory)
-    1        the version              -> a row in version_register
+    1        the version              -> a row in version_registry
 
 Two things that were MISSING (measured 2026-09-21) made that format unusable:
 
@@ -30,7 +30,7 @@ edge between the two.
 
 Letters are DATA, not code
 --------------------------
-`entity_type_register` is the SSOT for "which letter means which register".
+`entity_type_registry` is the SSOT for "which letter means which register".
 Nothing here hard-codes a letter->table map at call time; the map is read from
 the DB. Adding a kind is an INSERT, and removing one is a DELETE -- both are
 visible, reviewable rows rather than a code edit.
@@ -44,7 +44,7 @@ Honest limits recorded here, not hidden
   correct ID under "DB is SSOT"; `T-10-1` will not occur for those rows.
 - Several legacy registers carry a TEXT column named `version`
   (`db_table_registry.version` etc.). That is NOT the version chain. The chain
-  is `version_register`. The two are deliberately not merged, because merging
+  is `version_registry`. The two are deliberately not merged, because merging
   them would silently change what the legacy column means.
 """
 
@@ -63,7 +63,7 @@ BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_DB = BASE_DIR / "agent.db"
 
 ENTITY_TYPE_DDL = """
-CREATE TABLE IF NOT EXISTS entity_type_register (
+CREATE TABLE IF NOT EXISTS entity_type_registry (
     type_letter    TEXT    PRIMARY KEY,
     entity_kind    TEXT    NOT NULL UNIQUE,
     register_table TEXT    NOT NULL,
@@ -77,9 +77,9 @@ CREATE TABLE IF NOT EXISTS entity_type_register (
 );
 """
 
-VERSION_REGISTER_DDL = """
-CREATE TABLE IF NOT EXISTS version_register (
-    version_register_id INTEGER PRIMARY KEY AUTOINCREMENT,
+VERSION_registry_DDL = """
+CREATE TABLE IF NOT EXISTS version_registry (
+    version_registry_id INTEGER PRIMARY KEY AUTOINCREMENT,
     entity_type   TEXT    NOT NULL,
     entity_ref_id INTEGER NOT NULL,
     version       INTEGER NOT NULL CHECK (version >= 1),
@@ -89,13 +89,13 @@ CREATE TABLE IF NOT EXISTS version_register (
     created_by    TEXT,
     created_at    TEXT    NOT NULL DEFAULT (datetime('now')),
     UNIQUE (entity_type, entity_ref_id, version),
-    FOREIGN KEY (entity_type) REFERENCES entity_type_register (type_letter),
-    FOREIGN KEY (parent_version_id) REFERENCES version_register (version_register_id)
+    FOREIGN KEY (entity_type) REFERENCES entity_type_registry (type_letter),
+    FOREIGN KEY (parent_version_id) REFERENCES version_registry (version_registry_id)
 );
-CREATE INDEX IF NOT EXISTS idx_version_register_entity
-    ON version_register (entity_type, entity_ref_id);
-CREATE INDEX IF NOT EXISTS idx_version_register_active
-    ON version_register (is_active, entity_type);
+CREATE INDEX IF NOT EXISTS idx_version_registry_entity
+    ON version_registry (entity_type, entity_ref_id);
+CREATE INDEX IF NOT EXISTS idx_version_registry_active
+    ON version_registry (is_active, entity_type);
 """
 
 # ---- REMOVED 2026-09-25 (plan_REMOVE.DEAD.EVENT.JOB) ----------------------
@@ -104,8 +104,8 @@ CREATE INDEX IF NOT EXISTS idx_version_register_active
 # "is old design, proof can remove -> remove rubbish".
 #
 # MEASURED, and it is why they are rubbish rather than merely empty:
-#   * 0 rows each, and 0 `version_register` rows for letter E or J
-#   * `job_register.py` (238 lines, 7 functions) was called ONLY by
+#   * 0 rows each, and 0 `version_registry` rows for letter E or J
+#   * `job_registry.py` (238 lines, 7 functions) was called ONLY by
 #     `_proof_skill_tick.py` — NO product caller; `jobs_of` had NO caller at all
 #   * `event_registry` had ONE reader, `_proof_entity_id.py`
 #   * this file's own docstring said they "did not exist, so the declared
@@ -128,7 +128,7 @@ CREATE TABLE IF NOT EXISTS task_entity_link (
     role          TEXT,
     created_at    TEXT    NOT NULL DEFAULT (datetime('now')),
     UNIQUE (track_id, entity_type, entity_ref_id, version, role),
-    FOREIGN KEY (entity_type) REFERENCES entity_type_register (type_letter)
+    FOREIGN KEY (entity_type) REFERENCES entity_type_registry (type_letter)
 );
 CREATE INDEX IF NOT EXISTS idx_task_entity_link_task
     ON task_entity_link (track_id);
@@ -139,7 +139,7 @@ CREATE INDEX IF NOT EXISTS idx_task_entity_link_entity
 # THE ROW ID NEEDS NO REGISTER. THE HUMAN (2026-09-27), verbatim:
 #   "`db_row_registry`, that is wrong, don't need that"
 #   "example: Function = F / table_id = 10 = table ABC / row id = 11 =
-#    function_register / version = 1 / will be F-10-11-1"
+#    function_registry / version = 1 / will be F-10-11-1"
 #
 # The entity id is `{LETTER}-{table_id}-{row_id}-{version}`:
 #   * `table_id` is `db_table_registry.db_table_id` of the letter's register
@@ -149,10 +149,10 @@ CREATE INDEX IF NOT EXISTS idx_task_entity_link_entity
 # wrong design" the human rejected. `db_row_registry` was created 2026-09-21,
 # dropped 2026-09-27, briefly restored the same day, and is now removed for good.
 
-ALL_DDL = (ENTITY_TYPE_DDL, VERSION_REGISTER_DDL, TASK_ENTITY_LINK_DDL)
+ALL_DDL = (ENTITY_TYPE_DDL, VERSION_registry_DDL, TASK_ENTITY_LINK_DDL)
 
 # INITIAL seed only. After this runs the DB is the SSOT -- adding or retiring a
-# letter is an INSERT/DELETE on entity_type_register, never a code edit.
+# letter is an INSERT/DELETE on entity_type_registry, never a code edit.
 # `is_scope_level = 1` marks the letters that also name a level of the declared
 # range (channel > module > capability > api > function > table > field).
 ENTITY_TYPE_SEED: tuple[tuple[str, str, str, str, str, int], ...] = (
@@ -167,10 +167,10 @@ ENTITY_TYPE_SEED: tuple[tuple[str, str, str, str, str, int], ...] = (
     #
     # The human: "is old design, proof can remove -> remove rubbish".
     # MEASURED: `job_registry` and `event_registry` held 0 rows, 0
-    # `version_register` rows, and `job_register.py` had NO product caller. A
+    # `version_registry` rows, and `job_registry.py` had NO product caller. A
     # letter that can never be issued is not an alphabet entry; it is a promise
     # the system does not keep.
-    ("S", "skill",      "skill_register",      "skill_id",      "skill",      0),
+    ("S", "skill",      "skill_registry",      "skill_id",      "skill",      0),
 )
 
 # Letters added AFTER the first seed shipped.
@@ -185,14 +185,14 @@ ENTITY_TYPE_SEED: tuple[tuple[str, str, str, str, str, int], ...] = (
 #
 # Measured gap that motivated it: only 10 of the 19 `*_register` tables had a
 # letter, so a system-wide key could not reach 7 real registers.
-# (`entity_type_register` and `version_register` are META -- the alphabet and the
+# (`entity_type_registry` and `version_registry` are META -- the alphabet and the
 # version chain themselves -- and correctly have no letter.)
 ENTITY_TYPE_ADDITIONS: tuple[tuple[str, str, str, str, str, int], ...] = (
-    ("R", "code",      "code_register",      "id",       "code register", 0),
-    ("P", "prompt",    "prompt_register",    "prompt_id", "prompt",       0),
-    ("U", "study",     "study_register",     "study_id",  "study",        0),
-    ("W", "wording",   "wording_register",   "wording_id", "wording",      0),
-    ("K", "workflow",  "workflow_register",  "workflow_id", "workflow",    0),
+    ("R", "code",      "code_registry",      "id",       "code register", 0),
+    ("P", "prompt",    "prompt_registry",    "prompt_id", "prompt",       0),
+    ("U", "study",     "study_registry",     "study_id",  "study",        0),
+    ("W", "wording",   "wording_registry",   "wording_id", "wording",      0),
+    ("K", "workflow",  "workflow_registry",  "workflow_id", "workflow",    0),
     ("Q", "test_case", "test_case_registry", "test_case_id", "test case",   0),
     # Layer B (2026-09-21): the STRUCTURAL HTTP surface. `is_scope_level = 0`:
     # namespace is NOT in `hardcode_scope.SCOPE_ORDER`, so it is NOT a taxonomy
@@ -211,27 +211,27 @@ ENTITY_TYPE_ADDITIONS: tuple[tuple[str, str, str, str, str, int], ...] = (
     # OWN PK, so no letter and no register are needed for it.
     #
     # Two more registers that were reachable by NO system-wide id (measured
-    # 2026-09-22 by `_proof_register_approval`, which reported 4 gaps).
+    # 2026-09-22 by `_proof_registry_approval`, which reported 4 gaps).
     #
-    # `component_register` is the VERDICT-PARSER register: 8 rows, each naming a
+    # `component_registry` is the VERDICT-PARSER register: 8 rows, each naming a
     # parser and an output schema. It has its own INTEGER `skill_id` PK and a
     # `skill_ref` FK, so it is an independent entity, not an alias of
-    # `skill_register` — the two tables share the word "skill" but hold
+    # `skill_registry` — the two tables share the word "skill" but hold
     # different populations (the D3 defect recorded in
     # `/memories/repo/skill_identity_law.md`).
-    ("B", "component", "component_register", "skill_id", "component", 0),
-    # `skill_factor_register` is the 19-factor register. It already had an
+    ("B", "component", "component_registry", "skill_id", "component", 0),
+    # `skill_factor_registry` is the 19-factor register. It already had an
     # INTEGER `factor_id` PK, so it was addressable in principle but not by an
     # entity id.
-    ("G", "factor", "skill_factor_register", "factor_id", "factor", 0),
-    # NOTE: letter `Z` was added for `case_register` on 2026-09-21 and REMOVED
+    ("G", "factor", "skill_factor_registry", "factor_id", "factor", 0),
+    # NOTE: letter `Z` was added for `case_registry` on 2026-09-21 and REMOVED
     # the same day. The user's rule: a case is a MAPPING between a ticket and a
     # chat, and a mapping does not get an entity id of its own --
     # "case 唔應該有 Z-... -> remove". An entity id names a THING; minting one
     # for a mapping would make the mapping itself a thing, which is the mixing
     # the user rejected. `Y` is therefore still the unassigned letter.
     #
-    # `Y` IS NOW ASSIGNED (2026-09-26), to `dimension_binding_register`.
+    # `Y` IS NOW ASSIGNED (2026-09-26), to `dimension_binding_registry`.
     #
     # WHY IT QUALIFIES. The rule (`entity_letters_and_exemptions.md:39`) is: a
     # register gets a letter when it is an entity with an INTEGER PK. MEASURED:
@@ -249,7 +249,7 @@ ENTITY_TYPE_ADDITIONS: tuple[tuple[str, str, str, str, str, int], ...] = (
     #
     # `is_scope_level = 0`: a binding is not a taxonomy level. It is a CLAIM
     # about what a dimension MEANS for a subject kind.
-    ("Y", "dimension_binding", "dimension_binding_register", "binding_id",
+    ("Y", "dimension_binding", "dimension_binding_registry", "binding_id",
      "dimension binding", 0),
 )
 
@@ -294,11 +294,11 @@ def ensure_entity_registry_schema(conn: sqlite3.Connection) -> dict[str, Any]:
     for ddl in ALL_DDL:
         conn.executescript(ddl)
     seeded = 0
-    if conn.execute("SELECT COUNT(*) FROM entity_type_register").fetchone()[0] == 0:
+    if conn.execute("SELECT COUNT(*) FROM entity_type_registry").fetchone()[0] == 0:
         now = _utc_now()
         for letter, kind, table, pk, disp, scope in ENTITY_TYPE_SEED:
             conn.execute(
-                "INSERT OR IGNORE INTO entity_type_register "
+                "INSERT OR IGNORE INTO entity_type_registry "
                 "(type_letter, entity_kind, register_table, pk_column, "
                 " display_name, is_scope_level, created_at, updated_at) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
@@ -310,13 +310,13 @@ def ensure_entity_registry_schema(conn: sqlite3.Connection) -> dict[str, Any]:
         # whose table is missing would be a dangling entry, which the returned
         # `dangling` list would then have to report -- better not to create it.
         exists = conn.execute(
-            "SELECT 1 FROM entity_type_register WHERE type_letter = ?",
+            "SELECT 1 FROM entity_type_registry WHERE type_letter = ?",
             (letter,)).fetchone()
         if exists or not _table_exists(conn, table):
             continue
         now = _utc_now()
         conn.execute(
-            "INSERT INTO entity_type_register "
+            "INSERT INTO entity_type_registry "
             "(type_letter, entity_kind, register_table, pk_column, "
             " display_name, is_scope_level, created_at, updated_at) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
@@ -335,7 +335,7 @@ def ensure_entity_registry_schema(conn: sqlite3.Connection) -> dict[str, Any]:
     # is absent can never verify an ID, and that must be visible, not assumed.
     dangling = []
     for r in conn.execute("SELECT type_letter, register_table, pk_column "
-                          "FROM entity_type_register WHERE is_active = 1"):
+                          "FROM entity_type_registry WHERE is_active = 1"):
         if not _table_exists(conn, r["register_table"]):
             dangling.append({"letter": r["type_letter"],
                              "why": "register table %s absent" % r["register_table"]})
@@ -349,7 +349,7 @@ def ensure_entity_registry_schema(conn: sqlite3.Connection) -> dict[str, Any]:
     return {"ok": True, "seeded": seeded, "added": added, "dangling": dangling,
             "scope_levels_changed": reconciled["changed"],
             "letters": conn.execute(
-                "SELECT COUNT(*) FROM entity_type_register").fetchone()[0]}
+                "SELECT COUNT(*) FROM entity_type_registry").fetchone()[0]}
 
 
 # ---------------------------------------------------------------------------
@@ -386,11 +386,11 @@ def reconcile_scope_levels(conn: sqlite3.Connection) -> dict[str, Any]:
     rows = []
     for r in conn.execute(
             "SELECT type_letter, entity_kind, is_scope_level "
-            "FROM entity_type_register WHERE is_active = 1"):
+            "FROM entity_type_registry WHERE is_active = 1"):
         want = 1 if r["entity_kind"] in levels else 0
         if int(r["is_scope_level"]) != want:
             conn.execute(
-                "UPDATE entity_type_register SET is_scope_level = ?, "
+                "UPDATE entity_type_registry SET is_scope_level = ?, "
                 "updated_at = ? WHERE type_letter = ?",
                 (want, _utc_now(), r["type_letter"]))
             changed += 1
@@ -404,7 +404,7 @@ def reconcile_scope_levels(conn: sqlite3.Connection) -> dict[str, Any]:
 def scope_level_letters(conn: sqlite3.Connection) -> list[str]:
     """The letters that ARE taxonomy levels, per the DERIVED flag."""
     return [r["type_letter"] for r in conn.execute(
-        "SELECT type_letter FROM entity_type_register "
+        "SELECT type_letter FROM entity_type_registry "
         "WHERE is_active = 1 AND is_scope_level = 1 ORDER BY type_letter")]
 
 
@@ -418,14 +418,14 @@ def get_entity_type(conn: sqlite3.Connection, letter: str) -> dict | None:
     if not letter:
         return None
     row = conn.execute(
-        "SELECT * FROM entity_type_register "
+        "SELECT * FROM entity_type_registry "
         "WHERE type_letter = ? AND is_active = 1", (str(letter).strip().upper(),)
     ).fetchone()
     return dict(row) if row else None
 
 
 def list_entity_types(conn: sqlite3.Connection, *, scope_only: bool = False) -> list[dict]:
-    sql = ("SELECT * FROM entity_type_register WHERE is_active = 1"
+    sql = ("SELECT * FROM entity_type_registry WHERE is_active = 1"
            + (" AND is_scope_level = 1" if scope_only else "")
            + " ORDER BY is_scope_level DESC, type_letter")
     return [dict(r) for r in conn.execute(sql)]
@@ -440,7 +440,7 @@ def active_column(conn: sqlite3.Connection, table: str) -> tuple[str | None, str
     """Which column says an entity is live, and which VALUES count as active.
 
     Registers disagree, and assuming one shape breaks the others -- measured:
-    `code_register` has NO `is_active` column; it says `status = 'active'` or
+    `code_registry` has NO `is_active` column; it says `status = 'active'` or
     `status = 'rubbish'`. Querying `is_active` there raised
     `OperationalError: no such column`. So the column is DISCOVERED, and the
     caller is told what was used rather than being left to assume.
@@ -487,7 +487,7 @@ def entity_key_of(conn: sqlite3.Connection, letter: str, ref_id: int) -> str | N
         return None
     table, pk = et["register_table"], et["pk_column"]
     cols = {c[1] for c in conn.execute("PRAGMA table_info(%s)" % table)}
-    # MEASURED 2026-09-27: `code_register` has NEITHER `code_key` NOR `name` --
+    # MEASURED 2026-09-27: `code_registry` has NEITHER `code_key` NOR `name` --
     # its natural key is `file_path`. Without it `entity_key_of` returned None
     # for every letter R id, so `GET /api/entity/id-for` reported an id with no
     # key. A candidate list that omits the table's real key is a detector that
@@ -527,15 +527,15 @@ def ensure_version(
                 "why": "no active %s entity with %s = %d"
                        % (letter, et["pk_column"], int(ref_id))}
     row = conn.execute(
-        "SELECT version_register_id, version FROM version_register "
+        "SELECT version_registry_id, version FROM version_registry "
         "WHERE entity_type = ? AND entity_ref_id = ? AND version = ?",
         (et["type_letter"], int(ref_id), int(version))).fetchone()
     if row:
         return {"ok": True, "created": False,
-                "version_register_id": row["version_register_id"],
+                "version_registry_id": row["version_registry_id"],
                 "version": row["version"]}
     cur = conn.execute(
-        "INSERT INTO version_register (entity_type, entity_ref_id, version, "
+        "INSERT INTO version_registry (entity_type, entity_ref_id, version, "
         "parent_version_id, note, created_by) VALUES (?, ?, ?, ?, ?, ?)",
         (et["type_letter"], int(ref_id), int(version), parent_version_id,
          note, created_by))
@@ -572,14 +572,14 @@ def ensure_version(
             pass
     conn.commit()
     return {"ok": True, "created": True,
-            "version_register_id": cur.lastrowid, "version": int(version),
+            "version_registry_id": cur.lastrowid, "version": int(version),
             "retired": retired}
 
 
 def get_version(conn: sqlite3.Connection, letter: str, ref_id: int,
                 version: int) -> dict | None:
     row = conn.execute(
-        "SELECT * FROM version_register "
+        "SELECT * FROM version_registry "
         "WHERE entity_type = ? AND entity_ref_id = ? AND version = ? "
         "AND is_active = 1",
         (str(letter).strip().upper(), int(ref_id), int(version))).fetchone()
@@ -591,7 +591,7 @@ def get_version(conn: sqlite3.Connection, letter: str, ref_id: int,
 #
 # THE HUMAN (2026-09-27): "`db_row_registry`, that is wrong, don't need that" /
 # "example: Function = F / table_id = 10 = table ABC / row id = 11 =
-# function_register / version = 1 / will be F-10-11-1".
+# function_registry / version = 1 / will be F-10-11-1".
 #
 # `register_row` / `get_row` / `row_owner_table_id` / `resolve_row` were removed
 # with `db_row_registry`. A row that already has a primary key does not need a
@@ -603,7 +603,7 @@ def table_id_of_letter(conn: sqlite3.Connection, letter: str) -> int | None:
     """The `db_table_registry.db_table_id` of the table LETTER's register is.
 
     This is the SECOND part of `{LETTER}-{table_id}-{row_id}-{version}`.
-    MEASURED: `function_registry` -> 38, `code_register` -> 1.
+    MEASURED: `function_registry` -> 38, `code_registry` -> 1.
     """
     et = get_entity_type(conn, letter)
     if not et:
@@ -653,8 +653,8 @@ def register_table_id(conn: sqlite3.Connection, letter: str) -> int | None:
 
     WHY THIS IS NOT `ref_id`
     ------------------------
-    Measured 2026-09-21: `entity_type_register` says letter `S` resolves
-    `ref_id` against `skill_register.skill_id`, and letter `T` resolves it
+    Measured 2026-09-21: `entity_type_registry` says letter `S` resolves
+    `ref_id` against `skill_registry.skill_id`, and letter `T` resolves it
     against `db_table_registry.db_table_id`. So `ref_id` means a DIFFERENT
     thing per letter. A caller that needs the register TABLE must therefore
     look it up by the letter's register table, not by `ref_id`.
@@ -701,7 +701,7 @@ def mint_entity(
 
     `row_id` is the register table's OWN PK. THE HUMAN (2026-09-27):
     "`db_row_registry`, that is wrong, don't need that" / "example: Function = F
-    / table_id = 10 = table ABC / row id = 11 = function_register / version = 1 /
+    / table_id = 10 = table ABC / row id = 11 = function_registry / version = 1 /
     will be F-10-11-1".
 
     The id is `{LETTER}-{table_id}-{row_id}-{version}`:
@@ -757,7 +757,7 @@ def mint_entity(
 def entity_versions(conn: sqlite3.Connection, letter: str,
                     ref_id: int) -> list[dict]:
     return [dict(r) for r in conn.execute(
-        "SELECT * FROM version_register WHERE entity_type = ? "
+        "SELECT * FROM version_registry WHERE entity_type = ? "
         "AND entity_ref_id = ? ORDER BY version", (letter, int(ref_id)))]
 
 
@@ -765,7 +765,7 @@ def active_version(conn: sqlite3.Connection, letter: str,
                    ref_id: int) -> int | None:
     """Highest version. This is what `-{version}` means when unspecified."""
     row = conn.execute(
-        "SELECT MAX(version) AS v FROM version_register "
+        "SELECT MAX(version) AS v FROM version_registry "
         "WHERE entity_type = ? AND entity_ref_id = ? AND is_active = 1",
         (letter, int(ref_id))).fetchone()
     return row["v"] if row and row["v"] is not None else None
@@ -779,7 +779,7 @@ def backfill_version_one(conn: sqlite3.Connection, letter: str, *,
     -- there is no other justification for the number 1.
 
     MEASURED DEFECT FIXED 2026-09-23: this function used to HARDCODE
-    `WHERE is_active = 1`, which CRASHED on `code_register` (it has no
+    `WHERE is_active = 1`, which CRASHED on `code_registry` (it has no
     `is_active`; it says `status = 'active'`) with
     `OperationalError: no such column: is_active`. The module already had the
     fix -- `active_column()` right above -- and its own docstring names that
@@ -807,7 +807,7 @@ def backfill_version_one(conn: sqlite3.Connection, letter: str, *,
     created = skipped = 0
     for rid in ids:
         exists = conn.execute(
-            "SELECT 1 FROM version_register WHERE entity_type = ? "
+            "SELECT 1 FROM version_registry WHERE entity_type = ? "
             "AND entity_ref_id = ? AND version = 1",
             (et["type_letter"], rid)).fetchone()
         if exists:
@@ -817,7 +817,7 @@ def backfill_version_one(conn: sqlite3.Connection, letter: str, *,
             created += 1
             continue
         conn.execute(
-            "INSERT INTO version_register (entity_type, entity_ref_id, version, "
+            "INSERT INTO version_registry (entity_type, entity_ref_id, version, "
             "note, created_by) VALUES (?, ?, 1, ?, ?)",
             (et["type_letter"], rid,
              "index-0 version, cited by %s.%s = %d (active by %s)"

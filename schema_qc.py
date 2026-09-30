@@ -78,7 +78,7 @@ def connect(db_path: Path | str = DB_PATH) -> sqlite3.Connection:
 
 def observe_table(conn: sqlite3.Connection, table: str) -> dict[str, Any]:
     exists = conn.execute(
-        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=? LIMIT 1",
+        "SELECT 1 FROM sqlite_master WHERE type IN ('table','view') AND name=? LIMIT 1",
         (table,),
     ).fetchone()
     if not exists:
@@ -994,7 +994,7 @@ def main() -> int:
 def _table_exists(conn: sqlite3.Connection, name: str) -> bool:
     return (
         conn.execute(
-            "SELECT 1 FROM sqlite_master WHERE type='table' AND name=? LIMIT 1",
+            "SELECT 1 FROM sqlite_master WHERE type IN ('table','view') AND name=? LIMIT 1",
             (name,),
         ).fetchone()
         is not None
@@ -1003,3 +1003,5 @@ def _table_exists(conn: sqlite3.Connection, name: str) -> bool:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+# object_door: kind-agnostic by definition (no DDL in this file)

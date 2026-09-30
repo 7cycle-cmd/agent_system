@@ -21,12 +21,12 @@
       "reasons": [],
       "detail": {
         "update": {
-          "revision_id": "orev_93d08a317828",
+          "revision_id": "orev_7f23ecb28202",
           "name": "Revision Probe Capability (mutated)",
           "version": "2"
         },
-        "revisions_n": 5,
-        "latest_revision_id": "orev_93d08a317828",
+        "revisions_n": 50,
+        "latest_revision_id": "orev_7f23ecb28202",
         "pre_image_name": "Revision Probe Capability"
       }
     },
@@ -40,16 +40,16 @@
       "actual_errors": [],
       "reasons": [],
       "detail": {
-        "revisions_n": 6,
-        "rolled_back_to": "orev_93d08a317828",
-        "new_revision_id": "orev_0276ed578245",
+        "revisions_n": 50,
+        "rolled_back_to": "orev_7f23ecb28202",
+        "new_revision_id": "orev_eac37e6bff9e",
         "name": "Revision Probe Capability",
-        "latest_note": "rollback_to=orev_93d08a317828; tc.2.1 rollback"
+        "latest_note": "rollback_to=orev_7f23ecb28202; tc.2.1 rollback"
       }
     }
   ],
-  "started_at": "2026-09-16T08:32:39.666500+00:00",
-  "finished_at": "2026-09-16T08:32:39.692459+00:00",
+  "started_at": "2026-09-29T14:53:10.565953+00:00",
+  "finished_at": "2026-09-29T14:53:10.615333+00:00",
   "source": "test_case_registry",
   "note": "tc.2.* from test_case_registry; mutate/rollback helpers only; validate_new_task not invoked",
   "report_path": "C:\\projects\\agent_system\\qc_evidence\\ontology_revision_run.json"

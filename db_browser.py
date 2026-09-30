@@ -87,7 +87,7 @@ except Exception:
 
 try:
     from managed_coding import (
-        bind_register_source_location,
+        bind_registry_source_location,
         builder_dashboard,
         list_field_tdd_rules,
         list_fn_requests,
@@ -106,7 +106,7 @@ except Exception:
     verify_managed_schema = None
     run_function_builder = None
     builder_dashboard = None
-    bind_register_source_location = None
+    bind_registry_source_location = None
     list_fn_requests = None
     list_field_tdd_rules = None
 
@@ -679,7 +679,7 @@ def managed_page_html(
     system_key: str = "membership",
     schema_ok: bool | None = None,
     builder: dict | None = None,
-    selected_register_id: str | None = None,
+    selected_registry_id: str | None = None,
     selected_slice: str | None = None,
 ) -> str:
     """MCS5/8 — Function Builder + worker-clean Managed Coding (pipeline D)."""
@@ -876,7 +876,7 @@ def managed_page_html(
     )
 
     # ---- Function Builder IA (L1.2): Task header + 8 actions + field contracts ----
-    # Function ID is DB-driven: code_register.register_id (real table, not hardcode)
+    # Function ID is DB-driven: code_registry.register_id (real table, not hardcode)
     fields_loc = list(loc.get("fields") or [])
     regs_active = list(
         (report or {}).get("registers_active")
@@ -897,7 +897,7 @@ def managed_page_html(
         str(f.get("slice_key") or ""): f for f in fields_loc if f.get("slice_key")
     }
 
-    sel_rid = (selected_register_id or "").strip() or None
+    sel_rid = (selected_registry_id or "").strip() or None
     sel_slice = (selected_slice or "").strip() or None
     # resolve target register row from DB list
     target_reg = None
@@ -946,7 +946,7 @@ def managed_page_html(
         f"{f.get('data_table') or data_table} | {f.get('data_field') or f.get('slice_key')}"
         for f in fields_loc
     ]
-    # Function ID picker = code_register.register_id ONLY (never tacid / task_label)
+    # Function ID picker = code_registry.register_id ONLY (never tacid / task_label)
     # Task ID (1.1 / 1.2) is a separate field — do not prefix options with it.
     fn_opts = []
     for r in sorted(
@@ -968,7 +968,7 @@ def managed_page_html(
             f'<option value="{html.escape(rid_o)}"{sel}>{html.escape(label)}</option>'
         )
     if not fn_opts:
-        fn_opts.append('<option value="">(no active code_register rows)</option>')
+        fn_opts.append('<option value="">(no active code_registry rows)</option>')
 
     # TDD templates for contract cards
     try:
@@ -988,7 +988,7 @@ def managed_page_html(
                 rule = json.loads(rule)
             except Exception:
                 rule = tmpl
-        # prefer live register_id from code_register for this slice
+        # prefer live register_id from code_registry for this slice
         live_reg = reg_by_slice.get(slice_key) or {}
         note = html.escape(str((rule or {}).get("note") or tmpl.get("note") or ""))
         example = html.escape(str((rule or {}).get("example") or tmpl.get("example") or ""))
@@ -996,7 +996,13 @@ def managed_page_html(
         storage = html.escape(str((rule or {}).get("storage_type") or tmpl.get("storage_type") or vtype))
         deps = (rule or {}).get("depends_on") or tmpl.get("depends_on") or []
         deps_s = html.escape(", ".join(str(x) for x in deps) if deps else "none")
-        fail = html.escape(str((rule or {}).get("fail_class") or tmpl.get("fail_class") or "business_defect"))
+        # NO silent default. The old expression ended `or "business_defect"`, which
+        # meant a template with NO fail_class was DISPLAYED as business_defect —
+        # the DB said None and the screen said a class. Found on
+        # FIELD_TDD_TEMPLATES["member_id"], the only one of eight with no
+        # fail_class. An unclassified template must LOOK unclassified.
+        _fc = (rule or {}).get("fail_class") or tmpl.get("fail_class")
+        fail = html.escape(str(_fc) if _fc else "UNCLASSIFIED")
         op = html.escape(str((rule or {}).get("op") or tmpl.get("op") or ""))
         pat = html.escape(str((rule or {}).get("pattern") or ""))
         if not pat and isinstance((rule or {}).get("by_region"), dict):
@@ -1048,7 +1054,7 @@ def managed_page_html(
             f"fail_class=<code>{fail}</code> · depends=<code>{deps_s}</code></p>"
             f'<p class="meta">note: {note or "—"}</p>'
             f'<p class="meta">Function ID=<code>{rid or "—"}</code> '
-            f"(<code>code_register.register_id</code>) · task={tid_s} · "
+            f"(<code>code_registry.register_id</code>) · task={tid_s} · "
             f"op=<code>{op}</code></p>"
             f"{(f'<p class=\"meta\">pattern: <code>{pat}</code></p>' if pat else '')}"
             f"</div>"
@@ -1091,7 +1097,7 @@ def managed_page_html(
     parts.append('<div class="panel target-header">')
     parts.append("<h3>Target header</h3>")
     parts.append(
-        '<p class="meta"><b>Function ID</b> = <code>code_register.register_id</code> only · '
+        '<p class="meta"><b>Function ID</b> = <code>code_registry.register_id</code> only · '
         "<b>Task ID</b> = <code>dev_task.task_label</code> / tacid (e.g. <code>1.2</code>) — "
         "<b>not the same thing</b></p>"
     )
@@ -1101,7 +1107,7 @@ def managed_page_html(
         '<label><b>Function ID</b> '
         f'<select name="register_id" onchange="this.form.submit()">{"".join(fn_opts)}</select>'
         "</label> "
-        '<span class="meta">DB: <code>code_register.register_id</code> · value never starts with task label</span>'
+        '<span class="meta">DB: <code>code_registry.register_id</code> · value never starts with task label</span>'
         "</form>"
     )
     fn_task_link = (
@@ -1117,17 +1123,17 @@ def managed_page_html(
     )
     parts.append(
         f'<p><b>module</b>: <code>{html.escape(fn_module or str(mod.get("code") or system_key or "membership"))}</code> '
-        f'(<code>code_register.module_name</code>)</p>'
+        f'(<code>code_registry.module_name</code>)</p>'
     )
     parts.append(
         f'<p><b>Function ID</b>: <code>{html.escape(fn_rid or "—")}</code><br/>'
-        f'<span class="meta">= <code>code_register.register_id</code>'
+        f'<span class="meta">= <code>code_registry.register_id</code>'
         f'{(" · pk id=" + str(fn_db_id)) if fn_db_id is not None else ""}'
         f'{(" · status=" + html.escape(fn_status)) if fn_status else ""}</span></p>'
     )
     parts.append(
         f'<p><b>Function name</b>: <code>{html.escape(fn_name or "—")}</code> '
-        f'(<code>code_register.function_name</code>)</p>'
+        f'(<code>code_registry.function_name</code>)</p>'
     )
     parts.append(
         f'<p><b>slice_key</b>: <code>{html.escape(fn_slice or "—")}</code></p>'
@@ -1288,7 +1294,7 @@ def managed_page_html(
         f"<td><code>{html.escape(str(plan.get('equation') or ''))}</code></td><td>value+value=output</td></tr>"
     )
     parts.append(
-        f"<tr><td><b>register</b></td><td><code>code_register</code></td><td><code>register_id</code></td>"
+        f"<tr><td><b>register</b></td><td><code>code_registry</code></td><td><code>register_id</code></td>"
         f"<td>active registers</td><td>{html.escape(str(regm.get('note') or 'join via task'))}</td></tr>"
     )
     parts.append(
@@ -1326,7 +1332,7 @@ def managed_page_html(
     parts.append(f'<li>equation: <code>{html.escape(str(plan.get("equation") or ""))}</code></li>')
     parts.append(f'<li>active slices: <b>{int((report or {}).get("active_n") or 0)}</b></li>')
     parts.append(f'<li>incomplete: <b>{int((report or {}).get("incomplete_n") or 0)}</b></li>')
-    parts.append(f'<li>needs_register: <b>{int((report or {}).get("draft_n") or 0)}</b></li>')
+    parts.append(f'<li>needs_registry: <b>{int((report or {}).get("draft_n") or 0)}</b></li>')
     parts.append(f'<li>active registers: <b>{int((report or {}).get("register_n") or 0)}</b></li>')
     parts.append(f"<li>rubbish registers: <b>{regs_rubbish_n}</b></li>")
     parts.append(f'<li>handoff ready: <b>{int(handoff.get("ready_n") or 0)}</b></li></ul></div>')
@@ -1592,7 +1598,7 @@ schema={html.escape(schema_s)} · report_time={report_time}</p>
       <li>zombie = declared in task_ssot impl.* & usage=0</li>
       <li>dead_candidate = no static refs & usage=0</li>
       <li>usage / pass / fail · score = pass/usage*100</li>
-      <li>file:line + code_span on <code>code_register</code></li>
+      <li>file:line + code_span on <code>code_registry</code></li>
       <li>watchdog/health → <code>code.cleanup</code> tasks (mark only)</li>
       <li>no auto-delete source · never a QC gate</li>
     </ul>
@@ -3026,7 +3032,7 @@ class Handler(BaseHTTPRequestHandler):
                         system_key=system_key,
                         schema_ok=schema_ok,
                         builder=builder,
-                        selected_register_id=(qs.get("register_id") or [None])[0],
+                        selected_registry_id=(qs.get("register_id") or [None])[0],
                         selected_slice=(qs.get("slice") or [None])[0],
                     ),
                 )
@@ -3567,14 +3573,14 @@ class Handler(BaseHTTPRequestHandler):
 
             # CH7/W11: POST /api/health/bind — file + line (+ optional code span)
             if path in ("/api/health/bind", "/api/health/bind/"):
-                if bind_register_source_location is None:
+                if bind_registry_source_location is None:
                     self._json(
                         500,
-                        {"error": "bind_register_source_location unavailable", "gate": "never"},
+                        {"error": "bind_registry_source_location unavailable", "gate": "never"},
                     )
                     return
                 try:
-                    result = bind_register_source_location(
+                    result = bind_registry_source_location(
                         conn,
                         register_id=(
                             str(body.get("register_id") or body.get("register") or "").strip()

@@ -221,19 +221,19 @@ def main() -> int:
               not bad16, "diff=%s" % bad16)
 
         # ---- QC-17 -------------------------------------------------------
-        print("\nQC-17  terminology_register is UNCHANGED (no term added, none deleted)")
+        print("\nQC-17  terminology_registry is UNCHANGED (no term added, none deleted)")
         # MEASURED (2026-09-27): this repo has CONCURRENT sessions writing, so a
         # bare row count is NOT attributable to this plan. What IS checkable: the
         # two terms this page depends on still exist and are active, and NO term
         # was deleted (min(term_id) is still 1).
         for k in ("index", "list", "start"):
             r = conn.execute(
-                "SELECT term_id, is_active FROM terminology_register "
+                "SELECT term_id, is_active FROM terminology_registry "
                 "WHERE term_key=?", (k,)).fetchone()
             check("QC-17", "the term '%s' still exists and is active" % k,
                   bool(r) and int(r["is_active"]) == 1,
                   "row=%s" % (dict(r) if r else None))
-        lo = conn.execute("SELECT MIN(term_id) FROM terminology_register").fetchone()[0]
+        lo = conn.execute("SELECT MIN(term_id) FROM terminology_registry").fetchone()[0]
         check("QC-17", "min(term_id) is still 1 (no term deleted)",
               int(lo) == 1, "min=%d" % lo)
 

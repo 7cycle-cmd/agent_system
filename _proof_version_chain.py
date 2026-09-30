@@ -5,8 +5,8 @@ THE THREE DEFECTS THIS PROVES GONE (all measured 2026-09-27):
 
   1. `Y` had 120 APPROVED verdicts and ZERO version rows, so 120 verdicts reached
      for a slot that did not exist. Answered BY EVIDENCE, per the human's order.
-  2. 264 `version_register` rows carried the letter `X` (not in
-     `entity_type_register`) and cited `db_row_registry`, a table that was REMOVED.
+  2. 264 `version_registry` rows carried the letter `X` (not in
+     `entity_type_registry`) and cited `db_row_registry`, a table that was REMOVED.
   3. `register_approve.version` was NULL on 159/159 rows, so a verdict was not
      addressable by the key that names it.
 
@@ -79,19 +79,19 @@ def main() -> int:
         try:
             n_verdicts = conn.execute("SELECT COUNT(*) FROM register_approve "
                                       "WHERE entity_type='Y'").fetchone()[0]
-            n_versions = conn.execute("SELECT COUNT(*) FROM version_register "
+            n_versions = conn.execute("SELECT COUNT(*) FROM version_registry "
                                       "WHERE entity_type='Y' AND is_active=1").fetchone()[0]
             check("PRECONDITION: Y HAS verdicts (this is why it needed a chain)",
                   n_verdicts > 0, "%d verdicts" % n_verdicts)
             check("QC-01  Y has an ACTIVE version row for every binding",
                   n_versions >= conn.execute(
-                      "SELECT COUNT(*) FROM dimension_binding_register "
+                      "SELECT COUNT(*) FROM dimension_binding_registry "
                       "WHERE is_active=1").fetchone()[0],
                   "%d version rows" % n_versions)
             # A verdict whose entity has a version row is ADDRESSABLE.
             unresolved = conn.execute(
                 "SELECT COUNT(*) FROM register_approve a WHERE a.entity_type='Y' "
-                "AND NOT EXISTS (SELECT 1 FROM version_register v WHERE "
+                "AND NOT EXISTS (SELECT 1 FROM version_registry v WHERE "
                 "v.entity_type='Y' AND v.entity_ref_id=a.entity_ref_id "
                 "AND v.is_active=1)").fetchone()[0]
             check("QC-04  every Y verdict whose binding EXISTS is addressable",
@@ -100,10 +100,10 @@ def main() -> int:
             # The ids verify — the end-to-end check.
             tid = conn.execute(
                 "SELECT db_table_id FROM db_table_registry WHERE "
-                "table_key='dimension_binding_register' AND is_active=1").fetchone()
+                "table_key='dimension_binding_registry' AND is_active=1").fetchone()
             ok_ids = 0
             sample = list(conn.execute(
-                "SELECT binding_id FROM dimension_binding_register "
+                "SELECT binding_id FROM dimension_binding_registry "
                 "WHERE is_active=1 ORDER BY binding_id LIMIT 5"))
             for r in sample:
                 v = eid.verify("Y-%d-%d-1" % (int(tid["db_table_id"]),
@@ -131,16 +131,16 @@ def main() -> int:
         work = _copy(tmp)
         conn = _conn(work)
         try:
-            total = conn.execute("SELECT COUNT(*) FROM version_register "
+            total = conn.execute("SELECT COUNT(*) FROM version_registry "
                                  "WHERE entity_type='X'").fetchone()[0]
-            active = conn.execute("SELECT COUNT(*) FROM version_register "
+            active = conn.execute("SELECT COUNT(*) FROM version_registry "
                                   "WHERE entity_type='X' AND is_active=1").fetchone()[0]
             check("QC-06  the TOTAL is unchanged (nothing was DELETED)",
                   total == 264, "%d rows (expected 264)" % total)
             check("QC-06  every X row is now is_active=0",
                   active == 0, "%d active" % active)
             check("QC-06  X is still NOT a letter (the rows name nothing)",
-                  conn.execute("SELECT COUNT(*) FROM entity_type_register "
+                  conn.execute("SELECT COUNT(*) FROM entity_type_registry "
                                "WHERE type_letter='X'").fetchone()[0] == 0)
         finally:
             conn.close()
@@ -156,14 +156,14 @@ def main() -> int:
                                   "WHERE version IS NOT NULL").fetchone()[0]
             check("QC-04  most verdicts are now addressable by (type, ref_id, version)",
                   filled > 0, "%d filled / %d NULL" % (filled, nulls))
-            # Every filled version must MATCH a real version_register row: a number
+            # Every filled version must MATCH a real version_registry row: a number
             # copied from nowhere would be an invented key.
             bad = conn.execute(
                 "SELECT COUNT(*) FROM register_approve a WHERE a.version IS NOT NULL "
-                "AND NOT EXISTS (SELECT 1 FROM version_register v WHERE "
+                "AND NOT EXISTS (SELECT 1 FROM version_registry v WHERE "
                 "v.entity_type=a.entity_type AND v.entity_ref_id=a.entity_ref_id "
                 "AND v.version=a.version)").fetchone()[0]
-            check("QC-04  every filled version MATCHES a real version_register row",
+            check("QC-04  every filled version MATCHES a real version_registry row",
                   bad == 0, "%d mismatched" % bad)
             # The unresolved remainder must be a REFUSAL, not a zero.
             unres = list(conn.execute(
@@ -174,7 +174,7 @@ def main() -> int:
             if unres:
                 for u in unres:
                     exists = conn.execute(
-                        "SELECT COUNT(*) FROM dimension_binding_register "
+                        "SELECT COUNT(*) FROM dimension_binding_registry "
                         "WHERE binding_id=?", (int(u["entity_ref_id"]),)).fetchone()[0]
                     print("     reported: id=%s %s/%s (entity exists=%s)"
                           % (u["id"], u["entity_type"], u["entity_ref_id"], exists))
@@ -185,7 +185,7 @@ def main() -> int:
         section("E. the NAMING gate — the ruling is `registry`, NOT `register`")
         # SUPERSEDED BY THE RULING (2026-09-27): "be unified by registry not
         # register". This section's ORIGINAL version asserted the OPPOSITE
-        # direction (`_registry` refused in favour of `_register`). It was RED on
+        # direction (`_registry` refused in favour of `_registry`). It was RED on
         # CORRECT work after the ruling, which is exactly what it is for. The
         # authoritative proof of the direction is `_proof_registry_naming.py`; this
         # section is kept so THIS proof still covers the gate it calls.
@@ -194,22 +194,22 @@ def main() -> int:
         try:
             for good in ("version_registry", "channel_registry",
                          "terminology_registry", "db_table_registry"):
-                r = tr.check_register_name(conn, good)
+                r = tr.check_registry_name(conn, good)
                 check("QC-07  the STANDARD name %r is ACCEPTED" % good,
                       r["ok"] is True, str(r.get("why"))[:50])
-            for bad, want in (("version_register", "version_registry"),
-                              ("channel_register", "channel_registry"),
-                              ("terminology_register", "terminology_registry")):
-                r = tr.check_register_name(conn, bad)
+            for bad, want in (("version_registry", "version_registry"),
+                              ("channel_registry", "channel_registry"),
+                              ("terminology_registry", "terminology_registry")):
+                r = tr.check_registry_name(conn, bad)
                 check("QC-08  the NON-standard name %r is REFUSED" % bad,
                       r["ok"] is False
-                      and r.get("code") == "NONSTANDARD_REGISTER_NAME",
+                      and r.get("code") == "NONSTANDARD_registry_NAME",
                       str(r.get("code")))
                 check("QC-08  ...and it NAMES the standard form %r" % want,
                       r.get("near") == want, "standard=%s" % r.get("near"))
             # QC-09 no over-reach: a non-register name is untouched
             for other in ("worker_identity", "skill_5w1h", "chat_main"):
-                r = tr.check_register_name(conn, other)
+                r = tr.check_registry_name(conn, other)
                 check("QC-09  the NON-register name %r is untouched" % other,
                       r["ok"] is True and r.get("applies") is False,
                       "applies=%s" % r.get("applies"))
@@ -217,7 +217,7 @@ def main() -> int:
             check("QC-10  the threshold IS the measured defect size",
                   tr.CONFUSABLE_DISTANCE == 2, str(tr.CONFUSABLE_DISTANCE))
             # The SCALE of the ruling is REPORTED, not hidden.
-            ns = tr.nonstandard_register_names(conn)
+            ns = tr.nonstandard_registry_names(conn)
             check("QC-05  the non-standard-name report is non-trivial (the ruling "
                   "has a blast radius)",
                   len(ns) > 20, "%d entries" % len(ns))
@@ -233,12 +233,12 @@ def main() -> int:
         conn = _conn(work)
         try:
             res = tr.add_term(
-                conn, "version_register", term_kind="entity",
+                conn, "version_registry", term_kind="entity",
                 definition="a made-up name that uses the non-standard spelling here",
                 cite_ref="terminology_registry.py:1")
-            check("QC-11  a NEW `_register` name is REFUSED",
+            check("QC-11  a NEW `_registry` name is REFUSED",
                   res.get("ok") is False
-                  and res.get("code") == "NONSTANDARD_REGISTER_NAME",
+                  and res.get("code") == "NONSTANDARD_registry_NAME",
                   "%s" % res.get("code"))
             check("QC-11  ...and the refusal carries the STANDARD form",
                   str(res.get("standard")).endswith("_registry"),

@@ -3,18 +3,24 @@
     "id": "doubao",
     "name": "豆包 AI",
     "image": "/target-image/doubao",
-    "action": ""
+    "action": "OPEN"
   },
   {
     "id": "t_1789456489577",
     "name": "VS code",
     "image": "/target-image/t_1789456489577",
-    "action": ""
+    "action": "OPEN"
   },
   {
     "id": "t_1789464392591",
     "name": "VS code",
     "image": "",
-    "action": ""
+    "action": "Copy Reply"
+  },
+  {
+    "id": "t_1789572009804",
+    "name": "豆包 AI",
+    "action": "COPY REPLY - 1",
+    "image": ""
   }
 ]

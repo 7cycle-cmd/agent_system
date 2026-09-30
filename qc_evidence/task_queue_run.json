@@ -21,7 +21,7 @@
       "actual_errors": [],
       "reasons": [],
       "detail": {
-        "task_id": "tq_3c9e679c322b",
+        "task_id": "tq_d5cd80ce481b",
         "status": "pending",
         "priority": 10
       }
@@ -36,9 +36,9 @@
       "actual_errors": [],
       "reasons": [],
       "detail": {
-        "task_id": "tq_cd6528d87ba6",
+        "task_id": "tq_8fd58b7d00c7",
         "status": "running",
-        "started_at": "2026-09-16 09:09:58",
+        "started_at": "2026-09-20 19:36:36",
         "extras_drained": 0
       }
     },
@@ -52,16 +52,16 @@
       "actual_errors": [],
       "reasons": [],
       "detail": {
-        "task_id": "tq_d375187a3ab5",
+        "task_id": "tq_8674ba8dd2cd",
         "status": "done",
         "verdict": "PASS",
         "trace_id": "atr_tq_tdd_link",
-        "finished_at": "2026-09-16 09:09:58"
+        "finished_at": "2026-09-20 19:36:36"
       }
     }
   ],
-  "started_at": "2026-09-16T09:09:58.649351+00:00",
-  "finished_at": "2026-09-16T09:09:58.696561+00:00",
+  "started_at": "2026-09-20T19:36:36.763056+00:00",
+  "finished_at": "2026-09-20T19:36:36.818541+00:00",
   "source": "test_case_registry",
   "queue_table": "validate_task_queue",
   "note": "tc.4.* task_queue unit suite; table=validate_task_queue (not legacy task_queue); validate_new_task not invoked here",

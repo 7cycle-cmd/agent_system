@@ -21,7 +21,7 @@ THE PROBLEM, MEASURED BEFORE
    a DIFFERENT page.
 4. The bar renders FIVE controls and only THREE were registered rows, so the bar
    already failed `ui-standard` Rule 1, which now governs it.
-5. `data` and `refresh` were MISSING from `terminology_register`, and
+5. `data` and `refresh` were MISSING from `terminology_registry`, and
    `add_element` REFUSES an unknown `term_key` -- so the order was FORCED.
 
 HOW THIS PROOF WORKS
@@ -68,7 +68,7 @@ PAGE_KEY = "conversation.value"
 #
 # They were written when `app.js` was out of scope and asserted it was
 # BYTE-IDENTICAL. THE HUMAN then said, verbatim: "Conversation Center · one index ·
-# chat → chat_main → chat_center_message → identity_register / is the position for
+# chat → chat_main → chat_center_message → identity_registry / is the position for
 # tha button" -- which puts `app.js` IN scope, so the file MUST change. The two
 # items are RETIRED and REPLACED by the property that still needs checking, NOT
 # deleted and NOT renumbered.
@@ -108,7 +108,7 @@ OTHER_PAGES_BEFORE = {
 
 ALLOWLIST = (
     "llm_task_monitor_ui/src/conversation-center.js",
-    "_register_conversation_stepbar.py",
+    "_registry_conversation_stepbar.py",
     "_proof_conversation_stepbar.py",
     "qc_evidence/plan_CONVERSATION.HIGHLIGHT.BAR.BUTTONS.md",
     "qc_evidence/plan_CONVERSATION.HIGHLIGHT.BAR.BUTTONS.json",
@@ -189,7 +189,7 @@ def _address_branches(js: str) -> dict[str, str]:
 
 def main() -> int:
     import terminology_registry as tr
-    import ui_element_register as uer
+    import ui_element_registry as uer
     import ui_standard as us
 
     js = JS.read_text(encoding="utf-8", errors="replace")
@@ -202,7 +202,7 @@ def main() -> int:
         # ------------------------------------------------------------ A
         section("A. QC-01..QC-03 — the 2 missing words are REGISTERED")
         term_rows = {r["term_key"]: dict(r) for r in conn.execute(
-            "SELECT * FROM terminology_register WHERE term_key IN (?,?)",
+            "SELECT * FROM terminology_registry WHERE term_key IN (?,?)",
             NEW_TERMS)}
         report("terms found", "%d / %d" % (len(term_rows), len(NEW_TERMS)))
 
@@ -369,7 +369,7 @@ def main() -> int:
               "popstate listeners=%d" % app.count("addEventListener('popstate'"))
 
         strip_keys = {str(r[0]) for r in conn.execute(
-            "SELECT element_key FROM ui_element_register WHERE page_key=? "
+            "SELECT element_key FROM ui_element_registry WHERE page_key=? "
             "AND is_active=1", (PAGE_KEY,))}
         missing_strip = [k for k in STRIP_ELEMENTS if k not in strip_keys]
         check("QC-27g", "both strip shortcuts are REGISTERED ACTIVE rows",
@@ -391,18 +391,18 @@ def main() -> int:
               "missing=%s" % ([k for k in WERE_MISSING if k not in keys] or "none"))
 
         terms = {str(r[0]) for r in conn.execute(
-            "SELECT term_key FROM terminology_register WHERE is_active=1")}
+            "SELECT term_key FROM terminology_registry WHERE is_active=1")}
         units = {str(r[0]) for r in conn.execute(
-            "SELECT unit_key FROM unit_register WHERE is_active=1")}
+            "SELECT unit_key FROM unit_registry WHERE is_active=1")}
         bad_term = [r["element_key"] for r in active
                     if str(r["term_key"]) not in terms]
         bad_unit = [r["element_key"] for r in active
                     if str(r["unit_key"]) not in units]
         check("QC-15c", "every ACTIVE element's term_key RESOLVES in "
-              "terminology_register", not bad_term,
+              "terminology_registry", not bad_term,
               "unresolved=%s" % (bad_term or "none"))
         check("QC-16", "every ACTIVE element's unit_key RESOLVES in "
-              "unit_register", not bad_unit,
+              "unit_registry", not bad_unit,
               "unresolved=%s" % (bad_unit or "none"))
 
         # QC-17: EVERY rule that APPLIES must pass. A rule that does NOT apply is
@@ -457,34 +457,34 @@ def main() -> int:
         # ------------------------------------------------------------ H
         section("H. QC-23..QC-24 — only ADDS, and only inside the allowlist")
         counts = {
-            "terminology_register": conn.execute(
-                "SELECT COUNT(*) FROM terminology_register").fetchone()[0],
-            "ui_element_register": conn.execute(
-                "SELECT COUNT(*) FROM ui_element_register").fetchone()[0],
+            "terminology_registry": conn.execute(
+                "SELECT COUNT(*) FROM terminology_registry").fetchone()[0],
+            "ui_element_registry": conn.execute(
+                "SELECT COUNT(*) FROM ui_element_registry").fetchone()[0],
         }
         report("live row counts", counts)
         # QC-23: the register only GROWS. Every term row still has an id, so
         # nothing was deleted or renumbered; and the count is well above the
         # 1514 measured before this task.
         dead = conn.execute(
-            "SELECT COUNT(*) FROM terminology_register WHERE term_id IS NULL"
+            "SELECT COUNT(*) FROM terminology_registry WHERE term_id IS NULL"
         ).fetchone()[0]
-        check("QC-23a", "terminology_register only GREW (no row deleted)",
-              counts["terminology_register"] >= 1514 + len(NEW_TERMS)
+        check("QC-23a", "terminology_registry only GREW (no row deleted)",
+              counts["terminology_registry"] >= 1514 + len(NEW_TERMS)
               and dead == 0,
-              "rows=%d null_ids=%d" % (counts["terminology_register"], dead))
+              "rows=%d null_ids=%d" % (counts["terminology_registry"], dead))
         prev_ids = [r["term_id"] for r in conn.execute(
-            "SELECT term_id FROM terminology_register ORDER BY term_id")]
+            "SELECT term_id FROM terminology_registry ORDER BY term_id")]
         check("QC-23b", "no term_id was RENUMBERED (ids are strictly ascending "
               "and unique)", prev_ids == sorted(set(prev_ids)),
               "unique+ascending=%s" % (prev_ids == sorted(set(prev_ids))))
         check("QC-23c", "the previous plan's terms survive: `index`, `list`, "
               "`start` all still registered",
               {"index", "list", "start"} <= {str(r[0]) for r in conn.execute(
-                  "SELECT term_key FROM terminology_register")},
+                  "SELECT term_key FROM terminology_registry")},
               "present=%s" % sorted({"index", "list", "start"} & {
                   str(r[0]) for r in conn.execute(
-                      "SELECT term_key FROM terminology_register")}))
+                      "SELECT term_key FROM terminology_registry")}))
 
         # QC-24: the plan's OWN allowlist is read, and every artifact this task
         # names is IN it. A glob does not work in an allowlist, so the paths are

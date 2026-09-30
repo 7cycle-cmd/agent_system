@@ -6,7 +6,7 @@
 THE HUMAN (2026-09-27), verbatim
 --------------------------------
     "path : http://127.0.0.1:18765/llm-tasks/conversation/index -> http://127.0.0.1:18765/llm-tasks/conversation/list"
-    "+UI (image design): http://127.0.0.1:18765/llm-tasks/conversation/index having a new conversaction"
+    "+UI (image design): http://127.0.0.1:18765/llm-tasks/conversation/index having a new conversation"
 
 ASKED, and answered:
     "`/llm-tasks/conversation/index` 你想佢係邊一樣？"  ->  "開新對話"
@@ -79,7 +79,7 @@ OTHER_PAGES_BEFORE = {
 ALLOWLIST = {
     "llm_task_monitor_ui/src/app.js",
     "llm_task_monitor_ui/src/conversation-center.js",
-    "_register_conversation_index_term.py",
+    "_registry_conversation_index_term.py",
     "_proof_conversation_index_is_start.py",
     "_proof_conversation_list_and_start.py",
     "qc_evidence/plan_CONVERSATION.INDEX.IS.START.md",
@@ -112,7 +112,7 @@ def main() -> int:
         # ---- QC-01 -------------------------------------------------------
         print("\nQC-01  index is a registered term with a definition and a citation")
         r1 = conn.execute(
-            "SELECT term_id, definition, cite_ref FROM terminology_register "
+            "SELECT term_id, definition, cite_ref FROM terminology_registry "
             "WHERE term_key=? AND is_active=1", (TERM_KEY,)).fetchone()
         check("QC-01", "the term exists with a definition and a citation",
               bool(r1) and str(r1["definition"] or "").strip()
@@ -132,7 +132,7 @@ def main() -> int:
         want = hashlib.sha256(
             str(r1["definition"] or "").strip().encode("utf-8")).hexdigest()[:16]
         got = conn.execute(
-            "SELECT definition_sha256 FROM terminology_register WHERE term_key=?",
+            "SELECT definition_sha256 FROM terminology_registry WHERE term_key=?",
             (TERM_KEY,)).fetchone()[0]
         check("QC-02", "the definition_sha256 is the DERIVED hash",
               str(got) == want, "got=%s want=%s" % (got, want))
@@ -224,7 +224,7 @@ def main() -> int:
         print("\nQC-14  conversation.step.new's term_key resolves and is 'index'")
         rows = conn.execute(
             "SELECT element_key, element_kind, rendered_text, term_key, unit_key "
-            "FROM ui_element_register WHERE page_key=? AND is_active=1 "
+            "FROM ui_element_registry WHERE page_key=? AND is_active=1 "
             "ORDER BY element_key", (PAGE_KEY,)).fetchall()
         got14 = {(r["element_key"], r["element_kind"], r["rendered_text"],
                   r["term_key"]) for r in rows}
@@ -258,7 +258,7 @@ def main() -> int:
               "term_key=%s" % (new_row["term_key"] if new_row else None))
         # THE DUPLICATE IS DEACTIVATED, NOT LEFT ACTIVE.
         dup = conn.execute(
-            "SELECT is_active FROM ui_element_register WHERE element_key=?",
+            "SELECT is_active FROM ui_element_registry WHERE element_key=?",
             ("conversation.step.start.title",)).fetchone()
         check("QC-14", "the superseded start.title element is DEACTIVATED",
               bool(dup) and int(dup["is_active"]) == 0,
@@ -268,9 +268,9 @@ def main() -> int:
         print("\nQC-15  every seeded element's unit_key resolves")
         bad15 = [r["element_key"] for r in rows
                  if not conn.execute(
-                     "SELECT 1 FROM unit_register WHERE unit_key=? AND is_active=1",
+                     "SELECT 1 FROM unit_registry WHERE unit_key=? AND is_active=1",
                      (r["unit_key"],)).fetchone()]
-        check("QC-15", "every unit_key resolves in unit_register (active)", not bad15,
+        check("QC-15", "every unit_key resolves in unit_registry (active)", not bad15,
               "unresolved=%s" % bad15)
 
         # ---- QC-16 -------------------------------------------------------
@@ -358,15 +358,15 @@ def main() -> int:
               not bad19, "diff=%s" % bad19)
 
         # ---- QC-20 -------------------------------------------------------
-        print("\nQC-20  terminology_register only GROWS; start NOT deleted")
-        n = conn.execute("SELECT COUNT(*) FROM terminology_register").fetchone()[0]
-        lo = conn.execute("SELECT MIN(term_id) FROM terminology_register").fetchone()[0]
+        print("\nQC-20  terminology_registry only GROWS; start NOT deleted")
+        n = conn.execute("SELECT COUNT(*) FROM terminology_registry").fetchone()[0]
+        lo = conn.execute("SELECT MIN(term_id) FROM terminology_registry").fetchone()[0]
         check("QC-20", "row count is >= 1503 (the before count)", int(n) >= 1503,
               "rows=%d" % n)
         check("QC-20", "min(term_id) is still 1 (no renumber)", int(lo) == 1,
               "min=%d" % lo)
         st = conn.execute(
-            "SELECT term_id, is_active FROM terminology_register WHERE term_key='start'"
+            "SELECT term_id, is_active FROM terminology_registry WHERE term_key='start'"
         ).fetchone()
         check("QC-20", "the 'start' term is NOT deleted (still active)",
               bool(st) and int(st["is_active"]) == 1,

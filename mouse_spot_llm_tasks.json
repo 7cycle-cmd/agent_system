@@ -1,5 +1,186 @@
 [
   {
+    "id": "t_24abf1a25034",
+    "task": "prompt_analyze",
+    "model": "qwen2.5vl:7b",
+    "model_label": "Qwen2.5 7B VL",
+    "status": "done",
+    "started_at": "2026-09-20T05:40:12.051Z",
+    "ended_at": "2026-09-20T05:40:20.554Z",
+    "duration_ms": 8518,
+    "prompt_tokens": 267,
+    "completion_tokens": 63,
+    "total_tokens": 330,
+    "result": "FAIL",
+    "reason": "The prompt is very short and lacks any specific instructions or context. It simply says 'Say OK.'",
+    "writer": null,
+    "task_id": null,
+    "session_id": null,
+    "error": null
+  },
+  {
+    "id": "t_379593016cc0",
+    "task": "10.21 — Register Task Format Validator Skill",
+    "model": "qwen2.5:7b-instruct",
+    "model_label": "Qwen2.5 7B",
+    "status": "done",
+    "started_at": "2026-09-17T12:23:15.543Z",
+    "ended_at": "2026-09-17T12:23:15.543Z",
+    "duration_ms": 0,
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "total_tokens": 0,
+    "result": "SUCCESS",
+    "reason": "8-dim taxonomy validator registered (skill-1.0)",
+    "source": "skill_task_validate",
+    "type": "skill",
+    "action": "REGISTER",
+    "name": "skill_task_format_worker_taxonomy_validator",
+    "format": "Task | Channel | Module | Capability | API | Function | Table | Field",
+    "writer": "skill_task_validate",
+    "task_id": "10.21",
+    "session_id": "",
+    "chat_id": "",
+    "error": null,
+    "task_name": "10.21 - Register Task Format Validator Skill"
+  },
+  {
+    "id": "t_595b97dcdfbc",
+    "task": "create_field_phone",
+    "model": "Qwen3.8 27B",
+    "model_label": "Qwen3.8 27B",
+    "status": "done",
+    "started_at": "2026-09-17T06:54:14.755Z",
+    "ended_at": "2026-09-17T06:54:14.755Z",
+    "duration_ms": 0,
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "total_tokens": 0,
+    "result": "SUCCESS",
+    "reason": null,
+    "source": "VS Code",
+    "type": "Field",
+    "action": "CREATE",
+    "name": "phone",
+    "format": null,
+    "writer": "copilot-chat",
+    "task_id": "10.7A",
+    "session_id": "s1",
+    "chat_id": "c1",
+    "error": null
+  },
+  {
+    "id": "t_c4127aa93b61",
+    "task": "create_field_phone",
+    "model": "Qwen3.8 27B",
+    "model_label": "Qwen3.8 27B",
+    "status": "done",
+    "started_at": "2026-09-17T06:03:30.727Z",
+    "ended_at": "2026-09-17T06:03:30.727Z",
+    "duration_ms": 0,
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "total_tokens": 0,
+    "result": "SUCCESS",
+    "reason": null,
+    "source": "VS Code",
+    "type": "Field",
+    "action": "CREATE",
+    "name": "phone",
+    "format": "INT",
+    "writer": "copilot-chat",
+    "task_id": "10.3A",
+    "session_id": "xxxdsacgbsdcvsd",
+    "chat_id": "chat_abc123",
+    "error": null
+  },
+  {
+    "id": "t_170cfe2063b5",
+    "task": "build_task_source_log_and_all_sources_panel",
+    "model": "Qwen3.8 27B",
+    "model_label": "Qwen3.8 27B",
+    "status": "done",
+    "started_at": "2026-09-17T05:34:53.601Z",
+    "ended_at": "2026-09-17T05:34:53.601Z",
+    "duration_ms": 0,
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "total_tokens": 0,
+    "result": "SUCCESS",
+    "reason": "task_source_log table + /api/task-sources + All Sources panel on report page",
+    "writer": "copilot-chat",
+    "task_id": "10.2",
+    "session_id": "fb617d83-16b0-4254-9ef1-c43e8029b805",
+    "chat_id": "fb617d83-16b0-4254-9ef1-c43e8029b805",
+    "error": null
+  },
+  {
+    "id": "t_2c15e251ef28",
+    "task": "mouse_spot_verify",
+    "model": "qwen2.5vl:7b",
+    "model_label": "Qwen2.5 7B VL",
+    "status": "done",
+    "started_at": "2026-09-17T00:32:16.163Z",
+    "ended_at": "2026-09-17T00:32:24.355Z",
+    "duration_ms": 8187,
+    "prompt_tokens": 2894,
+    "completion_tokens": 30,
+    "total_tokens": 2924,
+    "result": "FAIL",
+    "reason": "The red crosshair is on the \"Keyboard Shortcuts\" tab, not the \"豆包 AI\" icon.",
+    "confidence": 0.9,
+    "target_id": "t_1789572009804",
+    "target_name": "豆包 AI",
+    "skill_key": "mouse_spot_verify",
+    "skill_version": "v1_strict",
+    "writer": null,
+    "session_id": null,
+    "context_task_id": null,
+    "x": 966,
+    "y": 772,
+    "error": null,
+    "parser": "result_yes_no",
+    "task_id": "10.22"
+  },
+  {
+    "id": "t_bae0519f5466",
+    "task": "prompt_improve",
+    "model": "qwen2.5:7b-instruct",
+    "model_label": "Qwen2.5 7B",
+    "status": "done",
+    "started_at": "2026-09-15T16:47:21.775Z",
+    "ended_at": "2026-09-15T16:47:22.425Z",
+    "duration_ms": 676,
+    "prompt_tokens": 190,
+    "completion_tokens": 42,
+    "total_tokens": 232,
+    "result": "SUCCESS",
+    "reason": "improved",
+    "writer": "7cycle-cmd",
+    "task_id": "10.1",
+    "session_id": "",
+    "error": null
+  },
+  {
+    "id": "t_4e323c80383b",
+    "task": "prompt_improve",
+    "model": "qwen2.5:7b-instruct",
+    "model_label": "Qwen2.5 7B",
+    "status": "done",
+    "started_at": "2026-09-15T16:46:37.782Z",
+    "ended_at": "2026-09-15T16:46:42.381Z",
+    "duration_ms": 4802,
+    "prompt_tokens": 190,
+    "completion_tokens": 42,
+    "total_tokens": 232,
+    "result": "SUCCESS",
+    "reason": "improved",
+    "writer": "7cycle-cmd",
+    "task_id": "10.1",
+    "session_id": "",
+    "error": null
+  },
+  {
     "id": "t_1a8a26aa1a6b",
     "task": "prompt_improve",
     "model": "qwen2.5:7b-instruct",
@@ -14,7 +195,7 @@
     "result": "SUCCESS",
     "reason": "improved",
     "writer": "alice",
-    "task_id": "84",
+    "task_id": "10.23",
     "session_id": "sess_demo_1",
     "error": null
   },
@@ -33,7 +214,7 @@
     "result": "SUCCESS",
     "reason": "The identity fields are present and consistent. The prompt is clear about the actions required, but it lacks specific details on what 'X' entails.",
     "writer": "alice",
-    "task_id": "84",
+    "task_id": "10.23",
     "session_id": "sess_demo_1",
     "error": null
   },
@@ -52,7 +233,7 @@
     "result": "FAIL",
     "reason": "The prompt does not contain any identity fields (writer, task_id, session_id) and instructs to exclude them.",
     "writer": "alice",
-    "task_id": "84",
+    "task_id": "10.23",
     "session_id": "sess_demo_1",
     "error": null
   },
@@ -71,7 +252,7 @@
     "result": "SUCCESS",
     "reason": "improved",
     "writer": "alice",
-    "task_id": "84",
+    "task_id": "10.23",
     "session_id": "sess_demo_1",
     "error": null
   },
@@ -90,7 +271,7 @@
     "result": null,
     "reason": null,
     "writer": "alice",
-    "task_id": "84",
+    "task_id": "10.23",
     "session_id": "sess_demo_1",
     "error": null
   },
@@ -113,7 +294,8 @@
     "target_name": "VS code",
     "x": 1228,
     "y": 1062,
-    "error": null
+    "error": null,
+    "task_id": "10.22"
   },
   {
     "id": "t_291c01ef492c",
@@ -134,7 +316,8 @@
     "target_name": "VS code",
     "x": 731,
     "y": 720,
-    "error": null
+    "error": null,
+    "task_id": "10.22"
   },
   {
     "id": "t_07de1516cfa4",
@@ -155,7 +338,8 @@
     "target_name": "豆包 AI",
     "x": 1227,
     "y": 1060,
-    "error": null
+    "error": null,
+    "task_id": "10.22"
   },
   {
     "id": "t_889cc3b7c291",
@@ -176,7 +360,8 @@
     "target_name": "豆包 AI",
     "x": 1225,
     "y": 1059,
-    "error": null
+    "error": null,
+    "task_id": "10.22"
   },
   {
     "id": "t_faeb4989bb36",
@@ -197,7 +382,8 @@
     "target_name": "豆包 AI",
     "x": 1226,
     "y": 1056,
-    "error": null
+    "error": null,
+    "task_id": "10.22"
   },
   {
     "id": "t_9e3932a85b2c",
@@ -218,7 +404,8 @@
     "target_name": "豆包 AI",
     "x": 1227,
     "y": 1059,
-    "error": null
+    "error": null,
+    "task_id": "10.22"
   },
   {
     "id": "t_9254c65c4510",
@@ -239,7 +426,8 @@
     "target_name": "VS code",
     "x": 1183,
     "y": 1057,
-    "error": null
+    "error": null,
+    "task_id": "10.22"
   },
   {
     "id": "t_9615a0f97a26",
@@ -260,7 +448,8 @@
     "target_name": "豆包 AI",
     "x": 1230,
     "y": 1058,
-    "error": null
+    "error": null,
+    "task_id": "10.22"
   },
   {
     "id": "t_4d86d91b31b9",
@@ -281,7 +470,8 @@
     "target_name": "VS code",
     "x": 1183,
     "y": 1057,
-    "error": null
+    "error": null,
+    "task_id": "10.22"
   },
   {
     "id": "t_39181751cbf0",
@@ -302,7 +492,8 @@
     "target_name": "?? AI",
     "x": 1230,
     "y": 1058,
-    "error": null
+    "error": null,
+    "task_id": "10.22"
   },
   {
     "id": "t_e978e5257820",
@@ -323,6 +514,7 @@
     "target_name": "?? AI",
     "x": 1230,
     "y": 1058,
-    "error": null
+    "error": null,
+    "task_id": "10.22"
   }
 ]

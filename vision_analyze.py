@@ -44,6 +44,51 @@ _load_dotenv()
 DEFAULT_OLLAMA_BASE = os.environ.get("OLLAMA_BASE_URL", "http://127.0.0.1:18803")
 DEFAULT_VISION_MODEL = os.environ.get("OLLAMA_VISION_MODEL", "qwen2.5vl:7b")
 DEFAULT_TIMEOUT = float(os.environ.get("OLLAMA_TIMEOUT", "180"))
+# The route whose provider pool serves vision work.
+VISION_LLM_ROUTE = "llm.vision"
+
+
+def resolve_vision_model(conn=None, *, db_path=None) -> dict[str, Any]:
+    """The vision model, read from the DB-driven service registry.
+
+    DEFECT FOUND BY MEASURING IT (2026-09-21): `DEFAULT_VISION_MODEL` was the
+    ONLY way this module chose a vision model, so the provider was a Python
+    literal rather than a registry row. The registry (`llm_route_provider` for
+    the `llm.vision` route) already names `qwen2.5vl:7b` at priority 10, so the
+    literal and the registry agreed BY LUCK — and would silently disagree the
+    moment either moved.
+
+    Returns `{model, llm_route, source}` where `source` is `registry` or
+    `fallback`. The source is RETURNED, not assumed: a silent fallback would make
+    a caller report a model it never actually resolved.
+    """
+    import sqlite3 as _sq
+
+    own = False
+    if conn is None:
+        path = Path(db_path) if db_path else (Path(__file__).resolve().parent
+                                              / "agent.db")
+        try:
+            conn = _sq.connect(str(path))
+            own = True
+        except Exception:
+            return {"model": DEFAULT_VISION_MODEL,
+                    "llm_route": VISION_LLM_ROUTE, "source": "fallback",
+                    "pool": []}
+    try:
+        import llm_service_store as lss
+
+        pool = lss.pool_for(conn, VISION_LLM_ROUTE)
+        if pool:
+            return {"model": str(pool[0]), "llm_route": VISION_LLM_ROUTE,
+                    "source": "registry", "pool": [str(m) for m in pool]}
+    except Exception:
+        pass
+    finally:
+        if own:
+            conn.close()
+    return {"model": DEFAULT_VISION_MODEL, "llm_route": VISION_LLM_ROUTE,
+            "source": "fallback", "pool": []}
 
 
 @dataclass
@@ -107,7 +152,18 @@ def parse_verify_response(text: str) -> dict[str, Any]:
         }
 
     # 1) Structured Result: YES/NO
-    m_res = re.search(r"result\s*:\s*(yes|no|pass|fail|true|false)\b", raw, re.I)
+    #
+    # The prompt template documents the output as "Result: [YES / NO]", using
+    # brackets as the CHOICE notation. Measured 2026-09-20: the model answers
+    # literally `Result: [YES]`, and the old pattern required the token directly
+    # after the colon, so `[` broke the match -> parser "none" -> verdict UNKNOWN
+    # for a clear YES. The parser was rejecting its own documented output format.
+    # Brackets/quotes/periods are therefore permitted as decoration around the
+    # token; an explicit yes/no token is still required, so this is not loosened
+    # into accepting arbitrary prose.
+    m_res = re.search(
+        r"result\s*:\s*[\[\('\"`\s]*\s*(yes|no|pass|fail|true|false)\b",
+        raw, re.I)
     m_reason = re.search(r"reason\s*:\s*(.+?)(?:\n|$)", raw, re.I)
     if m_res:
         token = m_res.group(1).lower()
@@ -208,7 +264,7 @@ def analyze_evidence(
             False when parse_mode is result_yes_no.
         parse_mode: auto | json | result_yes_no
     """
-    model = model or DEFAULT_VISION_MODEL
+    model = model or resolve_vision_model()["model"]
     base_url = (base_url or DEFAULT_OLLAMA_BASE).rstrip("/")
     timeout = timeout if timeout is not None else DEFAULT_TIMEOUT
     if format_json is None:

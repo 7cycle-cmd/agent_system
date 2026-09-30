@@ -4,7 +4,7 @@
  * THE HUMAN (2026-09-26), verbatim:
  *     "http://127.0.0.1:18765/llm-tasks/chat_center and
  *      http://127.0.0.1:18765/llm-tasks/chat_identity is talking for same
- *      capabilty, with 2 ui / as design is totally change to conversaction module
+ *      capabilty, with 2 ui / as design is totally change to conversation module
  *      and group chat into it / re-design UI to 1 index catalog and have user
  *      fiendly ui for human, which can understand and monitoring the real flow
  *      with data"
@@ -258,7 +258,7 @@ const ConversationCenter = {
     <nav aria-label="Steps" class="mb-3 flex flex-wrap items-center gap-1 text-sm">
       <!-- THE START STEP. THE HUMAN (2026-09-27), verbatim: "+UI (image design):
            http://127.0.0.1:18765/llm-tasks/conversation/start having a new
-           conversaction".
+           conversation".
 
            MEASURED BEFORE: the step bar had 1 Chats, 2 One chat (a span, not
            clickable), Data and Refresh -- there was NO way to start a
@@ -1277,13 +1277,13 @@ const ConversationCenter = {
 
     // ---- THE ADDRESS (2026-09-26, LAW 6) -----------------------------------
     //
-    // THE HUMAN: "path ... -> http://127.0.0.1:18765/llm-tasks/conversaction/step2-68
+    // THE HUMAN: "path ... -> http://127.0.0.1:18765/llm-tasks/conversation/step2-68
     // can all path can be more meaningful". Their form encoded THREE things, and
     // TWO of them do not belong in an address:
-    //   * `conversaction` -- a typo (the registered term is `conversation`);
+    //   * `conversation` -- a typo (the registered term is `conversation`);
     //   * `step2`         -- the UI's INTERNAL step number. If the wizard is ever
     //                        re-ordered, EVERY bookmark breaks. That is the same
-    //                        defect class as `enviornment_playwright`, which named
+    //                        defect class as `environment_playwright`, which named
     //                        an internal stage instead of the page;
     //   * `68`            -- a row id, which IS legitimate as a final segment.
     //
@@ -1293,7 +1293,7 @@ const ConversationCenter = {
     //     /llm-tasks/conversation/recent   -> the newest chat (replaces
     //                                         /llm-tasks/chat_identity/recent)
     //
-    // The typed form still RESOLVES via LEGACY_NAV_SLUGS (`conversaction`), so
+    // The typed form still RESOLVES via LEGACY_NAV_SLUGS (`conversation`), so
     // nothing the human has used 404s.
     function writeAddress(seg) {
       try {
@@ -1321,7 +1321,7 @@ const ConversationCenter = {
 
     // THE START STEP. THE HUMAN (2026-09-27), verbatim: "+UI (image design):
     // http://127.0.0.1:18765/llm-tasks/conversation/index having a new
-    // conversaction".
+    // conversation".
     //
     // THE ADDRESS IS `index`, NOT `start`. ASKED AND ANSWERED:
     //     "`/llm-tasks/conversation/index` 你想佢係邊一樣？"  ->  "開新對話"
@@ -1509,7 +1509,7 @@ const ConversationCenter = {
       }
       const id = Number(seg);
       // TOLERANT ID: MEASURED 2026-09-26 -- the human's OWN address was
-      // `/llm-tasks/conversaction/step2-68`, so the segment is `step2-68` and a
+      // `/llm-tasks/conversation/step2-68`, so the segment is `step2-68` and a
       // strict Number() gave NaN, landing them on the LIST while their URL said
       // chat 68. The trailing digits ARE the id they meant, so they are read.
       // This is the alias being helpful, not a step number entering the URL: the

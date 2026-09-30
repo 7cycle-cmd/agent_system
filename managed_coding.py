@@ -46,7 +46,7 @@ REQUIRED_PROFILE_DIMS = tuple(p["dim_key"] for p in PROFILE_STEPS)
 IMPL_DIM_MODULE = "impl.module"
 IMPL_DIM_FUNCTION = "impl.function"
 IMPL_DIM_REQUIRED = "impl.required"
-IMPL_DIM_REGISTER = "impl.register_id"
+IMPL_DIM_registry = "impl.register_id"
 
 SLICE_STATUS_ACTIVE = "active"
 SLICE_STATUS_DRAFT = "draft"
@@ -100,12 +100,12 @@ def layer_architecture() -> dict[str, Any]:
         ),
         "primary_flow": [
             "1 human → request function/system (fn_request)",
-            "A AI research if work missing (fn_research): what exists / reuse",
+            "A AI research if work missing (analyze): what exists / reuse",
             "  · with table → slices from fields (1.1 region, 1.2 phone…)",
             "  · without table → design-table tasks (1.1 member_id, 1.2 name…)",
             "  · depend on channel + module",
             "2 multi-dim SSOT plan (task_ssot A–H + tdd.* per field)",
-            "3 build system → code_register.register_id + field_tdd_rule each slice",
+            "3 build system → code_registry.register_id + field_tdd_rule each slice",
             "4 everything output traceable via register_id / task_id / request_id",
         ],
         "this_layer": {
@@ -114,10 +114,10 @@ def layer_architecture() -> dict[str, Any]:
             "gate": GATE_POLICY,
             "owns": [
                 "human request capture (fn_request)",
-                "research path reuse vs design-table (fn_research)",
+                "research path reuse vs design-table (analyze)",
                 "system / module / version / channel ontology",
                 "slice + field map (one slice → one function)",
-                "register_id + code_register",
+                "register_id + code_registry",
                 "per-field TDD rules (field_tdd_rule) — region=+CC; phone local 11 for +86",
                 "TACID / dev_task tree + work_queue",
                 "naming law + goal.equation",
@@ -145,7 +145,7 @@ def layer_architecture() -> dict[str, Any]:
         },
         "handoff_keys": [
             "fn_request.request_key",
-            "code_register.register_id",
+            "code_registry.register_id",
             "field_tdd_rule.id / rule_json",
             "slice_key",
             "plan.table (task_ssot)",
@@ -181,6 +181,7 @@ FIELD_TDD_TEMPLATES: dict[str, dict[str, Any]] = {
         "tdd_type_code": "text",
         "value_type": "string",
         "fail_class": "business_defect",
+        "cite_ref": "register:wording_registry:21",
         "primary_key": True,
         "field_kind": "region",
         "storage_type": "calling_code_plus",
@@ -195,6 +196,7 @@ FIELD_TDD_TEMPLATES: dict[str, dict[str, Any]] = {
                 "pattern": r"^\+\d{1,4}$",
                 "note": "calling code only: +86 / +852 / +886 / +1",
                 "fail_class": "business_defect",
+                "cite_ref": "register:wording_registry:21",
             }
         ],
         "iso2_lookup": {
@@ -212,6 +214,7 @@ FIELD_TDD_TEMPLATES: dict[str, dict[str, Any]] = {
         "tdd_type_code": "text",
         "value_type": "digit_string",
         "fail_class": "business_defect",
+        "cite_ref": "register:wording_registry:21",
         "field_kind": "phone",
         "storage_type": "local_digit_string",
         "note": "phone = LOCAL only (e.g. 13800138000). No +. Not INT. Depends on region for length.",
@@ -249,6 +252,7 @@ FIELD_TDD_TEMPLATES: dict[str, dict[str, Any]] = {
                 "pattern": r"^\d{11}$",
                 "note": "China local 11 digits",
                 "fail_class": "business_defect",
+                "cite_ref": "register:wording_registry:21",
             },
             {
                 "when": {"region": "+886"},
@@ -256,6 +260,7 @@ FIELD_TDD_TEMPLATES: dict[str, dict[str, Any]] = {
                 "pattern": r"^\d{8,9}$",
                 "note": "Taiwan local",
                 "fail_class": "business_defect",
+                "cite_ref": "register:wording_registry:21",
             },
             {
                 "when": {"region": "+852"},
@@ -263,6 +268,7 @@ FIELD_TDD_TEMPLATES: dict[str, dict[str, Any]] = {
                 "pattern": r"^\d{8}$",
                 "note": "Hong Kong local 8",
                 "fail_class": "business_defect",
+                "cite_ref": "register:wording_registry:21",
             },
             {
                 "when": {"default": True},
@@ -270,6 +276,7 @@ FIELD_TDD_TEMPLATES: dict[str, dict[str, Any]] = {
                 "pattern": r"^\d{6,15}$",
                 "note": "generic local digits only",
                 "fail_class": "business_defect",
+                "cite_ref": "register:wording_registry:21",
             },
         ],
         "compose_with": ["region"],
@@ -279,6 +286,7 @@ FIELD_TDD_TEMPLATES: dict[str, dict[str, Any]] = {
         "tdd_type_code": "text",
         "value_type": "string",
         "fail_class": "business_defect",
+        "cite_ref": "register:wording_registry:21",
         "field_kind": "country",
         "depends_on": ["region"],
         "note": "optional display name looked up from region (+CC)",
@@ -305,6 +313,7 @@ FIELD_TDD_TEMPLATES: dict[str, dict[str, Any]] = {
         "tdd_type_code": "text",
         "value_type": "string",
         "fail_class": "business_defect",
+        "cite_ref": "register:wording_registry:21",
         "field_kind": "name",
         "op": "range_len",
         "min": 1,
@@ -320,6 +329,7 @@ FIELD_TDD_TEMPLATES: dict[str, dict[str, Any]] = {
         "tdd_type_code": "text",
         "value_type": "string",
         "fail_class": "business_defect",
+        "cite_ref": "register:wording_registry:21",
         "field_kind": "gender",
         "op": "in_set",
         "values": ["M", "F", "X", "U"],
@@ -331,6 +341,7 @@ FIELD_TDD_TEMPLATES: dict[str, dict[str, Any]] = {
         "tdd_type_code": "text",
         "value_type": "string",
         "fail_class": "business_defect",
+        "cite_ref": "register:wording_registry:21",
         "field_kind": "contact_method",
         "op": "min_len",
         "min_len": 2,
@@ -342,6 +353,16 @@ FIELD_TDD_TEMPLATES: dict[str, dict[str, Any]] = {
     "member_id": {
         "tdd_type_code": "text",
         "value_type": "string",
+        # RETRACTED (2026-09-21): this was first set to "structural_defect",
+        # because it had to be SOME value and that was the only free slot at the
+        # time. It is WRONG: `structural_defect` means a slot had no value or the
+        # answer would not parse, and this rule is a regex match against a
+        # WELL-FORMED string. Missing a regex is a rule violation, so the class
+        # is business_defect — and it now carries the definition it was chosen by.
+        "fail_class": "business_defect",
+        "cite_ref": "register:wording_registry:21",
+        "cite_ref": "register:wording_registry:21",
+        "field_kind": "member_id",
         "op": "match",
         "pattern": r"^[A-Za-z0-9_-]{3,32}$",
         "rules": [
@@ -352,6 +373,7 @@ FIELD_TDD_TEMPLATES: dict[str, dict[str, Any]] = {
         "tdd_type_code": "text",
         "value_type": "string",
         "fail_class": "business_defect",
+        "cite_ref": "register:wording_registry:21",
         "field_kind": "address",
         "op": "text_length_clean",
         "min_len": 3,
@@ -402,7 +424,7 @@ def contracts_doc() -> dict[str, Any]:
             IMPL_DIM_MODULE,
             IMPL_DIM_FUNCTION,
             IMPL_DIM_REQUIRED,
-            IMPL_DIM_REGISTER,
+            IMPL_DIM_registry,
         ],
         "label_grammar": {
             "membership_version": MEMBERSHIP_VERSION,
@@ -411,9 +433,9 @@ def contracts_doc() -> dict[str, Any]:
             "note": "UNIQUE(version_id, task_label); mem-1.0 vs agent_db 1.1 no clash",
         },
         "tables": [
-            "code_register",
+            "code_registry",
             "fn_request",
-            "fn_research",
+            "analyze",
             "field_tdd_rule",
             "onto_concept",
             "onto_link",
@@ -468,9 +490,9 @@ def contracts_doc() -> dict[str, Any]:
 def verify_managed_schema(conn: sqlite3.Connection) -> dict[str, Any]:
     """MCS1 — required tables present."""
     need = (
-        "code_register",
+        "code_registry",
         "fn_request",
-        "fn_research",
+        "analyze",
         "field_tdd_rule",
         "onto_concept",
         "onto_link",
@@ -487,7 +509,7 @@ def verify_managed_schema(conn: sqlite3.Connection) -> dict[str, Any]:
     missing = []
     for t in need:
         row = conn.execute(
-            "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+            "SELECT 1 FROM sqlite_master WHERE type IN ('table','view') AND name=?",
             (t,),
         ).fetchone()
         if not row:
@@ -501,7 +523,7 @@ def verify_managed_schema(conn: sqlite3.Connection) -> dict[str, Any]:
         "ok": not missing and has_reg_col,
         "gate": GATE_POLICY,
         "missing_tables": missing,
-        "function_scoring_has_register_id": has_reg_col,
+        "function_scoring_has_registry_id": has_reg_col,
         "pipeline": PIPELINE_ID,
     }
 
@@ -540,34 +562,34 @@ def _ensure_action(
     return int(cur.lastrowid)
 
 
-def allocate_register_id(conn: sqlite3.Connection, *, prefix: str = "reg") -> str:
+def allocate_registry_id(conn: sqlite3.Connection, *, prefix: str = "reg") -> str:
     """DB-unique register_id (not wall-clock as sole uniqueness)."""
     for _ in range(50):
         rid = f"{_sanitize_token(prefix, default='reg')}_{uuid.uuid4().hex[:12]}"
         hit = conn.execute(
-            "SELECT 1 FROM code_register WHERE register_id = ?", (rid,)
+            "SELECT 1 FROM code_registry WHERE register_id = ?", (rid,)
         ).fetchone()
         if not hit:
             return rid
     raise RuntimeError("cannot allocate register_id")
 
 
-def _code_register_has_location_cols(conn: sqlite3.Connection) -> bool:
+def _code_registry_has_location_cols(conn: sqlite3.Connection) -> bool:
     cols = {
         str(r[1])
-        for r in conn.execute("PRAGMA table_info(code_register)").fetchall()
+        for r in conn.execute("PRAGMA table_info(code_registry)").fetchall()
     }
     return "file_path" in cols and "line_start" in cols and "line_end" in cols
 
 
-def get_code_register(
+def get_code_registry(
     conn: sqlite3.Connection,
     *,
     register_id: str | None = None,
     module_name: str | None = None,
     function_name: str | None = None,
 ) -> dict[str, Any] | None:
-    has_loc = _code_register_has_location_cols(conn)
+    has_loc = _code_registry_has_location_cols(conn)
     cols_sql = (
         "id, register_id, module_name, function_name, task_id, tacid, "
         "system_task_id, slice_task_id, system_key, slice_key, status, "
@@ -580,13 +602,13 @@ def get_code_register(
     )
     if register_id:
         row = conn.execute(
-            f"SELECT {cols_sql} FROM code_register WHERE register_id = ?",
+            f"SELECT {cols_sql} FROM code_registry WHERE register_id = ?",
             (register_id.strip(),),
         ).fetchone()
     elif module_name and function_name:
         row = conn.execute(
             f"""
-            SELECT {cols_sql} FROM code_register
+            SELECT {cols_sql} FROM code_registry
             WHERE module_name = ? AND function_name = ?
             """,
             (module_name.strip(), function_name.strip()),
@@ -621,7 +643,7 @@ def get_code_register(
     return out
 
 
-def bind_register_source_location(
+def bind_registry_source_location(
     conn: sqlite3.Connection,
     *,
     register_id: str | None = None,
@@ -653,14 +675,14 @@ def bind_register_source_location(
     if le < ls:
         raise ValueError("line_end must be >= line_start")
 
-    reg = get_code_register(
+    reg = get_code_registry(
         conn,
         register_id=register_id,
         module_name=module_name,
         function_name=function_name,
     )
     if not reg:
-        raise ValueError("code_register row not found")
+        raise ValueError("code_registry row not found")
 
     span = code_span
     if span is None and read_file:
@@ -679,10 +701,10 @@ def bind_register_source_location(
     mod = str(reg["module_name"])
     fn = str(reg["function_name"])
 
-    if _code_register_has_location_cols(conn):
+    if _code_registry_has_location_cols(conn):
         conn.execute(
             """
-            UPDATE code_register
+            UPDATE code_registry
             SET file_path = ?, line_start = ?, line_end = ?, code_span = ?,
                 updated_at = CURRENT_TIMESTAMP
             WHERE register_id = ?
@@ -690,7 +712,7 @@ def bind_register_source_location(
             (path, ls, le, span, rid),
         )
     else:
-        raise RuntimeError("code_register missing file_path columns — run migrate")
+        raise RuntimeError("code_registry missing file_path columns — run migrate")
 
     # mirror onto function_scoring when columns exist
     try:
@@ -741,7 +763,7 @@ def bind_register_source_location(
     if commit:
         conn.commit()
 
-    refreshed = get_code_register(conn, register_id=rid)
+    refreshed = get_code_registry(conn, register_id=rid)
     return {
         "ok": True,
         "gate": GATE_POLICY,
@@ -754,7 +776,7 @@ def bind_register_source_location(
         "line_end": le,
         "code_span": span,
         "register": refreshed,
-        "law": "usage/pass/fail on function_scoring; location on code_register",
+        "law": "usage/pass/fail on function_scoring; location on code_registry",
     }
 
 
@@ -911,7 +933,7 @@ def register_managed_function(
     code_span: str | None = None,
     commit: bool = True,
 ) -> dict[str, Any]:
-    """Allocate unique fn name + register_id; write task_ssot impl.* + code_register.
+    """Allocate unique fn name + register_id; write task_ssot impl.* + code_registry.
 
     This is the only blessed path for agent-generated coding enrollment.
     Optional file_path + line_start/line_end bind source location (CH7).
@@ -936,18 +958,18 @@ def register_managed_function(
     if status not in REGISTER_STATUSES:
         status = "draft"
 
-    has_loc = _code_register_has_location_cols(conn)
+    has_loc = _code_registry_has_location_cols(conn)
     fp = (file_path or "").strip().replace("\\", "/") or None
     ls = int(line_start) if line_start is not None else None
     le = int(line_end) if line_end is not None else ls
 
-    existing = get_code_register(conn, module_name=mod, function_name=fn)
+    existing = get_code_registry(conn, module_name=mod, function_name=fn)
     if existing and existing.get("register_id"):
         register_id = str(existing.get("register_id"))
         if has_loc:
             conn.execute(
                 """
-                UPDATE code_register
+                UPDATE code_registry
                 SET task_id = ?, tacid = ?, system_task_id = ?, slice_task_id = ?,
                     system_key = ?, slice_key = ?, status = ?, notes = ?, source = ?,
                     file_path = COALESCE(?, file_path),
@@ -977,7 +999,7 @@ def register_managed_function(
         else:
             conn.execute(
                 """
-                UPDATE code_register
+                UPDATE code_registry
                 SET task_id = ?, tacid = ?, system_task_id = ?, slice_task_id = ?,
                     system_key = ?, slice_key = ?, status = ?, notes = ?, source = ?,
                     updated_at = CURRENT_TIMESTAMP
@@ -998,13 +1020,13 @@ def register_managed_function(
             )
         reg_action = "updated"
     else:
-        register_id = allocate_register_id(
+        register_id = allocate_registry_id(
             conn, prefix=f"reg_{_sanitize_token(mod)}_{_sanitize_token(fn)}"
         )
         if has_loc:
             conn.execute(
                 """
-                INSERT INTO code_register (
+                INSERT INTO code_registry (
                     register_id, module_name, function_name, task_id, tacid,
                     system_task_id, slice_task_id, system_key, slice_key,
                     status, file_path, line_start, line_end, code_span, notes, source
@@ -1032,7 +1054,7 @@ def register_managed_function(
         else:
             conn.execute(
                 """
-                INSERT INTO code_register (
+                INSERT INTO code_registry (
                     register_id, module_name, function_name, task_id, tacid,
                     system_task_id, slice_task_id, system_key, slice_key,
                     status, notes, source
@@ -1059,7 +1081,7 @@ def register_managed_function(
         (IMPL_DIM_MODULE, mod, "string", 10),
         (IMPL_DIM_FUNCTION, fn, "string", 20),
         (IMPL_DIM_REQUIRED, "true" if required else "false", "bool", 30),
-        (IMPL_DIM_REGISTER, register_id, "string", 40),
+        (IMPL_DIM_registry, register_id, "string", 40),
         ("profile.D.function", fn, "string", 50),
         ("profile.G.module", mod, "string", 60),
         ("profile.H.register_id", register_id, "string", 70),
@@ -1119,7 +1141,7 @@ def register_managed_function(
 
     if fp and ls is not None:
         try:
-            bind_register_source_location(
+            bind_registry_source_location(
                 conn,
                 register_id=register_id,
                 file_path=fp,
@@ -1136,7 +1158,7 @@ def register_managed_function(
         conn.commit()
 
     scoring = get_function_score(conn, mod, fn)
-    reg_row = get_code_register(conn, register_id=register_id)
+    reg_row = get_code_registry(conn, register_id=register_id)
     return {
         "ok": True,
         "gate": GATE_POLICY,
@@ -1167,7 +1189,7 @@ def managed_invoke(
     function_name: str | None = None,
     tacid: str | None = None,
     task_id: int | None = None,
-    require_register: bool = True,
+    require_registry: bool = True,
     db_path: str | None = None,
     conn: sqlite3.Connection | None = None,
     args: tuple[Any, ...] | None = None,
@@ -1178,7 +1200,7 @@ def managed_invoke(
 ) -> dict[str, Any]:
     """Invoke only through code_health.function_invoker after register lookup.
 
-    If require_register and no code_register row → refuse (not a structure gate;
+    If require_registry and no code_registry row → refuse (not a structure gate;
     refuse is managed-coding policy so workers never run untracked code paths).
     """
     from code_health import function_invoker
@@ -1196,17 +1218,17 @@ def managed_invoke(
     try:
         reg = None
         if register_id:
-            reg = get_code_register(conn, register_id=register_id)
+            reg = get_code_registry(conn, register_id=register_id)
         elif module_name and function_name:
-            reg = get_code_register(
+            reg = get_code_registry(
                 conn, module_name=module_name, function_name=function_name
             )
-        if require_register and reg is None:
+        if require_registry and reg is None:
             return {
                 "ok": False,
                 "error": "unregistered_function",
                 "message": (
-                    "managed_invoke refused: no code_register row. "
+                    "managed_invoke refused: no code_registry row. "
                     "All coding must carry register_id."
                 ),
                 "gate": GATE_POLICY,
@@ -1218,7 +1240,7 @@ def managed_invoke(
         if reg is not None and str(reg.get("status") or "") == "rubbish":
             return {
                 "ok": False,
-                "error": "rubbish_register",
+                "error": "rubbish_registry",
                 "message": "register marked rubbish — worker should not spend time",
                 "gate": GATE_POLICY,
                 "register_id": reg.get("register_id"),
@@ -1261,7 +1283,7 @@ def managed_invoke(
         result["register_id"] = rid
         result["pipeline"] = PIPELINE_ID
         result["managed"] = True
-        result["code_register"] = {
+        result["code_registry"] = {
             "register_id": rid,
             "module_name": str(mod),
             "function_name": str(name),
@@ -1357,7 +1379,7 @@ def slice_completeness(conn: sqlite3.Connection, task_id: int) -> dict[str, Any]
             if not val:
                 missing.append(key)
     # register_id must be non-empty for coding-complete (slices only)
-    reg = dims.get("profile.H.register_id") or dims.get(IMPL_DIM_REGISTER) or ""
+    reg = dims.get("profile.H.register_id") or dims.get(IMPL_DIM_registry) or ""
     if is_system_root:
         coding_ready = True
         complete = True
@@ -1389,7 +1411,7 @@ def slice_completeness(conn: sqlite3.Connection, task_id: int) -> dict[str, Any]
     }
 
 
-def mark_register_status(
+def mark_registry_status(
     conn: sqlite3.Connection,
     *,
     register_id: str,
@@ -1400,7 +1422,7 @@ def mark_register_status(
         raise ValueError(f"invalid status {status}")
     cur = conn.execute(
         """
-        UPDATE code_register
+        UPDATE code_registry
         SET status = ?, updated_at = CURRENT_TIMESTAMP
         WHERE register_id = ?
         """,
@@ -1453,7 +1475,7 @@ def mark_demo_noise_rubbish(
     # demo tacid noise
     regs = conn.execute(
         """
-        SELECT register_id, tacid, function_name FROM code_register
+        SELECT register_id, tacid, function_name FROM code_registry
         WHERE tacid LIKE 'ch.demo.%'
         """
     ).fetchall()
@@ -1462,7 +1484,7 @@ def mark_demo_noise_rubbish(
         if re.search(r"_\d+", tac) or re.search(r"_\d+$", str(fn or "")):
             conn.execute(
                 """
-                UPDATE code_register
+                UPDATE code_registry
                 SET status = 'rubbish', updated_at = CURRENT_TIMESTAMP
                 WHERE register_id = ?
                 """,
@@ -1474,7 +1496,7 @@ def mark_demo_noise_rubbish(
     dups = conn.execute(
         """
         SELECT system_key, slice_key, MIN(id) AS keep_id
-        FROM code_register
+        FROM code_registry
         WHERE system_key IS NOT NULL AND slice_key IS NOT NULL
           AND status != 'rubbish'
         GROUP BY system_key, slice_key
@@ -1484,7 +1506,7 @@ def mark_demo_noise_rubbish(
     for system_key, slice_key, keep_id in dups:
         rows = conn.execute(
             """
-            SELECT register_id, id FROM code_register
+            SELECT register_id, id FROM code_registry
             WHERE system_key = ? AND slice_key = ? AND status != 'rubbish'
             """,
             (system_key, slice_key),
@@ -1494,7 +1516,7 @@ def mark_demo_noise_rubbish(
                 continue
             conn.execute(
                 """
-                UPDATE code_register
+                UPDATE code_registry
                 SET status = 'rubbish', updated_at = CURRENT_TIMESTAMP,
                     notes = COALESCE(notes, '') || ' | dup superseded'
                 WHERE register_id = ?
@@ -1505,7 +1527,7 @@ def mark_demo_noise_rubbish(
                 {
                     "register_id": rid,
                     "tacid": f"{system_key}.{slice_key}",
-                    "reason": "duplicate_slice_register",
+                    "reason": "duplicate_slice_registry",
                 }
             )
 
@@ -1833,7 +1855,7 @@ def seed_membership_system(
             existing_reg = conn.execute(
                 """
                 SELECT register_id, function_name, module_name
-                FROM code_register
+                FROM code_registry
                 WHERE slice_task_id = ? AND status IN ('active', 'draft', 'zombie')
                 ORDER BY id
                 LIMIT 1
@@ -1844,7 +1866,7 @@ def seed_membership_system(
                 existing_reg = conn.execute(
                     """
                     SELECT register_id, function_name, module_name
-                    FROM code_register
+                    FROM code_registry
                     WHERE system_key = ? AND slice_key = ?
                       AND status IN ('active', 'draft', 'zombie')
                     ORDER BY id
@@ -2063,7 +2085,7 @@ def resolve_system_location(
     for r in conn.execute(
         """
         SELECT DISTINCT slice_key, function_name, register_id, tacid, status
-        FROM code_register
+        FROM code_registry
         WHERE system_key = ? AND status NOT IN ('rubbish', 'deprecated')
         ORDER BY slice_key, id
         """,
@@ -2114,10 +2136,10 @@ def resolve_system_location(
                     "module_field": "module_id",
                 },
                 "register": {
-                    "table": "code_register",
+                    "table": "code_registry",
                     "module_field": "module_name",
                     "function_field": "function_name",
-                    "note": "code_register has module_name text, not channel_id",
+                    "note": "code_registry has module_name text, not channel_id",
                 },
             },
             "fields": fields,
@@ -2163,7 +2185,7 @@ def resolve_system_location(
             "id_field": "module.id",
             "fk_on_task": "dev_task.module_id",
             "fk_on_version": "version_center.module_id",
-            "register_field": "code_register.module_name",
+            "register_field": "code_registry.module_name",
         },
         "version": {
             "table": "version_center",
@@ -2197,7 +2219,7 @@ def resolve_system_location(
             "register_dim": "impl.register_id / profile.H.register_id",
         },
         "register": {
-            "table": "code_register",
+            "table": "code_registry",
             "module_field": "module_name",
             "function_field": "function_name",
             "slice_field": "slice_key",
@@ -2210,7 +2232,7 @@ def resolve_system_location(
             "module.id ← dev_task.module_id ; "
             "version_center.id ← dev_task.version_id ; "
             "task_ssot.task_id ← dev_task.id ; "
-            "code_register.slice_task_id ← dev_task.id"
+            "code_registry.slice_task_id ← dev_task.id"
         ),
     }
 
@@ -2232,14 +2254,14 @@ def worker_clean_report(
     params: list[Any] = []
     where = ""
     if system_key:
-        # tasks that declare system.key dim or code_register.system_key
+        # tasks that declare system.key dim or code_registry.system_key
         where = """
         WHERE t.id IN (
             SELECT task_id FROM task_ssot WHERE dim_key = 'system.key' AND value_text = ?
             UNION
-            SELECT slice_task_id FROM code_register WHERE system_key = ? AND slice_task_id IS NOT NULL
+            SELECT slice_task_id FROM code_registry WHERE system_key = ? AND slice_task_id IS NOT NULL
             UNION
-            SELECT system_task_id FROM code_register WHERE system_key = ? AND system_task_id IS NOT NULL
+            SELECT system_task_id FROM code_registry WHERE system_key = ? AND system_task_id IS NOT NULL
         )
         """
         params = [system_key, system_key, system_key]
@@ -2265,7 +2287,7 @@ def worker_clean_report(
         elif not comp.get("complete"):
             worker_bucket = "incomplete"
         elif not comp.get("coding_ready"):
-            worker_bucket = "needs_register"
+            worker_bucket = "needs_registry"
         else:
             worker_bucket = "active"
         tasks.append(
@@ -2290,7 +2312,7 @@ def worker_clean_report(
         "system_task_id, slice_task_id, system_key, slice_key, status, "
         "notes, source, updated_at, created_at"
     )
-    reg_sql = f"SELECT {cols_sql} FROM code_register"
+    reg_sql = f"SELECT {cols_sql} FROM code_registry"
     reg_params: list[Any] = []
     if system_key:
         reg_sql += " WHERE system_key = ?"
@@ -2337,7 +2359,7 @@ def worker_clean_report(
     work_queue = [
         t
         for t in tasks
-        if t["worker_bucket"] in ("incomplete", "needs_register", "active", "system_root")
+        if t["worker_bucket"] in ("incomplete", "needs_registry", "active", "system_root")
     ]
     skip = [t for t in tasks if t["worker_bucket"] == "rubbish"]
 
@@ -2349,13 +2371,13 @@ def worker_clean_report(
         "report_time": _utc_now_iso(),
         "location": location,
         "active_n": _count("active"),
-        "draft_n": _count("needs_register"),
+        "draft_n": _count("needs_registry"),
         "incomplete_n": _count("incomplete"),
         "rubbish_n": _count("rubbish") + rubbish_reg,
         "zombie_n": zombie_n,
         "register_n": len(active_registers),
         "register_n_all": len(all_registers),
-        "rubbish_register_n": rubbish_reg,
+        "rubbish_registry_n": rubbish_reg,
         "system_root_n": _count("system_root"),
         "work_queue": work_queue,
         "skip_rubbish": skip,
@@ -2377,7 +2399,7 @@ def worker_clean_report(
             "One slice → one active function (member_region), value is data not name",
             "Coding requires register_id",
             "Do not invent dims outside profile A-H",
-            "Channel lives in channel.code via dev_task.channel_id (not code_register)",
+            "Channel lives in channel.code via dev_task.channel_id (not code_registry)",
             "MCS = ontology/registry only — orchestrator owns driver/evidence/QC pair",
         ],
     }
@@ -2433,7 +2455,7 @@ def _table_exists(conn: sqlite3.Connection, table_name: str) -> bool:
     if not name or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", name):
         return False
     row = conn.execute(
-        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+        "SELECT 1 FROM sqlite_master WHERE type IN ('table','view') AND name=?",
         (name,),
     ).fetchone()
     return bool(row)
@@ -2466,11 +2488,32 @@ def _parse_fields_csv(text: str | None) -> list[str]:
 def _tdd_template_for(field: str) -> dict[str, Any]:
     key = (field or "").strip().lower()
     if key in FIELD_TDD_TEMPLATES:
-        return dict(FIELD_TDD_TEMPLATES[key])
+        tmpl = dict(FIELD_TDD_TEMPLATES[key])
+        # Refuse AT THE GENERATOR, where the template is USED. The display site
+        # can only paper over a missing class (it did, until this change); a
+        # generated case whose failure is unnameable cannot be scored at all.
+        # `require_cite=True` is what I should have demanded of myself: without a
+        # citation a wrong class is invisible, which is how member_id stayed wrong.
+        import failure_axis as fa
+
+        fa.assert_classified(tmpl, where="_tdd_template_for(%r)" % field,
+                             require_cite=True)
+        return tmpl
+    # The FALLBACK was itself unclassified (no `fail_class`), so it was not only
+    # `member_id` that produced a template which cannot fail in any nameable way
+    # — ANY unknown field name did. A generated case whose failure is unnameable
+    # cannot be scored, so the fallback now declares its class.
+    # A plain `present` check: the failure is that the field was absent, which is
+    # a rule-level violation against a generated rule. Classified business_defect
+    # with its cite, and the cite is now REQUIRED by _tdd_template_for below.
     return {
         "tdd_type_code": "text",
         "value_type": "string",
-        "rules": [{"op": "present", "note": f"field {key}"}],
+        "fail_class": "business_defect",
+        "cite_ref": "register:wording_registry:21",
+        "rules": [{"op": "present", "note": f"field {key}",
+                   "fail_class": "business_defect",
+                   "cite_ref": "register:wording_registry:21"}],
     }
 
 
@@ -2689,7 +2732,7 @@ def research_fn_request(
     for r in conn.execute(
         """
         SELECT register_id, function_name, slice_key, status, tacid
-        FROM code_register
+        FROM code_registry
         WHERE (system_key = ? OR module_name = ?)
           AND status NOT IN ('rubbish', 'deprecated')
         ORDER BY id
@@ -2750,7 +2793,7 @@ def research_fn_request(
                 "sort": i,
                 "tdd_type_code": tmpl.get("tdd_type_code") or "text",
                 "tdd": tmpl,
-                "reuse_register_id": next(
+                "reuse_registry_id": next(
                     (
                         x["register_id"]
                         for x in reuse_regs
@@ -2802,7 +2845,7 @@ def research_fn_request(
 
     cur = conn.execute(
         """
-        INSERT INTO fn_research
+        INSERT INTO analyze
             (request_id, path_code, has_table, table_name,
              existing_fields_json, reuse_registers_json, proposed_slices_json,
              equation, notes, multi_dim_ssot_json, source)
@@ -3235,13 +3278,13 @@ def build_fn_request(
 
         reg_info = None
         if register_functions:
-            reuse_rid = spec.get("reuse_register_id")
+            reuse_rid = spec.get("reuse_registry_id")
             existing_reg = None
             if reuse_rid:
                 existing_reg = conn.execute(
                     """
                     SELECT register_id, function_name, module_name
-                    FROM code_register WHERE register_id = ?
+                    FROM code_registry WHERE register_id = ?
                     """,
                     (str(reuse_rid),),
                 ).fetchone()
@@ -3249,7 +3292,7 @@ def build_fn_request(
                 existing_reg = conn.execute(
                     """
                     SELECT register_id, function_name, module_name
-                    FROM code_register
+                    FROM code_registry
                     WHERE slice_task_id = ? AND status IN ('active', 'draft', 'zombie')
                     ORDER BY id LIMIT 1
                     """,
@@ -3259,7 +3302,7 @@ def build_fn_request(
                 existing_reg = conn.execute(
                     """
                     SELECT register_id, function_name, module_name
-                    FROM code_register
+                    FROM code_registry
                     WHERE system_key = ? AND slice_key = ?
                       AND status IN ('active', 'draft', 'zombie')
                     ORDER BY id LIMIT 1
@@ -3371,9 +3414,9 @@ def build_fn_request(
         "path_code": plan.get("path_code"),
         "trace": {
             "request_table": "fn_request",
-            "research_table": "fn_research",
+            "research_table": "analyze",
             "tdd_table": "field_tdd_rule",
-            "register_table": "code_register",
+            "register_table": "code_registry",
             "ssot_table": "task_ssot",
             "task_table": "dev_task",
         },
@@ -3535,11 +3578,11 @@ def list_managed_systems(conn: sqlite3.Connection) -> list[dict[str, Any]]:
                 "updated_at": r[7],
             }
         )
-    # fallback from code_register if rollup empty
+    # fallback from code_registry if rollup empty
     if not out:
         keys = conn.execute(
             """
-            SELECT DISTINCT system_key FROM code_register
+            SELECT DISTINCT system_key FROM code_registry
             WHERE system_key IS NOT NULL AND system_key != ''
             """
         ).fetchall()
@@ -3583,7 +3626,7 @@ def run_selftest(db_path: str | None = None, *, migrate: bool = True) -> dict[st
             lambda: 1,
             module_name="nope",
             function_name="not_registered_fn_xyz",
-            require_register=True,
+            require_registry=True,
             conn=conn,
             commit=False,
             reraise=False,
@@ -3594,13 +3637,13 @@ def run_selftest(db_path: str | None = None, *, migrate: bool = True) -> dict[st
         reg0 = (seed.get("registers") or [None])[0]
         assert reg0 and reg0.get("register_id"), reg0
         rid0 = str(reg0["register_id"])
-        row_chk = get_code_register(conn, register_id=rid0)
-        assert row_chk is not None, f"missing code_register {rid0}"
+        row_chk = get_code_registry(conn, register_id=rid0)
+        assert row_chk is not None, f"missing code_registry {rid0}"
 
         called = managed_invoke(
             lambda: "ok_member",
             register_id=rid0,
-            require_register=True,
+            require_registry=True,
             conn=conn,
             commit=True,
             reraise=True,
@@ -3658,7 +3701,7 @@ def run_selftest(db_path: str | None = None, *, migrate: bool = True) -> dict[st
             "cleanup_marked_registers": len(cleanup.get("marked_registers") or []),
             "refuse_unregistered": True,
             "managed_invoke_ok": True,
-            "invoke_register_id": got_rid,
+            "invoke_registry_id": got_rid,
             "equation": seed.get("equation"),
             "builder_system_key": "member_card",
             "builder_registers_n": len((built.get("build") or {}).get("registers") or []),
@@ -3823,3 +3866,5 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+# object_door: kind-agnostic by definition (no DDL in this file)

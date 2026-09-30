@@ -153,7 +153,7 @@ def list_openclaw_registers(conn: sqlite3.Connection) -> list[dict[str, Any]]:
         """
         SELECT register_id, module_name, function_name, slice_key, status,
                task_id, system_key, file_path, line_start, line_end
-        FROM code_register
+        FROM code_registry
         WHERE module_name = ? AND system_key = ?
         ORDER BY id
         """,
@@ -178,16 +178,16 @@ def list_openclaw_registers(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     return out
 
 
-def get_register_for_tool(
+def get_registry_for_tool(
     conn: sqlite3.Connection,
     *,
     function_name: str | None = None,
     slice_key: str | None = None,
 ) -> dict[str, Any] | None:
-    from managed_coding import get_code_register
+    from managed_coding import get_code_registry
 
     if function_name:
-        reg = get_code_register(
+        reg = get_code_registry(
             conn, module_name=MODULE_CODE, function_name=function_name
         )
         if reg:
@@ -195,7 +195,7 @@ def get_register_for_tool(
     if slice_key:
         row = conn.execute(
             """
-            SELECT register_id FROM code_register
+            SELECT register_id FROM code_registry
             WHERE module_name = ? AND system_key = ? AND slice_key = ?
               AND status IN ('active', 'draft', 'zombie')
             ORDER BY id LIMIT 1
@@ -203,7 +203,7 @@ def get_register_for_tool(
             (MODULE_CODE, SYSTEM_KEY, slice_key),
         ).fetchone()
         if row:
-            return get_code_register(conn, register_id=str(row[0]))
+            return get_code_registry(conn, register_id=str(row[0]))
     return None
 
 
@@ -213,7 +213,7 @@ def seed_openclaw_mcp_registers(
     commit: bool = True,
     register_functions: bool = True,
 ) -> dict[str, Any]:
-    """Idempotent: oc.mcp-tools root + tool slices + code_register + onto bindings."""
+    """Idempotent: oc.mcp-tools root + tool slices + code_registry + onto bindings."""
     from db_schema import upsert_task_ssot
     from managed_coding import (
         apply_slice_profile_dims,
@@ -550,7 +550,7 @@ def seed_openclaw_mcp_registers(
             existing_reg = conn.execute(
                 """
                 SELECT register_id, function_name, module_name
-                FROM code_register
+                FROM code_registry
                 WHERE module_name = ? AND function_name = ?
                 LIMIT 1
                 """,
@@ -560,7 +560,7 @@ def seed_openclaw_mcp_registers(
                 existing_reg = conn.execute(
                     """
                     SELECT register_id, function_name, module_name
-                    FROM code_register
+                    FROM code_registry
                     WHERE system_key = ? AND slice_key = ?
                       AND status IN ('active', 'draft', 'zombie')
                     ORDER BY id LIMIT 1
@@ -716,11 +716,11 @@ def _traced_run(
     task_id: int | None = None,
     db_path: str | None = None,
     conn: sqlite3.Connection | None = None,
-    require_register: bool = False,
+    require_registry: bool = False,
 ) -> dict[str, Any]:
     """Run callable via managed_invoke when possible; soft-fallback to bare call.
 
-    require_register=False so missing seed never blocks MCP host paths.
+    require_registry=False so missing seed never blocks MCP host paths.
     """
     from managed_coding import managed_invoke
 
@@ -752,11 +752,11 @@ def _traced_run(
     assert conn is not None
     try:
         # Ensure seed once (idempotent) if register missing
-        reg = get_register_for_tool(conn, function_name=function_name, slice_key=slice_key)
+        reg = get_registry_for_tool(conn, function_name=function_name, slice_key=slice_key)
         if reg is None:
             try:
                 seed_openclaw_mcp_registers(conn, commit=True, register_functions=True)
-                reg = get_register_for_tool(
+                reg = get_registry_for_tool(
                     conn, function_name=function_name, slice_key=slice_key
                 )
             except Exception:
@@ -774,7 +774,7 @@ def _traced_run(
                 function_name=function_name,
                 tacid=str(tac),
                 task_id=int(tid) if tid is not None else None,
-                require_register=require_register and rid is not None,
+                require_registry=require_registry and rid is not None,
                 conn=conn,
                 args=args,
                 kwargs=kwargs or {},
@@ -1039,6 +1039,115 @@ def sync_live_tools(
     }
 
 
+def capability_tool_drift(conn: sqlite3.Connection) -> dict[str, Any]:
+    """Compare `TOOL_SPECS` (the trace spine) against `capability_tool`.
+
+    WHY THIS EXISTS (2026-09-21). The capability -> tool mapping lived in FOUR
+    places. Three were demoted: `openclaw_settings.CAPABILITIES` became a SEED,
+    `llm_service_store.MCP_TOOL_FOR_CAPABILITY` became a FALLBACK, and both now
+    READ `capability_tool`. `TOOL_SPECS` was deliberately KEPT, because it is a
+    TRACE SPINE (it carries `function_name` + `file_path` for the invoke trace),
+    not a capability declaration — a different purpose, so it must not be merged
+    away.
+
+    But a copy with NO drift check is the exact defect this session kept finding:
+    an unchecked duplicate drifts silently and nobody learns. So this DETECTS the
+    divergence between the two, and never writes to either.
+
+    READ THIS BEFORE CALLING IT A BUG. The two sets are NOT meant to be equal,
+    and a non-zero `drift_count` is EXPECTED:
+      * the spine carries only the tools whose INVOCATION must be audited
+        (screen.snapshot, system.notify) plus one liveness probe (ping);
+      * the registry declares EVERY tool a capability is provided by, including
+        read-only ones that need no audit.
+    So `orphan_in_registry` is normally LARGE and normal. What is NOT normal:
+      * `orphan_in_spine` naming a tool that is a real CAPTURE/EXEC tool — the
+        spine is tracing something the registry cannot describe;
+      * a spine tool that has DISAPPEARED from the registry — a silent rename.
+    The report carries the numbers so a human can judge, rather than a boolean
+    that asserts a relationship nobody stated.
+
+    DETECT ONLY (gate=never), the same policy as `sync_live_tools`.
+    """
+    spine = {str(s["mcp_tool"]) for s in TOOL_SPECS if s.get("mcp_tool")}
+    try:
+        registry = {str(r[0]) for r in conn.execute(
+            "SELECT DISTINCT tool_name FROM capability_tool")}
+        tables = True
+    except sqlite3.Error:
+        registry, tables = set(), False
+    return {
+        "ok": True,
+        "gate": GATE_POLICY,
+        "detect_only": True,
+        "registry_readable": tables,
+        "spine_tools": sorted(spine),
+        "registry_tools": sorted(registry),
+        "orphan_in_spine": sorted(spine - registry),
+        "orphan_in_registry": sorted(registry - spine),
+        "drift_count": len((spine - registry) | (registry - spine)),
+        "note": ("the spine audits INVOCATIONS, the registry declares "
+                 "PROVISION; a non-zero drift_count is expected, and only an "
+                 "orphan_in_spine that names a capture/exec tool is a defect"),
+    }
+
+
+def sync_capability_tools(
+    conn: sqlite3.Connection | None = None,
+    *,
+    db_path: str | None = None,
+    commit: bool = True,
+) -> dict[str, Any]:
+    """Record the spine-vs-registry drift as a task dimension. Detect only."""
+    from db_schema import upsert_task_ssot
+
+    own = conn is None
+    if own:
+        conn, own = _open_conn(db_path)
+    assert conn is not None
+
+    drift = capability_tool_drift(conn)
+
+    row = conn.execute(
+        """
+        SELECT t.id FROM dev_task t
+        JOIN version_center v ON v.id = t.version_id
+        JOIN module m ON m.id = t.module_id
+        WHERE t.task_label = ? AND m.code = ? AND v.version_label = ?
+        ORDER BY t.id DESC LIMIT 1
+        """,
+        (ROOT_LABEL, MODULE_CODE, VERSION_LABEL),
+    ).fetchone()
+    root_id = int(row[0]) if row else None
+
+    if root_id is not None:
+        upsert_task_ssot(
+            conn,
+            task_id=root_id,
+            dim_key="tool.capability_tool.drift",
+            value_text=json.dumps(
+                {
+                    "orphan_in_spine": drift["orphan_in_spine"],
+                    "orphan_in_registry": drift["orphan_in_registry"],
+                    "drift_count": drift["drift_count"],
+                },
+                ensure_ascii=False,
+            ),
+            value_type="json",
+            source="openclaw_mcp_sync",
+            sort_order=92,
+            notes="TOOL_SPECS (trace spine) vs capability_tool (the registry)",
+            commit=False,
+        )
+        if commit:
+            conn.commit()
+
+    if own:
+        conn.close()
+    drift["root_task_id"] = root_id
+    return drift
+
+
 def selftest(db_path: str | None = None) -> dict[str, Any]:
     """Seed + mock traced invoke without live Companion."""
     from db_schema import get_db_path
@@ -1103,7 +1212,7 @@ def selftest(db_path: str | None = None) -> dict[str, Any]:
             "seed_registers": len(seed.get("registers") or []),
             "invoke_ok": bool(inv.get("ok")),
             "invoke_traced": inv.get("traced"),
-            "invoke_register_id": inv.get("register_id"),
+            "invoke_registry_id": inv.get("register_id"),
             "trace_rows_module": trace_n,
             "root_task_id": seed.get("root_task_id"),
         }

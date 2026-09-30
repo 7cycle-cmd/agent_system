@@ -84,7 +84,7 @@ def _conn(p: Path) -> sqlite3.Connection:
 def _active_versions(conn, letter, ref_id):
     """The entity's currently ACTIVE versions, read from the DB — a list."""
     return [int(r["version"]) for r in conn.execute(
-        "SELECT version FROM version_register WHERE entity_type=? "
+        "SELECT version FROM version_registry WHERE entity_type=? "
         "AND entity_ref_id=? AND is_active=1 ORDER BY version",
         (letter, int(ref_id)))]
 
@@ -92,7 +92,7 @@ def _active_versions(conn, letter, ref_id):
 def _pick_entity(conn):
     """A live entity with at least one version row, so nothing is invented."""
     r = conn.execute(
-        "SELECT entity_type, entity_ref_id, MIN(version) v FROM version_register "
+        "SELECT entity_type, entity_ref_id, MIN(version) v FROM version_registry "
         "GROUP BY 1, 2 ORDER BY 1").fetchone()
     return str(r["entity_type"]), int(r["entity_ref_id"]), int(r["v"])
 
@@ -141,11 +141,11 @@ def main() -> int:
             letter, ref_id, v1 = _pick_entity(conn)
             print("  seeded on live entity %s/%d (version %d)" % (letter, ref_id, v1))
             # TWO versions, BOTH active — the exact state the bug produced.
-            conn.execute("UPDATE version_register SET is_active=1 "
+            conn.execute("UPDATE version_registry SET is_active=1 "
                          "WHERE entity_type=? AND entity_ref_id=?",
                          (letter, ref_id))
             conn.execute(
-                "INSERT OR IGNORE INTO version_register (entity_type, "
+                "INSERT OR IGNORE INTO version_registry (entity_type, "
                 "entity_ref_id, version, is_active) VALUES (?,?,?,1)",
                 (letter, ref_id, v1 + 1))
             conn.commit()
@@ -230,12 +230,12 @@ def main() -> int:
             _seed_verdict(conn, "worker_identity", letter="P", ref_id=1)
             _seed_run(conn, "worker_identity", 20, rule_version=PROBE_RV)
             # v1 active, v2 NOT — the state before the bug is triggered.
-            conn.execute("UPDATE version_register SET is_active=0 "
+            conn.execute("UPDATE version_registry SET is_active=0 "
                          "WHERE entity_type='P' AND entity_ref_id=1")
-            conn.execute("UPDATE version_register SET is_active=1 "
+            conn.execute("UPDATE version_registry SET is_active=1 "
                          "WHERE entity_type='P' AND entity_ref_id=1 AND version=1")
             conn.execute(
-                "INSERT OR IGNORE INTO version_register (entity_type, "
+                "INSERT OR IGNORE INTO version_registry (entity_type, "
                 "entity_ref_id, version, is_active) VALUES ('P',1,2,0)")
             conn.commit()
             res = ag.activate(conn, "P", 1, 2, ref_tag="worker_identity",
@@ -259,9 +259,9 @@ def main() -> int:
                       "AND new_version=2").fetchone()[0] == 1)
 
             # ---- QC-06: v1 of a single-version entity retires nothing ------
-            conn.execute("UPDATE version_register SET is_active=1 "
+            conn.execute("UPDATE version_registry SET is_active=1 "
                          "WHERE entity_type='P' AND entity_ref_id=1 AND version=1")
-            conn.execute("UPDATE version_register SET is_active=0 "
+            conn.execute("UPDATE version_registry SET is_active=0 "
                          "WHERE entity_type='P' AND entity_ref_id=1 AND version=2")
             conn.commit()
             res1 = ag.activate(conn, "P", 1, 1, ref_tag="worker_identity",
@@ -280,7 +280,7 @@ def main() -> int:
         conn = _conn(work)
         try:
             letter, ref_id, v1 = _pick_entity(conn)
-            conn.execute("UPDATE version_register SET is_active=1 "
+            conn.execute("UPDATE version_registry SET is_active=1 "
                          "WHERE entity_type=? AND entity_ref_id=?",
                          (letter, ref_id))
             conn.commit()
@@ -317,16 +317,16 @@ def main() -> int:
         check("QC-10  entity_registry CALLS activation_gate.retire_other_versions",
               "retire_other_versions(" in ent_src)
         check("QC-10  entity_registry does NOT reimplement the flip "
-              "(no UPDATE version_register SET is_active=0 in it)",
+              "(no UPDATE version_registry SET is_active=0 in it)",
               not re.search(
-                  r"UPDATE\s+version_register\s+SET\s+is_active\s*=\s*0", ent_src, re.I),
+                  r"UPDATE\s+version_registry\s+SET\s+is_active\s*=\s*0", ent_src, re.I),
               "no second answer to one question")
         check("QC-10  the flip has ONE home (activation_gate)",
               len(re.findall(
-                  r"UPDATE\s+version_register\s+SET\s+is_active\s*=\s*0",
+                  r"UPDATE\s+version_registry\s+SET\s+is_active\s*=\s*0",
                   ag_src, re.I)) == 1,
               "%d occurrence(s)" % len(re.findall(
-                  r"UPDATE\s+version_register\s+SET\s+is_active\s*=\s*0",
+                  r"UPDATE\s+version_registry\s+SET\s+is_active\s*=\s*0",
                   ag_src, re.I)))
 
         # ================================================================== E
@@ -349,17 +349,17 @@ def main() -> int:
             # on the CODE -- the "pinned count" defect. So the broken state is
             # CONSTRUCTED here, and the repair is measured against it.
             letter, ref_id, v1 = _pick_entity(conn)
-            conn.execute("UPDATE version_register SET is_active=1 "
+            conn.execute("UPDATE version_registry SET is_active=1 "
                          "WHERE entity_type=? AND entity_ref_id=?",
                          (letter, ref_id))
             conn.execute(
-                "INSERT OR IGNORE INTO version_register (entity_type, "
+                "INSERT OR IGNORE INTO version_registry (entity_type, "
                 "entity_ref_id, version, is_active) VALUES (?,?,?,1)",
                 (letter, ref_id, v1 + 1))
             conn.commit()
             bad = list(conn.execute(
                 "SELECT entity_type, entity_ref_id, MAX(version) mx FROM "
-                "version_register WHERE is_active=1 GROUP BY 1,2 HAVING "
+                "version_registry WHERE is_active=1 GROUP BY 1,2 HAVING "
                 "COUNT(*) > 1"))
             check("PRECONDITION: the defect is present (1 entity, 2 active)",
                   len(bad) == 1, "%d entity(ies)" % len(bad))
@@ -374,7 +374,7 @@ def main() -> int:
                     decided_by="_proof_version_flip.py")
             conn.commit()
             after = list(conn.execute(
-                "SELECT entity_type, entity_ref_id FROM version_register "
+                "SELECT entity_type, entity_ref_id FROM version_registry "
                 "WHERE is_active=1 GROUP BY 1,2 HAVING COUNT(*) > 1"))
             check("QC-09  AFTER the backfill, ZERO entities have >1 active version",
                   not after, str(after))

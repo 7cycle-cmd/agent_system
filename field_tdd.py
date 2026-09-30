@@ -635,16 +635,16 @@ def validate_value_against_tdd(
     }
 
 
-def ensure_address_register(
+def ensure_address_registry(
     conn: sqlite3.Connection,
     *,
     register_id: str = "reg_membership_member_address_721c9058ea21",
     system_key: str = "membership",
     commit: bool = False,
 ) -> dict[str, Any]:
-    """Ensure address code_register row exists (optional slice; no auto task tree)."""
+    """Ensure address code_registry row exists (optional slice; no auto task tree)."""
     row = conn.execute(
-        "SELECT id, register_id, function_name, slice_key, status FROM code_register WHERE register_id = ?",
+        "SELECT id, register_id, function_name, slice_key, status FROM code_registry WHERE register_id = ?",
         (register_id,),
     ).fetchone()
     if row:
@@ -660,7 +660,7 @@ def ensure_address_register(
     # avoid UNIQUE(module_name, function_name) clash
     clash = conn.execute(
         """
-        SELECT register_id FROM code_register
+        SELECT register_id FROM code_registry
         WHERE module_name = ? AND function_name = ?
         """,
         ("membership", "member_address"),
@@ -674,7 +674,7 @@ def ensure_address_register(
         }
     cur = conn.execute(
         """
-        INSERT INTO code_register (
+        INSERT INTO code_registry (
             register_id, module_name, function_name, system_key, slice_key,
             tacid, status, notes, source
         ) VALUES (?, 'membership', 'member_address', ?, 'address', '1.6', 'active', ?, 'field_tdd.import')
@@ -709,14 +709,14 @@ def import_membership_field_tdd(
 
     address_info = None
     if ensure_address:
-        address_info = ensure_address_register(conn, commit=False)
+        address_info = ensure_address_registry(conn, commit=False)
 
-    # map register_id -> task_id from code_register
+    # map register_id -> task_id from code_registry
     reg_task: dict[str, int | None] = {}
     for r in conn.execute(
         """
         SELECT register_id, slice_task_id, task_id
-        FROM code_register
+        FROM code_registry
         WHERE system_key = 'membership'
         """
     ).fetchall():
@@ -767,7 +767,7 @@ def import_membership_field_tdd(
         "pipeline": "D_managed_coding",
         "imported_n": len(updated),
         "rows": updated,
-        "address_register": address_info,
+        "address_registry": address_info,
         "table": "field_tdd_rule",
         "db_law": "existing agent.db field_tdd_rule — no parallel member_db schema",
     }
@@ -829,7 +829,7 @@ def run_selftest(conn: sqlite3.Connection | None = None) -> dict[str, Any]:
             conn, register_id="reg_membership_member_phone_63e3047cbe53"
         )
         assert by_reg and by_reg["slice_key"] == "phone", by_reg
-        steps.append({"step": "load_by_register_id", "ok": True, "id": by_reg.get("id")})
+        steps.append({"step": "load_by_registry_id", "ok": True, "id": by_reg.get("id")})
 
         return {
             "ok": True,

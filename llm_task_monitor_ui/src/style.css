@@ -30,4 +30,547 @@
       transform: translateY(0);
     }
   }
+
+  /* THE ACTION BUTTON: RED with a SHIMMER LIGHT EFFECT.
+     THE HUMAN (2026-09-25): "action buttom = red with shimmer light effect".
+     The shimmer is a moving highlight band, so the button reads as the
+     primary action without changing colour on hover. */
+  .action-shimmer {
+    position: relative;
+    overflow: hidden;
+    background-color: #dc2626; /* red-600 */
+    color: #fff;
+    border: 1px solid #b91c1c; /* red-700 */
+  }
+
+  .action-shimmer::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -150%;
+    width: 60%;
+    height: 100%;
+    background: linear-gradient(
+      100deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.55) 50%,
+      rgba(255, 255, 255, 0) 100%
+    );
+    animation: actionShimmer 2.2s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  @keyframes actionShimmer {
+    0% {
+      left: -150%;
+    }
+    60% {
+      left: 150%;
+    }
+    100% {
+      left: 150%;
+    }
+  }
+
+  /* THE EVID IMAGE HOVER PREVIEW.
+     THE HUMAN (2026-09-25): "can mouse over to have the large image by 600*600
+     with info for file location". The preview is 600x600 and carries the file
+     path, so the proof can be checked without leaving the page.
+     `pointer-events: none` on the popup so it never steals the hover and
+     flickers.
+
+     MEASURED (2026-09-25): two anchoring attempts FAILED.
+       * `left: 0` pushed the 600px preview OFF-SCREEN (the image cell sits at
+         the right of a wide table).
+       * `right: 0` was CLIPPED to 143px, because the table lives inside
+         `overflow-x-auto` and an absolutely positioned child of a scroll
+         container is clipped by it.
+     A `position: fixed` overlay is the fix: it is not a child of the scroll
+     container for clipping purposes, so it is never clipped and never
+     off-screen, at any table width. */
+  .evid-hover {
+    position: relative;
+  }
+
+  .evid-pop {
+    display: none;
+    position: fixed;
+    z-index: 60;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    border: 1px solid #30363d;
+    background: #0d1117;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+    pointer-events: none;
+  }
+
+  .evid-pop img {
+    display: block;
+    width: 50px;
+    height: 50px;
+    /* THE HUMAN (2026-09-26): "pop-up with preview image size = 50*50". The
+       preview is 50x50, matching the inline style in `worker.js` so the two
+       cannot disagree. `object-fit: contain` keeps the aspect ratio. */
+    max-width: 90vw;
+    max-height: 80vh;
+    object-fit: contain;
+  }
+
+  .evid-hover:hover .evid-pop {
+    display: block;
+  }
 }
+
+/* ===================================================================
+   Telemetry HUD — dark devops instrument panel, orange accent.
+   Scoped to .hud-* so it never leaks into the rest of the light UI.
+   =================================================================== */
+
+.hud {
+  --hud-bg: #0d1117;
+  --hud-panel: #161b22;
+  --hud-panel-alt: #1c2128;
+  --hud-line: #30363d;
+  --hud-ink: #e6edf3;
+  --hud-muted: #8b949e;
+  --hud-accent: #f97316;
+  --hud-accent-soft: rgba(249, 115, 22, 0.14);
+  --hud-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+
+  background:
+    radial-gradient(
+      1100px 480px at 12% -12%,
+      rgba(249, 115, 22, 0.1),
+      transparent 62%
+    ),
+    var(--hud-bg);
+  color: var(--hud-ink);
+  border-radius: 16px;
+  padding: 16px;
+  font-family: var(--hud-mono);
+}
+
+/* --- page header --- */
+
+.hud-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.hud-head h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+
+.hud-head p {
+  margin: 3px 0 0;
+  font-size: 11.5px;
+  color: var(--hud-muted);
+}
+
+.hud-head-right {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.hud-pill {
+  border: 1px solid var(--hud-line);
+  background: var(--hud-panel);
+  color: var(--hud-muted);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 11px;
+}
+
+.hud-btn {
+  border: 1px solid var(--hud-line);
+  background: var(--hud-panel);
+  color: var(--hud-ink);
+  border-radius: 10px;
+  padding: 5px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+.hud-btn:hover {
+  background: var(--hud-panel-alt);
+  border-color: var(--hud-accent);
+}
+
+/* --- grid of cards --- */
+
+.hud-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+}
+
+.hud-card {
+  border: 1px solid var(--hud-line);
+  background: linear-gradient(
+    180deg,
+    var(--hud-panel) 0%,
+    var(--hud-panel-alt) 100%
+  );
+  border-radius: 14px;
+  padding: 12px 14px 6px;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.hud-card:hover {
+  border-color: rgba(249, 115, 22, 0.45);
+  box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.12),
+    0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.hud-card-h {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.hud-card-t {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--hud-ink);
+}
+
+.hud-card-s {
+  margin: 2px 0 0;
+  font-size: 10.5px;
+  color: var(--hud-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.hud-card-hr {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.hud-badge {
+  border: 1px solid var(--hud-line);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 10px;
+  color: var(--hud-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.hud-badge-ok {
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #34d399;
+}
+
+.hud-badge-err {
+  border-color: rgba(244, 63, 94, 0.4);
+  color: #fb7185;
+  cursor: help;
+}
+
+.hud-open {
+  border: 1px solid var(--hud-line);
+  background: transparent;
+  color: var(--hud-muted);
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 10.5px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: color 140ms ease, border-color 140ms ease;
+}
+
+.hud-open:hover {
+  color: var(--hud-accent);
+  border-color: var(--hud-accent);
+}
+
+/* --- stat strip --- */
+
+.hud-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 6px 0 2px;
+  border-top: 1px solid var(--hud-line);
+  margin-top: 2px;
+}
+
+.hud-stat-k {
+  font-size: 9.5px;
+  color: var(--hud-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.hud-stat-v {
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--hud-accent);
+  line-height: 1.25;
+}
+
+.hud-chart {
+  min-height: 220px;
+}
+
+.hud-err {
+  border: 1px dashed rgba(244, 63, 94, 0.4);
+  border-radius: 10px;
+  padding: 22px 12px;
+  text-align: center;
+  font-size: 11.5px;
+  color: #fb7185;
+}
+
+.hud-empty {
+  border: 1px dashed var(--hud-line);
+  border-radius: 12px;
+  padding: 26px 14px;
+  text-align: center;
+  color: var(--hud-muted);
+  font-size: 12px;
+}
+
+/* --- detail modal --- */
+
+.hud-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 6, 12, 0.72);
+  backdrop-filter: blur(3px);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.hud-modal {
+  background: var(--hud-panel, #161b22);
+  border: 1px solid #30363d;
+  border-radius: 16px;
+  width: min(1080px, 100%);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: #e6edf3;
+  font-family: var(--hud-mono);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+}
+
+.hud-modal-h {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #30363d;
+  background: #1c2128;
+}
+
+.hud-modal-h h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.hud-modal-h p {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: #8b949e;
+}
+
+.hud-modal-body {
+  padding: 14px 16px;
+  overflow: auto;
+}
+
+.hud-x {
+  border: 1px solid #30363d;
+  background: transparent;
+  color: #8b949e;
+  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.hud-x:hover {
+  color: #f97316;
+  border-color: #f97316;
+}
+
+.hud-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11.5px;
+}
+
+.hud-table th {
+  position: sticky;
+  top: 0;
+  background: #1c2128;
+  text-align: left;
+  padding: 7px 9px;
+  border-bottom: 1px solid #30363d;
+  color: #8b949e;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.hud-table td {
+  padding: 6px 9px;
+  border-bottom: 1px solid rgba(48, 54, 61, 0.55);
+  color: #e6edf3;
+  vertical-align: top;
+}
+
+.hud-table tbody tr:hover {
+  background: rgba(249, 115, 22, 0.06);
+}
+
+.hud-lvl {
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.hud-note {
+  font-size: 11px;
+  color: #8b949e;
+  margin: 0 0 10px;
+}
+
+/* ---- MARKDOWN (2026-09-27) -------------------------------------------------
+   THE HUMAN: "it can re-design ui to become user readable and user friendly".
+   MEASURED: ask 7712 is 6,593 chars of RAW Markdown and the page showed the
+   source. These classes style the rendered document. */
+.md p { margin: 0 0 6px; }
+.md p:last-child { margin-bottom: 0; }
+.md .md-h { font-weight: 600; margin: 8px 0 4px; }
+.md h1.md-h { font-size: 15px; }
+.md h2.md-h { font-size: 14px; }
+.md h3.md-h { font-size: 13px; }
+.md h4.md-h, .md h5.md-h, .md h6.md-h { font-size: 12px; }
+.md .md-ul { margin: 4px 0 6px; padding-left: 18px; list-style: disc; }
+.md .md-ul li { margin: 1px 0; }
+.md .md-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.92em;
+  background: rgba(127, 127, 127, 0.16);
+  border-radius: 4px;
+  padding: 0 3px;
+}
+.md .md-pre {
+  margin: 6px 0;
+  padding: 8px 10px;
+  overflow-x: auto;
+  border-radius: 8px;
+  background: rgba(127, 127, 127, 0.12);
+  font-size: 11px;
+  line-height: 1.45;
+}
+.md .md-pre code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.md .md-table {
+  margin: 6px 0;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+.md .md-table th, .md .md-table td {
+  border: 1px solid rgba(127, 127, 127, 0.35);
+  padding: 3px 6px;
+  text-align: left;
+  vertical-align: top;
+}
+.md .md-table th { background: rgba(127, 127, 127, 0.12); font-weight: 600; }
+
+/* ---------------------------------------------------------------------------
+   CONSULTANT CENTER (2026-09-28).
+   THE HUMAN: "＋ ui at http://127.0.0.1:18765/llm-tasks/consultant / your ui
+   team can help you, it should not be a single ui".
+
+   THE ONE RULE THESE CLASSES SERVE: `UNMEASURED` and `UNKNOWN` must be VISUALLY
+   DISTINCT from a pass. `ui-standard` rule 5 and QC-18 require it, so `.cc-unknown`
+   is amber and `.cc-ok` is green -- a reader must be able to tell "not measured"
+   from "measured and fine" without reading the text.
+   --------------------------------------------------------------------------- */
+.cc-tabs { display: flex; gap: .5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.cc-tab {
+  padding: .4rem .9rem; border-radius: .6rem; font-size: .85rem;
+  border: 1px solid var(--line, #d4d4d8); background: transparent;
+  color: inherit; cursor: pointer;
+}
+.cc-tab-on { background: var(--panel, #f4f4f5); font-weight: 600; }
+.cc-head h2 { font-size: 1.05rem; font-weight: 600; margin: 0 0 .25rem; }
+.cc-sub { font-size: .8rem; opacity: .75; margin: .15rem 0 .6rem; }
+.cc-row { display: flex; gap: .5rem; margin-bottom: .75rem; flex-wrap: wrap; }
+.cc-input {
+  padding: .4rem .7rem; border-radius: .6rem; font-size: .85rem;
+  border: 1px solid var(--line, #d4d4d8); background: var(--panel, #fff);
+  color: inherit; min-width: 16rem;
+}
+.cc-btn {
+  padding: .4rem .9rem; border-radius: .6rem; font-size: .85rem;
+  border: 1px solid var(--line, #d4d4d8); background: var(--panel, #f4f4f5);
+  color: inherit; cursor: pointer;
+}
+.cc-scroll { overflow-x: auto; }
+.cc-table { border-collapse: collapse; font-size: .78rem; width: 100%; }
+.cc-table th, .cc-table td {
+  border: 1px solid var(--line, #e4e4e7); padding: .3rem .5rem;
+  text-align: left; vertical-align: top; white-space: nowrap;
+}
+.cc-table th { background: var(--panel, #f4f4f5); font-weight: 600; }
+.cc-why { white-space: normal; max-width: 22rem; }
+.cc-pill {
+  display: inline-block; padding: .1rem .45rem; border-radius: .5rem;
+  font-size: .72rem; font-weight: 600;
+}
+.cc-ok { background: #dcfce7; color: #166534; }
+.cc-bad { background: #fee2e2; color: #991b1b; }
+.cc-unknown { background: #fef3c7; color: #92400e; }
+.cc-card {
+  border: 1px solid var(--line, #e4e4e7); border-radius: .75rem;
+  padding: .75rem; margin-bottom: .75rem;
+}
+.cc-card-head { font-size: .85rem; margin-bottom: .35rem; }
+.cc-team { border-left: 3px solid var(--line, #e4e4e7); padding-left: .6rem; margin: .6rem 0; }
+.cc-empty {
+  border: 1px dashed var(--line, #d4d4d8); border-radius: .75rem;
+  padding: .75rem; font-size: .82rem; margin: .5rem 0;
+}
+.cc-loading { font-size: .82rem; opacity: .7; padding: .5rem 0; }
+.cc-error {
+  border: 1px solid #fecaca; background: #fef2f2; color: #991b1b;
+  border-radius: .75rem; padding: .6rem; font-size: .82rem; margin-bottom: .6rem;
+}
+.cc-num { font-weight: 600; }
+.cc-num-label { opacity: .7; }

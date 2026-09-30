@@ -36,8 +36,10 @@ echo Keep this window open. Close it to stop the server.
 echo URL: %URL%
 echo.
 
-start "" "%URL%"
-"%PY%" "%APP%"
+rem ONE tab, not two. MEASURED DEFECT: this file used to run `start "" "%URL%"`
+rem AND then start the helper, which opened the URL AGAIN -> two tabs on every
+rem cold start. The helper now opens it only when asked, so we ask exactly once.
+"%PY%" "%APP%" --open-browser
 set "EC=%ERRORLEVEL%"
 echo.
 echo Server stopped. Exit code: %EC%

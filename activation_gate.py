@@ -26,7 +26,7 @@ So this module is the gate that turns a 100-run streak into an activation.
 
 Every task updates by a NEW VERSION, so the thing that gets proven is a VERSION,
 not a row. `activate()` therefore takes a `version` and flips THAT version's row
-in `version_register`, leaving the entity's other versions alone.
+in `version_registry`, leaving the entity's other versions alone.
 
 THE TWO MEANINGS OF `is_active`, AND WHY THEY ARE NOT MERGED
 ------------------------------------------------------------
@@ -48,7 +48,7 @@ WHAT IT REFUSES
   * activating without a citation (`citation_discipline.assert_cited`)
   * activating a version that does not exist
   * touching a table on the EXEMPT list (a blanket flip would break entity id
-    resolution: `entity_id.require` needs an ACTIVE `version_register` row)
+    resolution: `entity_id.require` needs an ACTIVE `version_registry` row)
 
 Run:
     .\\.venv\\Scripts\\python.exe activation_gate.py --status
@@ -96,26 +96,26 @@ class ActivationRefused(RuntimeError):
 # The user's rule is "this is for all table with is_active, not for this system
 # only". But a BLANKET flip breaks the system: `entity_id.require`
 # (`entity_id.py:137`) requires "the version must be an ACTIVE row in
-# `version_register`", so setting every `version_register.is_active=0` makes
+# `version_registry`", so setting every `version_registry.is_active=0` makes
 # every entity id unresolvable. The same applies to the alphabet
-# (`entity_type_register`) and the base dimensions.
+# (`entity_type_registry`) and the base dimensions.
 #
 # So the scope is NAMED, and the exemptions are NAMED WITH THEIR REASON — the
-# same shape `_proof_register_approval.NO_LETTER_BECAUSE` already uses, which
+# same shape `_proof_registry_approval.NO_LETTER_BECAUSE` already uses, which
 # also asserts every named exemption EXISTS (no stale exemption hiding a rename)
 # and carries a POSITIVE CONTROL.
 #
-# `ACTIVATION_SCOPE` is a SUFFIX rule, not a list: a new `*_register` table is in
+# `ACTIVATION_SCOPE` is a SUFFIX rule, not a list: a new `*_registry` table is in
 # scope automatically, so the rule cannot be outgrown by adding a table.
-ACTIVATION_SCOPE_SUFFIXES = ("_register", "_registry")
+ACTIVATION_SCOPE_SUFFIXES = ("_registry", "_registry")
 
 NO_ACTIVATION_BECAUSE: dict[str, str] = {
     # META: the alphabet and the version chain themselves. Deactivating either
     # makes every entity id unaddressable.
-    "entity_type_register": ("META: it IS the alphabet. `entity_id.parse` reads "
+    "entity_type_registry": ("META: it IS the alphabet. `entity_id.parse` reads "
                              "it to resolve a letter, so a 0 here breaks every "
                              "id in the system"),
-    "version_register": ("META: it IS the version chain. `entity_id.require` "
+    "version_registry": ("META: it IS the version chain. `entity_id.require` "
                          "requires an ACTIVE row here (entity_id.py:137), so a "
                          "blanket flip makes every entity id unresolvable"),
     # BASE DIMENSIONS: a task cannot be created without them, and they are not
@@ -126,9 +126,9 @@ NO_ACTIVATION_BECAUSE: dict[str, str] = {
     "task_action_name": "BASE: the action vocabulary, not a proven thing",
     "catalog": "BASE: the Skill Library catalog, derived from the folder path",
     "subcatalog": "BASE: the Skill Library subcatalog, derived from the path",
-    # A MAPPING between two things, not a thing (same reason `chat_register` has
+    # A MAPPING between two things, not a thing (same reason `chat_registry` has
     # no entity letter).
-    "chat_register": ("MAPPING: pairs a ticket with a chat. A mapping is not "
+    "chat_registry": ("MAPPING: pairs a ticket with a chat. A mapping is not "
                       "proven by a 100-run; it is a pairing"),
     # The gate's OWN tables. Activating them would be the gate proving itself.
     "register_approve": ("GATE: this IS the approval gate. A gate cannot be "
@@ -185,9 +185,9 @@ NO_ACTIVATION_BECAUSE: dict[str, str] = {
     # They are classified here on their SHAPE, in the categories this dict
     # ALREADY uses. The evidence that they are NOT activatable is MEASURED, not
     # asserted: the proof's writer scan (SECTION G) finds `is_active=1` written
-    # only by `channel_registry`, `dimension_binding_register`,
-    # `code_location_register` and `namespace_registry` -- ALL of them
-    # `*_register`/`*_registry`, i.e. in scope. NONE of these 23 is written by a
+    # only by `channel_registry`, `dimension_binding_registry`,
+    # `code_location_registry` and `namespace_registry` -- ALL of them
+    # `*_registry`/`*_registry`, i.e. in scope. NONE of these 23 is written by a
     # gate; each sets its own flag in its create/upsert path. An `is_active`
     # nobody gates is not a proven-activation flag, so a 100-run cannot decide it.
     # ---------------------------------------------------------------------
@@ -228,9 +228,9 @@ NO_ACTIVATION_BECAUSE: dict[str, str] = {
                             "shape as the exempt `channel` / `module`"),
     # PHASE: a step in a process, not a proven artifact.
     # MERGED 2026-09-27 (plan REGISTER.NAMING.AND.PHASE.MERGE): the two phase
-    # tables became ONE (`phase_register`), so the exemption is now ONE name.
+    # tables became ONE (`phase_registry`), so the exemption is now ONE name.
     # The two old names are kept because a stale process may still ask.
-    "phase_register": "PHASE: a step of a process (register-fill or sweep)",
+    "phase_registry": "PHASE: a step of a process (register-fill or sweep)",
     "register_fill_phase": "PHASE: a step of the register-fill process",
     "terminology_sweep_phase": "PHASE: a step of the terminology sweep",
     # WORK ITEM: an activity that is opened and closed, not proven.
@@ -342,7 +342,7 @@ def is_activated(
 ) -> bool:
     """Is THIS VERSION active? (Q6: per version, not per row.)"""
     row = conn.execute(
-        "SELECT is_active FROM version_register WHERE entity_type=? "
+        "SELECT is_active FROM version_registry WHERE entity_type=? "
         "AND entity_ref_id=? AND version=?",
         (str(letter).strip().upper(), int(ref_id), int(version))).fetchone()
     return bool(row and int(row[0]) == 1)
@@ -379,7 +379,7 @@ def two_part_verdict(
     is a REFUSAL. A MISSING row is a REFUSAL, not a pass — an entity nobody
     approved is not an approved entity.
     """
-    import prompt_register as pr
+    import prompt_registry as pr
 
     resolved = pr.resolve_ref_tag(conn, ref_tag)
     kind = str(resolved.get("kind") or "")
@@ -551,7 +551,7 @@ def retire_other_versions(
                 "message": "cite_ref %r is not checkable: %s" % (cite_ref, e)}
 
     rows = list(conn.execute(
-        "SELECT version_register_id, version, is_active FROM version_register "
+        "SELECT version_registry_id, version, is_active FROM version_registry "
         "WHERE entity_type = ? AND entity_ref_id = ? AND version <> ? "
         "ORDER BY version",
         (letter, int(ref_id), int(keep_version))))
@@ -564,8 +564,8 @@ def retire_other_versions(
             already.append(int(r["version"]))
             continue
         conn.execute(
-            "UPDATE version_register SET is_active = 0 "
-            "WHERE version_register_id = ?", (int(r["version_register_id"]),))
+            "UPDATE version_registry SET is_active = 0 "
+            "WHERE version_registry_id = ?", (int(r["version_registry_id"]),))
         cur = conn.execute(
             "INSERT INTO version_cleanup (entity_type, entity_ref_id, "
             "old_version, new_version, reason, cite_ref, decided_by) "
@@ -617,7 +617,7 @@ def activate(
     # which resolves to a `field_tdd_rule.slice_key`, NOT a prompt. So the rule
     # is "must resolve to a KNOWN proof target", not "must be a prompt".
     try:
-        import prompt_register as pr
+        import prompt_registry as pr
         resolved = pr.resolve_ref_tag(conn, ref_tag)
         if not resolved.get("ok"):
             return {"ok": False, "code": "UNRESOLVED_REF_TAG",
@@ -640,12 +640,12 @@ def activate(
                 "streak": detail}
 
     row = conn.execute(
-        "SELECT version_register_id, is_active FROM version_register "
+        "SELECT version_registry_id, is_active FROM version_registry "
         "WHERE entity_type=? AND entity_ref_id=? AND version=?",
         (letter, int(ref_id), int(version))).fetchone()
     if not row:
         return {"ok": False, "code": "NO_SUCH_VERSION",
-                "message": ("no version_register row for %s-%d-%d — a version "
+                "message": ("no version_registry row for %s-%d-%d — a version "
                             "must exist before it can be proven"
                             % (letter, int(ref_id), int(version)))}
 
@@ -668,15 +668,15 @@ def activate(
         if commit:
             conn.commit()
         return {"ok": True, "code": "ALREADY_ACTIVE", "changed": False,
-                "version_register_id": int(row["version_register_id"]),
+                "version_registry_id": int(row["version_registry_id"]),
                 "letter": letter, "ref_id": int(ref_id),
                 "version": int(version),
                 "retired": retired.get("retired") or [],
                 "streak": detail}
 
     conn.execute(
-        "UPDATE version_register SET is_active=1 WHERE version_register_id=?",
-        (int(row["version_register_id"]),))
+        "UPDATE version_registry SET is_active=1 WHERE version_registry_id=?",
+        (int(row["version_registry_id"]),))
     # ---- THE OTHER HALF: retire what this version REPLACES -----------------
     # MEASURED BUG (2026-09-27): without this, activating version 2 left
     # version 1 at `is_active=1`, so the entity had TWO active versions.
@@ -691,7 +691,7 @@ def activate(
     if commit:
         conn.commit()
     return {"ok": True, "code": "ACTIVATED", "changed": True,
-            "version_register_id": int(row["version_register_id"]),
+            "version_registry_id": int(row["version_registry_id"]),
             "letter": letter, "ref_id": int(ref_id), "version": int(version),
             "cite_ref": cite_ref, "decided_by": decided_by,
             "retired": retired.get("retired") or [],
@@ -710,7 +710,7 @@ def activate_flow(
     decided_by: str = "activation_gate",
     commit: bool = True,
 ) -> dict[str, Any]:
-    """THE ONLY WRITER of `workflow_register.is_active = 1`.
+    """THE ONLY WRITER of `workflow_registry.is_active = 1`.
 
     The user (2026-09-22):
         "flow is you have the system and register at the table > is_active = 0
@@ -720,8 +720,8 @@ def activate_flow(
     WHY A SEPARATE FUNCTION AND NOT `activate()`
     --------------------------------------------
     MEASURED: `activate()` takes an ENTITY ID (`letter`, `ref_id`, `version`) and
-    writes `version_register`. A FLOW has no entity letter — it is a
-    `workflow_register` row keyed by `workflow_key`. So `activate()` cannot
+    writes `version_registry`. A FLOW has no entity letter — it is a
+    `workflow_registry` row keyed by `workflow_key`. So `activate()` cannot
     address a flow at all, and a flow had NO way to be activated by the gate.
 
     The GATE ITSELF IS REUSED, not re-implemented: `assert_may_activate` decides
@@ -729,8 +729,8 @@ def activate_flow(
     streak rule would let the gate and the harness disagree about the same
     evidence.
 
-    `workflow_register` is IN the activation scope (`ACTIVATION_SCOPE_SUFFIXES`
-    matches `_register`), so it is NOT in `NO_ACTIVATION_BECAUSE` — a flow SHOULD
+    `workflow_registry` is IN the activation scope (`ACTIVATION_SCOPE_SUFFIXES`
+    matches `_registry`), so it is NOT in `NO_ACTIVATION_BECAUSE` — a flow SHOULD
     require a proof.
     """
     key = str(workflow_key or "").strip()
@@ -748,11 +748,11 @@ def activate_flow(
     # exist" need different responses, and a caller told "not proven" would go
     # looking for evidence for a flow that is not there.
     row = conn.execute(
-        "SELECT workflow_id, is_active FROM workflow_register WHERE "
+        "SELECT workflow_id, is_active FROM workflow_registry WHERE "
         "workflow_key=?", (key,)).fetchone()
     if not row:
         return {"ok": False, "code": "NO_SUCH_FLOW",
-                "message": ("no workflow_register row for %r — a flow must exist "
+                "message": ("no workflow_registry row for %r — a flow must exist "
                             "before it can be proven" % key)}
 
     # The citation gate. An activation with no checkable reference is a claim.
@@ -779,7 +779,7 @@ def activate_flow(
                 "two_part": detail.get("two_part")}
 
     conn.execute(
-        "UPDATE workflow_register SET is_active=1, "
+        "UPDATE workflow_registry SET is_active=1, "
         "updated_at=datetime('now') WHERE workflow_id=?",
         (int(row["workflow_id"]),))
     if commit:
@@ -832,11 +832,11 @@ def record_supersession(
 
     for v in (int(old_version), int(new_version)):
         if not conn.execute(
-                "SELECT 1 FROM version_register WHERE entity_type=? "
+                "SELECT 1 FROM version_registry WHERE entity_type=? "
                 "AND entity_ref_id=? AND version=?",
                 (letter, int(ref_id), v)).fetchone():
             return {"ok": False, "code": "NO_SUCH_VERSION",
-                    "message": "no version_register row for %s-%d-%d"
+                    "message": "no version_registry row for %s-%d-%d"
                                % (letter, int(ref_id), v)}
 
     cur = conn.execute(
@@ -878,8 +878,8 @@ def record_flow_supersession(
     """Record that `new_flow_key` supersedes `old_flow_key`.
 
     WHY A SEPARATE FUNCTION (2026-09-22): `record_supersession` requires BOTH
-    versions to exist in `version_register`, and a FLOW has no entity letter — it
-    is a `workflow_register` row. MEASURED: calling it for a flow returned
+    versions to exist in `version_registry`, and a FLOW has no entity letter — it
+    is a `workflow_registry` row. MEASURED: calling it for a flow returned
     `NO_SUCH_VERSION`, so a flow's retirement had NOWHERE to be recorded.
 
     The record goes in `version_cleanup` with `entity_type='K'` and
@@ -887,8 +887,8 @@ def record_flow_supersession(
 
     DEFECT FOUND BY RUNNING `_proof_contract_ref.py` (2026-09-22): the first
     version used `entity_type='FLOW'`, which VIOLATED the FK to
-    `entity_type_register` — the proof reported a NEW violation. MEASURED: the
-    register already has `K` = `workflow` -> `workflow_register`, so the letter
+    `entity_type_registry` — the proof reported a NEW violation. MEASURED: the
+    register already has `K` = `workflow` -> `workflow_registry`, so the letter
     EXISTS and must be used rather than invented.
 
     It does NOT delete and it does NOT flip `is_active`. It RECORDS.
@@ -911,16 +911,16 @@ def record_flow_supersession(
         return {"ok": False, "code": "UNCITED",
                 "message": "cite_ref %r is not checkable: %s" % (cite_ref, e)}
 
-    old = conn.execute("SELECT workflow_id FROM workflow_register WHERE "
+    old = conn.execute("SELECT workflow_id FROM workflow_registry WHERE "
                        "workflow_key=?", (old_key,)).fetchone()
     if not old:
         return {"ok": False, "code": "NO_SUCH_FLOW",
-                "message": "no workflow_register row for %r" % old_key}
-    new = conn.execute("SELECT workflow_id FROM workflow_register WHERE "
+                "message": "no workflow_registry row for %r" % old_key}
+    new = conn.execute("SELECT workflow_id FROM workflow_registry WHERE "
                        "workflow_key=?", (new_key,)).fetchone()
     if not new:
         return {"ok": False, "code": "NO_SUCH_FLOW",
-                "message": "no workflow_register row for %r" % new_key}
+                "message": "no workflow_registry row for %r" % new_key}
 
     cur = conn.execute(
         "INSERT INTO version_cleanup (entity_type, entity_ref_id, old_version, "
@@ -939,9 +939,9 @@ def flow_supersessions_of(conn: sqlite3.Connection, flow_key: str
     """The supersession history of one flow, oldest first.
 
     `entity_type='K'` is the register's own letter for `workflow`
-    (`entity_type_register`: K -> workflow_register).
+    (`entity_type_registry`: K -> workflow_registry).
     """
-    row = conn.execute("SELECT workflow_id FROM workflow_register WHERE "
+    row = conn.execute("SELECT workflow_id FROM workflow_registry WHERE "
                        "workflow_key=?", (str(flow_key),)).fetchone()
     if not row:
         return []
