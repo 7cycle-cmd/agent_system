@@ -1,0 +1,172 @@
+# contract.yaml — the DECLARATION for skill_worker_code_builder.
+#
+# WHY THIS FILE EXISTS
+# --------------------
+# Registering a skill used to mean writing a `_register_<name>_skill.py` script.
+# This file is the replacement: the skill DECLARES its contract, and
+# `skill_registrar.py` writes the four SSOT layers from it.
+#
+# MEASURED 2026-09-27, and this is why the file was missing: the skill carried
+# FIVE factors in `skill_factor_register` and had NO declaration, so
+# `skill_registrar.register_skill()` REFUSED it with
+#
+#     "no contract.yaml — a skill with no declaration is NOT auto-registered
+#      (inventing a contract is fabricating a rule)"
+#
+# A skill with factors but no contract is a skill whose rules cannot be RUN.
+#
+# WHY THIS SKILL EXISTS
+# ---------------------
+# THE HUMAN (2026-09-27), verbatim:
+#
+#     "### 6 條新教訓（已入 repo memory）"
+#     "at skill for coding_*? in auto now?"
+#
+# MEASURED, and this is the defect the human named: the six lessons of
+# 2026-09-27 reached `/memories/repo/` and NOTHING ELSE. MEASURED:
+# `skill_factor_register` 0 hits, `terminology_register` 0 hits, `skill_lesson`
+# 0 hits. `/memories/repo/` is the agent's PRIVATE note store, not the repo's
+# SSOT — the next worker cannot read it. A lesson that lives only there is a
+# lesson that was never filed.
+#
+# MEASURED, the second defect: `coding_*` names NOTHING. `skill_register` 0 rows,
+# `skill_factor_register` 0 rows, `mode_register` 0 rows. `coding_writing` is a
+# MODE string (`mode_register.py:68`), not a skill. The thing that DOES exist is
+# `skill_worker_code_builder`, and this contract is ITS declaration — a second
+# name for one thing is the ambiguity `terminology-register` forbids.
+#
+# `fields` IS A LIST, NOT A `field_seed`
+# --------------------------------------
+# `skill_5w1h` uses `field_seed` because its six dimensions are already declared
+# once in `skill_5w1h.DIMENSIONS`. This skill has no such source module for its
+# FIELDS: the rules are declared once in `skill_factor_register`, and the fields
+# below are the WORK ORDER's own columns. There is no second copy to point at.
+
+skill_key: skill_worker_code_builder
+contract_id: SKILL.CODING.STANDARD
+taxonomy_path: module/task_center
+version_label: v1_strict
+probe_token: "CDS."
+
+purpose: >-
+  Make a coding CLAIM checkable: every rule a worker follows is a registered
+  factor carrying a measured unit, every factor has a proof that measures it, and
+  the skill is auto-loaded so the next worker reads the rule before writing code
+  rather than after being told.
+
+purpose_not_responsible: >-
+  NOT responsible for judging code style, for choosing a language, for running
+  the build, or for replacing `skill_task_done_verification`. It is the WRITING
+  side; the VERIFY side is a separate skill with its own contract.
+
+flow:
+  - Resolve every new NAME in `terminology_register` BEFORE it is used
+  - Measure the entity id from `code_location_register` BEFORE the write
+  - Cite `path:line` or a command for every claim; never a symbol
+  - Compare two counts only after naming the READER and the POPULATION of each
+  - Copy the DB to a temp file before measuring, so the target cannot move
+  - Report the factor's metric as a NUMBER, not as a claim
+
+not_to_do:
+  - DO NOT create a second name for a thing that already has one
+  - DO NOT pin a live-population count; assert the PROPERTY
+  - DO NOT assert on a source text's punctuation; parse the structure
+  - DO NOT borrow a live precondition for a control; CONSTRUCT it
+  - DO NOT write a lesson to `/memories/repo/` and call it filed
+  - DO NOT re-type a rule name; import it from the module that declares it
+
+fields:
+  - field_name: factor_key
+    data_type: TEXT
+    mandatory: true
+    hard_rule: >-
+      The rule's key, a lowercase identifier. It must resolve in
+      `skill_factor_register` for THIS skill. A rule that is not registered is
+      prose with a heading, and prose cannot be measured.
+  - field_name: metric_kind
+    data_type: TEXT
+    mandatory: true
+    hard_rule: >-
+      One of the DERIVED vocabulary (`metric_kind_derive.derive()`), never a
+      literal typed here. An undefined kind matches nothing SILENTLY, so
+      `register_factor` refuses it at the write site.
+  - field_name: metric_unit
+    data_type: TEXT
+    mandatory: true
+    hard_rule: >-
+      The measured unit, which must name a SUBJECT. `correct judgments` names no
+      subject and was refused; `pct of new names that resolve to a registered
+      term` names one. A number without a unit cannot be audited: `0` is a pass
+      for a vulnerability count and a FAIL for a test pass rate.
+  - field_name: metric_target
+    data_type: TEXT
+    mandatory: true
+    hard_rule: >-
+      The target the metric is compared against. A `count` rule's target is
+      usually `0` (the count of FAILURES), and a `pct` rule's is usually `100`.
+      A rule with no target cannot fail.
+  - field_name: proof_prefix
+    data_type: TEXT
+    mandatory: true
+    hard_rule: >-
+      The proof that measures this factor. It must be GLOBALLY unique
+      (`uq_factor_scope_prefix`) and must name a file that EXISTS. A factor whose
+      proof does not exist is UNMEASURED, and UNMEASURED is not a pass.
+  - field_name: cite_ref
+    data_type: TEXT
+    mandatory: true
+    hard_rule: >-
+      A checkable reference: `path:line` or a command that ran. A SYMBOL name is
+      refused by `citation_discipline.is_citation`. A claim with no checkable
+      reference is a claim nobody can verify.
+  - field_name: population
+    data_type: TEXT
+    mandatory: true
+    hard_rule: >-
+      WHAT a count counts, and WHICH READER sees it. Required whenever two counts
+      are compared. A count of a TABLE is not a count of a LIST, so the
+      population must name the reader's own filter.
+
+tdd_cases:
+  - case_key: CDS.pass.factor_is_registered
+    kind: pass
+    assertion: >-
+      A factor that IS registered for this skill resolves, and its
+      `metric_unit` names a subject.
+    input: {mode: factor_is_registered}
+    expected: {ok: true, registered: true, unit_names_subject: true}
+  - case_key: CDS.pass.proof_prefix_exists
+    kind: pass
+    assertion: >-
+      A factor whose `proof_prefix` names a file that EXISTS is reported
+      MEASURABLE, so `UNMEASURED` is distinguishable from `MEASURED`.
+    input: {mode: proof_prefix_exists}
+    expected: {ok: true, proof_exists: true, measurable: true}
+  - case_key: CDS.pass.same_population_compared
+    kind: pass
+    assertion: >-
+      Two counts over the SAME population compare equal, and the comparison
+      reports the population it used.
+    input: {mode: same_population_compared}
+    expected: {ok: true, same_population: true, equal: true}
+  - case_key: CDS.hard_fail.unregistered_factor_refused
+    kind: hard_fail
+    assertion: >-
+      A factor_key that is NOT registered for this skill is REFUSED, not
+      silently accepted.
+    input: {mode: unregistered_factor_refused}
+    expected: {ok: false, registered: false}
+  - case_key: CDS.hard_fail.different_population_reported
+    kind: hard_fail
+    assertion: >-
+      Two counts over DIFFERENT populations are reported as NOT the same
+      population, so a comparison across two sets cannot read as agreement.
+    input: {mode: different_population_reported}
+    expected: {ok: false, same_population: false}
+  - case_key: CDS.hard_fail.missing_proof_prefix_reported
+    kind: hard_fail
+    assertion: >-
+      A factor whose `proof_prefix` names a file that does NOT exist is reported
+      UNMEASURED, never as measured.
+    input: {mode: missing_proof_prefix_reported}
+    expected: {ok: false, proof_exists: false, measurable: false}

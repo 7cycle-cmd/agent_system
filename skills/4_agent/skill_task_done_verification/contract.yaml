@@ -1,0 +1,150 @@
+# contract.yaml — the DECLARATION for skill_task_done_verification.
+#
+# WHY THIS FILE EXISTS
+# --------------------
+# Registering a skill used to mean writing a `_register_<name>_skill.py` script.
+# Five of those exist and they are the same program five times. This file is the
+# replacement: the skill DECLARES its contract, and `skill_registrar.py` writes
+# the four SSOT layers from it.
+#
+# WHY THIS SKILL EXISTS AT ALL
+# ----------------------------
+# The user: "worker report job is done without evidence, now we can have the work
+# done is done by 100% tracable and proofed evidence chain, how to it be skill for
+# verify each task before worker tell job is done".
+#
+# MEASURED before it existed: `task_instances` (1444 rows, 496 `success`),
+# `dev_task` (165) and `skill_task_queue` (263) each carry a `status` and NONE
+# carries an evidence column — and NO gate refused a `done` write. This skill is
+# that gate.
+#
+# WHY `field_seed` AND NOT `fields`
+# ---------------------------------
+# The five rings are ALREADY declared once, in `done_chain.RINGS` / `RING_SPEC`,
+# and this skill's own "Not to do" forbids a second copy. `done_chain.DIMENSIONS`
+# is a DERIVED view of that data, so this declaration POINTS AT it: add a ring to
+# `RING_SPEC` and the contract's fields follow, with no second edit to forget.
+
+skill_key: skill_task_done_verification
+contract_id: SKILL.TASK.DONE.VERIFY
+taxonomy_path: module/task_center
+version_label: v1_strict
+
+purpose: >-
+  Refuse a task's `done` write unless a traceable, checkable evidence chain exists
+  — five rings (what/why/where/how/who), each answered by a MEASURED value in a
+  unit that names its subject — and turn every refusal into a learning input.
+
+purpose_not_responsible: >-
+  NOT responsible for producing the evidence it checks (that is the task's own
+  work), for judging whether an answered dimension is a GOOD answer, for
+  activating the factor proposals it collects, or for deciding WHICH rings a
+  non-software task needs.
+
+flow:
+  - Walk every ring for the task, REPORTING each one, never raising on a failure
+  - Refuse the done write when any ring is unsatisfied, NAMING the ring
+  - Return a STRUCTURED reason ({ring, unit, observed, expected}), never free text
+  - Collect the refusal as an is_active=0 factor proposal, never auto-activated
+  - File the refusal as a worked example (a skill_lesson) with a suggested fix
+
+not_to_do:
+  - DO NOT invent a free-text refusal reason — the collector REFUSES an unstructured one, because `proof_run.failure_reason`-style text is the recorded garbage case
+  - DO NOT auto-activate a collected factor — a proposal is is_active=0 until a human confirms it
+  - DO NOT restate the five rings or their units here — derive from done_chain.RING_SPEC
+  - DO NOT write a lesson with no checkable cite_ref — no citation, no finding
+  - DO NOT treat "no links exist" as "every file is unlinked" and pass the task anyway
+  - DO NOT report only the first failing ring — list every refused ring
+
+# Q5: point at the field source instead of restating it.
+# `skill_registrar.fields_from_seed` imports this module and reads `DIMENSIONS`,
+# whose entries are `(field_name, question, hard_rule, mandatory)`.
+field_seed: done_chain
+
+# The probe token. These are BEHAVIOUR cases: they exercise `done_chain`'s real
+# functions, so they cannot be decided by the payload validator and they DO need a
+# dedicated probe. `skill_registrar.py` verifies this token is present in
+# `skill_tdd_runner.PROBES` BEFORE it writes anything — a case whose key matches
+# no token returns "no probe registered" and FAILS, so the contract would be
+# documented but unproven.
+probe_token: "TDV."
+
+# `expected` is ALWAYS a dict and ALWAYS the CORRECT outcome, for `pass` and
+# `hard_fail` alike. A plain string or an empty dict would be read as "no
+# expectation recorded" and the case would pass unconditionally.
+tdd_cases:
+  # --- pass cases: the allowed paths ---
+  - case_key: TDV.pass.chain_complete
+    kind: pass
+    assertion: >-
+      A task with files, a link for every file, healthy routes, a YES verdict and
+      a citable claim completes the chain.
+    input: {mode: chain_complete}
+    expected: {ok: true, failed: []}
+
+  - case_key: TDV.pass.rings_all_reported
+    kind: pass
+    assertion: >-
+      The walk REPORTS every ring, including the passing ones, so a reader can see
+      the chain was walked rather than only what failed.
+    input: {mode: rings_all_reported}
+    expected: {reported: 5}
+
+  - case_key: TDV.pass.units_name_subject
+    kind: pass
+    assertion: >-
+      Every ring has a unit that NAMES its subject, so its number is auditable.
+    input: {mode: units_named}
+    expected: {problems: []}
+
+  - case_key: TDV.pass.refusal_becomes_factor
+    kind: pass
+    assertion: >-
+      A structured refusal becomes an is_active=0 factor proposal carrying the
+      ring's unit; it is NEVER auto-activated.
+    input: {mode: refusal_becomes_factor}
+    expected: {ok: true, is_active: 0}
+
+  - case_key: TDV.pass.refusal_becomes_example
+    kind: pass
+    assertion: >-
+      A refusal is filed as a skill_lesson carrying a root_cause, a suggested_fix
+      and a checkable source_ref, so the worker has a worked example.
+    input: {mode: refusal_becomes_example}
+    expected: {ok: true, has_fix: true}
+
+  # --- hard_fail cases: these ARE the protections ---
+  - case_key: TDV.hard_fail.empty_files_refused
+    kind: hard_fail
+    assertion: >-
+      A task that changed NO files MUST be refused: `files_changed` is the FIRST
+      failing ring and the gate allows nothing. If it passed, "done" would mean
+      "nothing was done".
+    input: {mode: empty_files_refused}
+    expected: {allow: false, failed_ring: files_changed}
+
+  - case_key: TDV.hard_fail.unstructured_reason_refused
+    kind: hard_fail
+    assertion: >-
+      The collector MUST refuse an unstructured refusal reason (free text or a
+      partial dict). This is the recorded defect: deriving factors from
+      `proof_run.failure_reason` produced garbage (`oracle_999999999999999`).
+    input: {mode: unstructured_reason_refused}
+    expected: {ok: false, code: UNSTRUCTURED_REASON}
+
+  - case_key: TDV.hard_fail.uncited_lesson_refused
+    kind: hard_fail
+    assertion: >-
+      Filing a worked example with an uncheckable cite_ref MUST be refused. No
+      citation, no finding — a lesson with no reference is unusable.
+    input: {mode: uncited_lesson_refused}
+    expected: {ok: false, code: UNCITED_LESSON}
+
+  - case_key: TDV.hard_fail.proposal_not_activated
+    kind: hard_fail
+    assertion: >-
+      A collected factor proposal MUST NOT be active. If one failure could
+      activate a factor, a single bad task would change what every future task
+      must carry.
+    input: {mode: proposal_not_activated}
+    expected: {active: 0}

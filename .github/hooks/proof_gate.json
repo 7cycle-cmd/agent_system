@@ -1,0 +1,12 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "type": "command",
+        "command": "python scripts/proof_gate.py",
+        "windows": "python scripts\\proof_gate.py",
+        "timeout": 120
+      }
+    ]
+  }
+}

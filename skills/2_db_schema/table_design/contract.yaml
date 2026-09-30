@@ -1,0 +1,111 @@
+# contract.yaml — the DECLARATION for `table_design`.
+#
+# WHY THIS FILE EXISTS
+# --------------------
+# The five factors are declared ONCE, as data, in `table_design.FACTORS`. This
+# file POINTS AT that source (`field_seed`) rather than restating it, so the
+# skill's contract and the audit cannot disagree — the same reason
+# `skills/4_agent/skill_5w1h/contract.yaml` points at `skill_5w1h.DIMENSIONS`.
+#
+# `skill_registrar.py` reads `table_design.factors_as_contract_fields()` and
+# writes the five `skill_contract_field` rows. A sixth factor added to `FACTORS`
+# therefore appears in the contract with NO edit here — which is the property
+# `_proof_table_design.py` asserts.
+
+skill_key: table_design
+contract_id: TABLE.DESIGN
+taxonomy_path: table/design
+version_label: v1_strict
+
+purpose: >-
+  Make a table answerable on five factors — DB driven, id = primary +
+  autoincrement, field value as much as it can, priority by id, never null /
+  null = NA — and make a table that MIXES kinds of truth CHECKABLE rather than
+  merely suspected.
+
+purpose_not_responsible: >-
+  NOT responsible for migrating a table, for judging whether a sparse column is a
+  defect, for reimplementing `no_null`, or for deciding which factor a particular
+  table should satisfy first.
+
+flow:
+  - Declare the five factors ONCE, as data (table_design.FACTORS)
+  - Derive the contract fields from that data, never hand-write them
+  - Audit a table against every factor, reporting a DETAIL even on a pass
+  - Detect MIXING by MEASURING the rows, never by scoring overlap
+  - Report a table's LAYER (layered or flat) as a first-class property
+  - REUSE no_null for factor 5 rather than reimplementing it
+
+not_to_do:
+  - DO NOT hand-write a second copy of the five factors
+  - DO NOT migrate a table — the audit REPORTS
+  - DO NOT treat a FLAT table as an error (only MIXING is)
+  - DO NOT reimplement no_null
+  - DO NOT add a factor without adding its audit branch
+
+# The five factors ARE the contract fields. The registrar imports this module and
+# calls `factors_as_contract_fields()`.
+field_seed: table_design
+
+# The probe token. These are BEHAVIOUR cases: they exercise `table_design`'s real
+# functions, so they cannot be decided by the payload validator and they DO need
+# a dedicated probe. `skill_registrar.py` verifies this token is present in
+# `skill_tdd_runner.PROBES` BEFORE it writes anything.
+probe_token: "TABLE.DESIGN."
+
+# `expected` is ALWAYS a dict and ALWAYS the CORRECT outcome, for `pass` and
+# `hard_fail` alike. A plain string would be silently read as "no expectation
+# recorded" and the case would pass unconditionally.
+tdd_cases:
+  # --- pass cases: the allowed paths ---
+  - case_key: TABLE.DESIGN.pass.five_factors
+    kind: pass
+    assertion: >-
+      The module declares exactly five factors, and the contract is DERIVED from
+      them, so a factor cannot be stated in two places.
+    input: {mode: five_factors}
+    expected: {factor_count: 5, derived: true}
+
+  - case_key: TABLE.DESIGN.pass.clean_table
+    kind: pass
+    assertion: >-
+      A table with a discriminator but NO value-specific column PASSES factor 3.
+      A discriminator alone is not mixing.
+    input: {mode: clean_table}
+    expected: {field_value_max_ok: true}
+
+  - case_key: TABLE.DESIGN.pass.flat_is_not_an_error
+    kind: pass
+    assertion: >-
+      A FLAT table (no layer column) PASSES. Only MIXING is an error.
+    input: {mode: flat_table}
+    expected: {is_layered: false, field_value_max_ok: true}
+
+  # --- hard_fail cases: these ARE the protections ---
+  - case_key: TABLE.DESIGN.hard_fail.mixed_table_reported
+    kind: hard_fail
+    assertion: >-
+      A table that MIXES kinds of truth MUST be reported, and the report MUST
+      name the discriminator and the value-specific columns. If it were not
+      reported, the mixing would be invisible and no rule could be stated about
+      the table.
+    input: {mode: mixed_table}
+    expected: {field_value_max_ok: false, names_discriminator: true}
+
+  - case_key: TABLE.DESIGN.hard_fail.no_autoincrement_reported
+    kind: hard_fail
+    assertion: >-
+      A table whose primary key is not `INTEGER PRIMARY KEY AUTOINCREMENT` MUST
+      be reported. Without it a row's identity depends on its content, and a
+      rebuild re-points every id silently.
+    input: {mode: no_autoincrement}
+    expected: {id_primary_autoincrement_ok: false}
+
+  - case_key: TABLE.DESIGN.hard_fail.audit_never_alters
+    kind: hard_fail
+    assertion: >-
+      The audit MUST NOT alter a table. If it migrated, the report and the change
+      would be the same act, and a reader could not see the gap before it was
+      closed.
+    input: {mode: audit_never_alters}
+    expected: {ddl_unchanged: true, rows_unchanged: true}

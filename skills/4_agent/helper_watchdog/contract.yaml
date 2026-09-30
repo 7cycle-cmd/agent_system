@@ -1,0 +1,142 @@
+# contract.yaml — the DECLARATION for helper_watchdog.
+#
+# WHY THIS SKILL EXISTS
+# --------------------
+# MEASURED 2026-09-24: the watchdog's last `watchdog_log` row is
+# `2026-09-14 11:46:17` — 10 days before this file — and NOTHING alarmed. Two
+# `mouse_spot_helper.py` processes were running with no watchdog at all
+# (`Get-CimInstance Win32_Process`), and `Get-ScheduledTask` showed nothing that
+# starts it.
+#
+# The watchdog was a TABLE NAME, not a system: it was absent from `skill_register`,
+# it had no `route_register` row, and `skill_factor_register` had ZERO factors
+# mentioning watch/health/restart. So its death could only be found by reading
+# timestamps by hand — which is what happened.
+#
+# WHAT THIS SKILL IS FOR
+# ----------------------
+# Making the watchdog's OWN liveness a MEASURED UNIT: *seconds since the newest
+# `watchdog_log` row*. The user's "become stronger" is answered by the watchdog
+# being able to detect its own absence, using the SAME unit that detects the
+# helper's — one unit, two consumers, no second mechanism invented.
+#
+# NOT RESPONSIBLE FOR KILLING ANYTHING. `helper_watchdog.py:651` records that
+# killing from `adopt` caused FALSE DOWNS, so this skill only makes state VISIBLE.
+
+skill_key: helper_watchdog
+contract_id: SKILL.HELPER.WATCHDOG
+# MEASURED: `module/helper` does NOT exist in `module_registry`, and
+# `skill_contract_store` REFUSED it with `BAD_TAXONOMY_PATH: no module entity
+# 'helper'`. The real keys are task_center / mouse_spot_helper /
+# openclaw_companion / llm_runtime. The watchdog exists to watch
+# `mouse_spot_helper.py`, so that is the module it belongs to.
+taxonomy_path: module/mouse_spot_helper
+version_label: v1_strict
+
+purpose: >-
+  Make the helper's and the watchdog's OWN liveness a measurable, queryable unit
+  (seconds since the newest row), so an absence alarms instead of being
+  discovered by hand — without killing, restarting, or spawning any process.
+
+purpose_not_responsible: >-
+  NOT responsible for killing or restarting a duplicate helper, for deciding which
+  autostart mechanism runs the watchdog, for judging whether a healthy helper is
+  doing GOOD work, or for rewriting history in `watchdog_log`.
+
+flow:
+  - Ask the liveness question by (table, worker) and get seconds-since-newest-row
+  - Derive the verdict at READ TIME, so the measured process cannot author it
+  - Report ALIVE / DEAD / NEVER as three DISTINCT states
+  - Alarm when more than one helper is live, and change nothing
+  - Return a STRUCTURED reason so the existing factor/lesson cycle can consume it
+
+not_to_do:
+  - DO NOT kill, restart, or spawn a process — `helper_watchdog.py:651` records false downs from killing in `adopt`
+  - DO NOT treat `business_alive` as the health signal — measured distinct = 1, so it is a constant
+  - DO NOT collapse NEVER into DEAD — "no row has EVER been written" is a different fault
+  - DO NOT state a unit without a subject ("seconds" alone cannot be audited)
+  - DO NOT assert a live population's exact COUNT instead of its PROPERTY
+  - DO NOT add a liveness question without a positive control (both ALIVE and DEAD must be reachable)
+
+# Q5: point at the field source instead of restating it. `watchdog_health`
+# declares DIMENSIONS once, derived from LIVENESS_UNITS.
+field_seed: watchdog_health
+
+# The probe token. `skill_registrar` verifies it is in `skill_tdd_runner.PROBES`
+# BEFORE it writes anything, so the contract cannot be documented but unproven.
+probe_token: "WH."
+
+tdd_cases:
+  # --- pass cases ---
+  - case_key: WH.pass.fresh_watchdog_is_alive
+    kind: pass
+    assertion: >-
+      A watchdog_log row written 5 seconds ago reads ALIVE, so the unit can
+      return the healthy value.
+    input: {mode: fresh_is_alive}
+    expected: {state: ALIVE}
+
+  - case_key: WH.pass.one_helper_is_quiet
+    kind: pass
+    assertion: >-
+      Exactly one live helper is NOT an alarm, so the alarm does not fire on the
+      normal state.
+    input: {mode: one_helper_is_quiet}
+    expected: {ok: true, unit: "count of live mouse_spot_helper.py processes"}
+
+  - case_key: WH.pass.units_name_subject
+    kind: pass
+    assertion: >-
+      Every liveness unit names its subject, so a number of seconds is auditable.
+    input: {mode: units_named}
+    expected: {problems: []}
+
+  - case_key: WH.pass.no_kill_path
+    kind: pass
+    assertion: >-
+      The module contains NO kill/terminate CALL, asserted over the parse tree so
+      prose that names a kill command is not mistaken for one.
+    input: {mode: no_kill_path}
+    expected: {offenders: []}
+
+  - case_key: WH.pass.source_is_the_right_one
+    kind: pass
+    assertion: >-
+      The watchdog unit reads the record the watchdog actually WRITES EVERY TICK
+      (`helper_watchdog_heartbeat.json`, written by `helper_watchdog.write_heartbeat`
+      on the steady path), not `watchdog_log` — a different table written by a
+      different component (`watchdog.py:70`) — and not
+      `helper_watchdog_events.json`, a TRANSITION file that a healthy watchdog
+      never writes. Pointing at the wrong source reported 9.66 days of silence
+      (2026-09-24) and then 46 hours of false DEAD (2026-09-29) while the
+      component was working.
+    input: {mode: source_is_the_right_one}
+    expected: {source: file, path: helper_watchdog_heartbeat.json}
+
+  # --- hard_fail cases: these ARE the protections ---
+  - case_key: WH.hard_fail.stale_watchdog_is_dead
+    kind: hard_fail
+    assertion: >-
+      A watchdog_log row 100000 seconds old MUST read DEAD. This is the POSITIVE
+      CONTROL: without it the unit could be a constant that only ever says ALIVE,
+      which is exactly the defect `business_alive` has.
+    input: {mode: stale_is_dead}
+    expected: {state: DEAD, ok: false}
+
+  - case_key: WH.hard_fail.two_helpers_alarm
+    kind: hard_fail
+    assertion: >-
+      Two live helpers MUST raise the alarm with the count in its unit. MEASURED
+      live: 2 helpers were running with no watchdog, and `helper_watchdog.py:883`
+      logs them only on the START path, so nothing reported the state.
+    input: {mode: duplicate_alarm_fires}
+    expected: {ok: false, count: 2}
+
+  - case_key: WH.hard_fail.never_is_not_dead
+    kind: hard_fail
+    assertion: >-
+      A worker with NO row EVER MUST read NEVER, not DEAD, and its age MUST be
+      null rather than a number. Collapsing the two loses the distinction that
+      matters when diagnosing, and a fake 0 would read as brand new.
+    input: {mode: no_row_is_never}
+    expected: {state: NEVER, seconds: null, count: 0}

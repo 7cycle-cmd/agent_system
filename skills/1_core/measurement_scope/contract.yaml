@@ -1,0 +1,169 @@
+# contract.yaml — the DECLARATION for measurement_scope.
+#
+# WHY THIS FILE EXISTS
+# --------------------
+# Registering a skill used to mean writing a `_register_<name>_skill.py` script.
+# This file is the replacement: the skill DECLARES its contract, and
+# `skill_registrar.py` writes the four SSOT layers from it. Adding a skill is now
+# writing a skill file.
+#
+# WHY THIS SKILL EXISTS
+# ---------------------
+# MEASURED 2026-09-27. The agent reported "the workspace list is 89% proof
+# residue". It had counted `COUNT(*) FROM working_environment` = 75 — the TABLE.
+# The list the user reads returns `WHERE is_active=1` = 4, of which
+# `kind LIKE 'PROOF%'` = 0.
+#
+# TWO existing skills cannot catch that:
+#   * `citation-discipline` requires a citation — and the count WAS cited. A
+#     citation can be a TRUE count of the WRONG population.
+#   * `problem-statement` requires target/expected/actual/observable — and all
+#     four were present. A fully-stated problem can still be about the wrong set.
+#
+# So a finding can be FULLY CITED and FULLY STATED and still be about the wrong
+# population. This skill adds the missing step: NAME THE POPULATION.
+#
+# `fields` IS A LIST, NOT A `field_seed`
+# --------------------------------------
+# `skill_5w1h` uses `field_seed` because its six dimensions are already declared
+# once in `skill_5w1h.DIMENSIONS` and a second copy would be the drift that skill
+# exists to prevent. This skill has no such source module: the four steps are
+# declared HERE, once, and `measurement_scope.STEP_NAMES` is derived from the
+# same four names. There is no second copy to point at.
+
+skill_key: measurement_scope
+contract_id: SKILL.MS
+taxonomy_path: module/task_center
+version_label: v1_strict
+
+purpose: >-
+  Make a measurement name its READER and its POPULATION before it counts, so a
+  count of a TABLE cannot be reported as a count of a LIST, and make a finding
+  that counts the wrong population CHECKABLE rather than merely stated.
+
+purpose_not_responsible: >-
+  NOT responsible for judging whether a number is interesting, for running the
+  count itself, for choosing which population a reader should return, or for
+  replacing citation-discipline or problem-statement. It ADDS one step to them.
+
+flow:
+  - Name the READER — a function / query / endpoint, cited path:line
+  - Name the POPULATION — the reader's OWN filter, cited
+  - Count the population, citing the command that ran
+  - Compare the population count to the table count, ALWAYS, even when equal
+  - Discard an UNSCOPED finding at the write site; never downgrade it
+
+not_to_do:
+  - DO NOT count a TABLE and report it as a LIST
+  - DO NOT skip step 4 when the two counts are EQUAL — a check that never runs cannot fail
+  - DO NOT downgrade an UNSCOPED finding to "low confidence" — DISCARD it
+  - DO NOT treat this skill as a replacement for citation-discipline — a SCOPED finding still needs a citation
+  - DO NOT call the gate anywhere but the write site
+
+# The probe token. These are BEHAVIOUR cases: they exercise `measurement_scope`'s
+# real functions, so they cannot be decided by the payload validator and they DO
+# need a dedicated probe. `skill_registrar.py` verifies this token is present in
+# `skill_tdd_runner.PROBES` BEFORE it writes anything — a case whose key matches
+# no token returns "no probe registered" and FAILS, so the contract would be
+# documented but unproven.
+probe_token: "MS."
+
+# Layer 3 — the four steps, as contract fields. Each carries a HARD RULE, because
+# `upsert_field` refuses an empty one: a heading can be left empty, a hard rule
+# cannot. The four names are the same four as `measurement_scope.STEP_NAMES`.
+fields:
+  - field_name: reader
+    data_type: TEXT
+    hard_rule: >-
+      The reader is a function / query / endpoint, cited path:line. A finding
+      with no reader is READER_UNNAMED and DISCARDED.
+    mandatory: true
+    immutable: false
+  - field_name: population
+    data_type: TEXT
+    hard_rule: >-
+      The population is the READER'S OWN filter, cited. A count without a filter
+      counts the TABLE, not the LIST.
+    mandatory: true
+    immutable: false
+  - field_name: population_count
+    data_type: INTEGER
+    hard_rule: >-
+      The count ran against the reader's filter, and the command that ran is
+      cited. A count with no command is a remembered number, not a measurement.
+    mandatory: true
+    immutable: false
+  - field_name: table_count
+    data_type: INTEGER
+    hard_rule: >-
+      The table count is REQUIRED alongside the population count, and step 4 runs
+      even when the two are EQUAL — a check that never runs cannot fail.
+    mandatory: true
+    immutable: false
+  - field_name: status
+    data_type: TEXT
+    hard_rule: >-
+      One of READER_UNNAMED / POPULATION_UNNAMED / NOT_COUNTED / UNSCOPED /
+      SCOPED. Only SCOPED keeps the finding; every other terminal state is
+      DISCARDED, never downgraded to low confidence.
+    mandatory: true
+    immutable: false
+
+# `expected` is ALWAYS a dict and ALWAYS the CORRECT outcome, for `pass` and
+# `hard_fail` alike. A plain string would be silently read as "no expectation
+# recorded" and the case would pass unconditionally.
+tdd_cases:
+  # --- pass cases: the allowed paths ---
+  - case_key: MS.pass.scoped_when_population_stated
+    kind: pass
+    assertion: >-
+      The 2026-09-27 case — population 4, table 75 — is SCOPED when the finding
+      STATES which population it counted. The two counts differ, and the finding
+      says which one it used, so it is checkable.
+    input: {mode: scoped_when_population_stated}
+    expected: {status: SCOPED, keep: true, steps_run: 4}
+
+  - case_key: MS.pass.scoped_when_counts_equal
+    kind: pass
+    assertion: >-
+      When the population count EQUALS the table count, the finding is SCOPED —
+      the table IS the list here. Step 4 still RUNS and records that branch.
+    input: {mode: scoped_when_counts_equal}
+    expected: {status: SCOPED, keep: true, steps_run: 4}
+
+  - case_key: MS.pass.four_steps_named
+    kind: pass
+    assertion: >-
+      The four steps are declared once, and the module's STEP_NAMES is the same
+      four names — so the contract and the code cannot disagree about the steps.
+    input: {mode: four_steps_named}
+    expected: {steps_total: 4, names_match: true}
+
+  # --- hard_fail cases: these ARE the protections ---
+  - case_key: MS.hard_fail.unscoped_when_population_not_stated
+    kind: hard_fail
+    assertion: >-
+      The SAME 2026-09-27 case is UNSCOPED and DISCARDED when the finding does
+      NOT state which population it counted. This is the exact defect: the count
+      was cited and the problem was fully stated, and the number was still about
+      the wrong set. If this case passed, the skill would certify nothing.
+    input: {mode: unscoped_when_population_not_stated}
+    expected: {status: UNSCOPED, keep: false}
+
+  - case_key: MS.hard_fail.reader_unnamed_discarded
+    kind: hard_fail
+    assertion: >-
+      A finding with NO reader is READER_UNNAMED and DISCARDED. This is the
+      positive control: it proves the detector can find something, so an empty
+      result is not mistaken for "nothing wrong".
+    input: {mode: reader_unnamed_discarded}
+    expected: {status: READER_UNNAMED, keep: false, steps_run: 1}
+
+  - case_key: MS.hard_fail.unscoped_is_dropped_not_downgraded
+    kind: hard_fail
+    assertion: >-
+      `partition()` returns an UNSCOPED finding in `dropped` and NOT in `kept`,
+      and there is no third list and no "low confidence" label. A downgrade
+      would let a wrong-population finding keep existing under a new name.
+    input: {mode: unscoped_is_dropped_not_downgraded}
+    expected: {kept: 1, dropped: 1, has_low_confidence_label: false}

@@ -1,0 +1,12 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "python scripts/schema_gate.py --quiet",
+        "windows": "python scripts\\schema_gate.py --quiet",
+        "timeout": 60
+      }
+    ]
+  }
+}

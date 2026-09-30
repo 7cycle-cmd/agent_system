@@ -1,0 +1,163 @@
+# contract.yaml — the DECLARATION for ui_standard.
+#
+# WHY THIS FILE EXISTS
+# --------------------
+# Registering a skill used to mean writing a `_register_<name>_skill.py` script.
+# This file is the replacement: the skill DECLARES its contract, and
+# `skill_registrar.py` writes the four SSOT layers from it. Adding a skill is now
+# writing a skill file.
+#
+# WHY THIS SKILL EXISTS
+# ---------------------
+# THE HUMAN (2026-09-27), verbatim:
+#
+#     "be user fiendly as we have ui helper team , why i never have good
+#      experience ? i just have question and question for all your ui job?"
+#     "how does it can be better, github can help you by skill how to have ssot
+#      for all ui element to proof user friendly is not a word is standardize"
+#     "3) **`user_friendly for UI -> 5W1H to get factor + element(wording?) ->
+#      this is formula, you can proof my word, by evidence , i am not boss,
+#      evidenc is boss"
+#
+# MEASURED, and this is the defect the human named: `user_friendly` is NOT
+# REGISTERED in `terminology_register` (0 rows of 1483) and appears in 0 files
+# under `docs/`. It is an adjective with no definition, no unit and no proof.
+#
+# MEASURED, the second defect: the repo has 10 `contract.yaml` files and 0 of
+# them are UI. UI is the ONLY domain with skills but no contract — so it has no
+# LOCKED QC checklist, no proof, and nothing that can fail.
+#
+# THE THREE UI SKILLS COLLAPSE INTO THIS ONE
+# ------------------------------------------
+# `ui_skill` (dev_task 329), `skill_ui_ux_audit` (252) and `ui_field_builder`
+# (251) each get a `contract.yaml` that POINTS AT `SKILL.UI.STANDARD`. They do
+# not each get their own contract — that is the human's `3 > UI template > 1`.
+#
+# `fields` IS A LIST, NOT A `field_seed`
+# --------------------------------------
+# `skill_5w1h` uses `field_seed` because its six dimensions are already declared
+# once in `skill_5w1h.DIMENSIONS`. This skill has no such source module for its
+# FIELDS: the five RULES are declared once in `ui_standard.RULES`, and the fields
+# below are the element's own columns. There is no second copy to point at.
+
+skill_key: ui_standard
+contract_id: SKILL.UI.STANDARD
+taxonomy_path: module/task_center
+version_label: v1_strict
+probe_token: "UIS."
+
+purpose: >-
+  Make "user friendly" a CHECKABLE standard: every UI element is a registered row
+  carrying a measured unit, and five rules decide whether it meets the standard,
+  so a claim of "user friendly" is a number a third party can verify rather than
+  an adjective the author asserts.
+
+purpose_not_responsible: >-
+  NOT responsible for judging visual taste, for choosing a colour, for running
+  the renderer, or for replacing `ui_skill` / `skill_ui_ux_audit` /
+  `ui_field_builder`. It is the ONE standard those three point at.
+
+flow:
+  - Register the element in `ui_element_register` with a measured `unit_key`
+  - Run ALL FIVE rules on it, always, even when all five pass
+  - Discard a non-conforming element at the write site; never downgrade it
+  - Report the five baselines as NUMBERS, not as a claim
+  - Check the register against the RENDERED page, because a register that agrees
+    with itself proves nothing
+
+not_to_do:
+  - DO NOT count a rule that does not APPLY in the denominator
+  - DO NOT report a `count` rule's metric as the count of PASSES
+  - DO NOT stop at the first failed rule
+  - DO NOT keep a dropped element under a `low_confidence` key
+  - DO NOT re-type the five rule names; import `ui_standard.RULES`
+
+fields:
+  - field_name: element_key
+    data_type: TEXT
+    mandatory: true
+    hard_rule: >-
+      The element's key, a lowercase identifier matching
+      ^[a-z0-9]+(?:[._][a-z0-9]+)*$. It must resolve in `ui_element_register`.
+  - field_name: page_key
+    data_type: TEXT
+    mandatory: true
+    hard_rule: >-
+      The page the element is rendered on, e.g. `user_environment.sessions`. An
+      element with no page cannot be checked against a renderer.
+  - field_name: element_kind
+    data_type: TEXT
+    mandatory: true
+    hard_rule: >-
+      One of label / badge / number / empty_state / action. An undefined kind
+      matches nothing SILENTLY, so it is refused at the write site.
+  - field_name: user_label
+    data_type: TEXT
+    mandatory: true
+    hard_rule: >-
+      The word the USER reads, which must differ from the raw DB column name
+      where the column name is not a user word. `coords` is not a user word.
+  - field_name: unit_key
+    data_type: TEXT
+    mandatory: true
+    hard_rule: >-
+      The measured unit, which must resolve in `unit_register`. The human's rule:
+      "everything can measure with measured unit". A UI element with no unit is
+      a decoration, and a decoration cannot be audited.
+  - field_name: population
+    data_type: TEXT
+    mandatory: true
+    hard_rule: >-
+      WHAT a number counts. Required for `element_kind='number'`. A count of a
+      TABLE is not a count of a LIST, so the population must name the reader's
+      own filter.
+  - field_name: status
+    data_type: TEXT
+    mandatory: true
+    hard_rule: >-
+      One of LABEL_UNREGISTERED / WHY_HOVER_ONLY / UNKNOWN_UNNAMED /
+      NUMBER_UNSCOPED / EMPTY_NO_ACTION / USER_FRIENDLY. Only USER_FRIENDLY is
+      kept; the other five are DROPPED, never downgraded.
+
+tdd_cases:
+  - case_key: UIS.pass.all_five_rules
+    kind: pass
+    assertion: >-
+      A fully-conforming element returns USER_FRIENDLY with all five rule results
+      present, not one.
+    input: {mode: all_five_rules}
+    expected: {status: USER_FRIENDLY, keep: true, rules_total: 5}
+  - case_key: UIS.pass.five_rules_always_run
+    kind: pass
+    assertion: >-
+      `check_element()` runs ALL FIVE rules even when all five pass, so a
+      short-circuit cannot hide the other four.
+    input: {mode: five_rules_always_run}
+    expected: {rules_total: 5, rules_failed: []}
+  - case_key: UIS.pass.count_metric_is_failures
+    kind: pass
+    assertion: >-
+      A `count` rule's metric value is the count of FAILURES, not the count of
+      passes — the defect the first version shipped.
+    input: {mode: count_metric_is_failures}
+    expected: {metric_kind: count, metric_value: 0, target: 0}
+  - case_key: UIS.hard_fail.unregistered_label_dropped
+    kind: hard_fail
+    assertion: >-
+      An element whose `term_key` is not in `terminology_register` is
+      LABEL_UNREGISTERED and is DROPPED.
+    input: {mode: unregistered_label_dropped}
+    expected: {status: LABEL_UNREGISTERED, keep: false}
+  - case_key: UIS.hard_fail.hover_only_why_dropped
+    kind: hard_fail
+    assertion: >-
+      A badge or number with `why_clickable=0` is WHY_HOVER_ONLY and is DROPPED.
+    input: {mode: hover_only_why_dropped}
+    expected: {status: WHY_HOVER_ONLY, keep: false}
+  - case_key: UIS.hard_fail.dropped_is_not_downgraded
+    kind: hard_fail
+    assertion: >-
+      `partition()` returns a non-conforming element in `dropped` with NO
+      `low_confidence` key, so no caller can quietly keep it.
+    input: {mode: dropped_is_not_downgraded}
+    expected: {kept: 1, dropped: 1, has_low_confidence: false}

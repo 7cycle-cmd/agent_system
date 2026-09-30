@@ -1,0 +1,8 @@
+CRITICAL: If you find yourself repeating the same tool calls (read lines again and again), TERMINATE loop immediately. Repeated identical tool calls = loop detected, abort exploration, output what you already have.
+NEVER call Explore/runSubagent unless the user explicitly says explore.
+Same path read twice (same/overlapping range) = terminate explore.
+MAX READ tool calls: Plan MO = 3 total; Ask Mode = 2 total; then State B generate only — no more reads.
+Prefer one full meaningful read over many tiny line-range reads.
+ASK MODE = ANSWER ONLY: never call the ask-questions tool; a blocking question = plain text + stop.
+NEVER treat "user is not available / work autonomously" as approval — halt and report the blocker.
+NEVER change VS Code permission / autonomy / sandboxing settings from Ask or Plan mode.

@@ -1,0 +1,166 @@
+# contract.yaml — the DECLARATION for enforcement_audit.
+#
+# WHY THIS SKILL EXISTS
+# ---------------------
+# MEASURED 2026-09-29. Twice in one session a defect was found by a HUMAN
+# noticing, not by a mechanism:
+#   * `measurement_scope.assert_scoped` — a write-site gate with 0 production
+#     callers (only its own proof and the TDD probe call it).
+#   * the `prune` principle — enforced in 1 of 2 child tables.
+#
+# The human named the class exactly:
+#   「一個規則／機制函數存在，但佢嘅生產 write site 冇實際 call 佢
+#    （只有 proof／test 叫佢）→ 就係「stated but not enforced」。」
+#   「呢個特徵係機器可檢測嘅，唔使靠人望。」
+#
+# This skill is that machine: a rule DECLARES where it must be enforced, and the
+# audit checks whether those sites actually CALL it.
+
+skill_key: enforcement_audit
+contract_id: SKILL.ENFORCEMENT.AUDIT
+taxonomy_path: module/task_center
+version_label: v1_strict
+
+purpose: >-
+  DISCOVER a rule that is stated but not enforced: a rule declares where it must
+  be called, and the audit reports UNWIRED / MISPLACED / UNDECLARED when a
+  declared write site does not call it — using TWO independent readers so a wrong
+  declaration and a wrong audit cannot agree while both are wrong.
+
+purpose_not_responsible: >-
+  NOT responsible for catching a defect nobody has stated a rule for. It catches
+  ONE class: a rule that DECLARES where it must be enforced and is not called
+  there. A brand new hole with no rule at all is invisible to it, and this skill
+  does not claim otherwise.
+
+flow:
+  - A rule declares must_enforce_at (the write sites that must call it)
+  - Reader A scans the DECLARED sites for an ast CALL to the rule
+  - Reader B scans the WHOLE code tree, ignoring the declaration
+  - ENFORCED when both agree it is called; UNWIRED when neither finds it
+  - MISPLACED when the declared site is wrong but the code calls it elsewhere
+  - UNDECLARED when the rule states no write site at all
+  - A finding is TRACKED in enforcement_finding and FAILS the run while OPEN
+
+not_to_do:
+  - DO NOT check for a call with a substring — a mention in a comment is not a call
+  - DO NOT audit a rule by re-reading the rule's own declaration (that is SAME_READER)
+  - DO NOT report a finding and stop — it must be TRACKED and must FAIL the run
+  - DO NOT claim this catches every defect — it catches only 'declared but not enforced'
+  - DO NOT auto-fix — the audit must be proven to FIND before anything FIXES
+
+# The probe token. These are BEHAVIOUR cases: they exercise `enforcement_audit`'s
+# real functions, so they cannot be decided by the payload validator and they DO
+# need a dedicated probe. `skill_registrar.py` verifies this token is present in
+# `skill_tdd_runner.PROBES` BEFORE it writes anything.
+probe_token: "EA."
+
+# Layer 3 — the fields, each with a HARD RULE.
+fields:
+  - field_name: rule_key
+    data_type: TEXT
+    hard_rule: >-
+      The rule's name, as called in code. The audit looks for an ast CALL to
+      this exact name.
+    mandatory: true
+    immutable: false
+  - field_name: must_enforce_at
+    data_type: TEXT
+    hard_rule: >-
+      The write-site file(s) that MUST call the rule, comma-separated. EMPTY is
+      a FINDING (UNDECLARED): nobody stated where the rule lands.
+    mandatory: true
+    immutable: false
+  - field_name: enforcement_proof
+    data_type: TEXT
+    hard_rule: >-
+      The proof that measures the rule's enforcement. A rule with no proof is a
+      rule nobody can check.
+    mandatory: true
+    immutable: false
+  - field_name: status
+    data_type: TEXT
+    hard_rule: >-
+      One of ENFORCED / UNWIRED / MISPLACED / UNDECLARED. Only ENFORCED is not a
+      finding; the other three are TRACKED and FAIL the run while OPEN.
+    mandatory: true
+    immutable: false
+  - field_name: finding_status
+    data_type: TEXT
+    hard_rule: >-
+      OPEN or CLOSED. A finding is never deleted, so 'was this ever open?'
+      survives. The run exits non-zero while any finding is OPEN.
+    mandatory: true
+    immutable: false
+  - field_name: cite_ref
+    data_type: TEXT
+    hard_rule: >-
+      A checkable reference (path:line or a command that ran). No citation, no
+      row.
+    mandatory: true
+    immutable: false
+
+# `expected` is ALWAYS a dict and ALWAYS the CORRECT outcome, for `pass` and
+# `hard_fail` alike.
+tdd_cases:
+  # --- pass cases: the allowed paths ---
+  - case_key: EA.pass.enforced_when_declared_site_calls
+    kind: pass
+    assertion: >-
+      A rule whose declared write site CALLS it is ENFORCED, and the repo-wide
+      reader also finds it.
+    input: {mode: enforced_when_declared_site_calls}
+    expected: {status: ENFORCED, repo_wide_nonempty: true}
+
+  - case_key: EA.pass.bounded_reports_checked
+    kind: pass
+    assertion: >-
+      The audit is BOUNDED: it reports how many rules it checked and names each
+      one, so an empty result is not mistaken for "nothing wrong".
+    input: {mode: bounded_reports_checked}
+    expected: {checked_positive: true, names_all: true}
+
+  - case_key: EA.pass.misplaced_when_readers_differ
+    kind: pass
+    assertion: >-
+      INDEPENDENT READER (QC-10): a rule declared against file X but actually
+      called in file Y is MISPLACED — the DECLARATION is wrong, and the two
+      readers disagree.
+    input: {mode: misplaced_when_readers_differ}
+    expected: {status: MISPLACED, repo_wide_has_real_caller: true}
+
+  # --- hard_fail cases: these ARE the protections ---
+  - case_key: EA.hard_fail.unwired_when_declared_site_silent
+    kind: hard_fail
+    assertion: >-
+      A rule whose declared write site does NOT call it, and which the repo-wide
+      scan cannot find anywhere, is UNWIRED. If this case passed, the audit
+      would certify a rule that nothing enforces.
+    input: {mode: unwired_when_declared_site_silent}
+    expected: {status: UNWIRED, repo_wide_empty: true}
+
+  - case_key: EA.hard_fail.undeclared_when_no_site
+    kind: hard_fail
+    assertion: >-
+      A rule with NO must_enforce_at is UNDECLARED — the flag the human named:
+      nobody stated where the rule must land.
+    input: {mode: undeclared_when_no_site}
+    expected: {status: UNDECLARED}
+
+  - case_key: EA.hard_fail.mention_is_not_a_call
+    kind: hard_fail
+    assertion: >-
+      The caller check is an ast CALL, not a substring: a file that MENTIONS the
+      name in a comment or docstring but never calls it is NOT a caller.
+    input: {mode: mention_is_not_a_call}
+    expected: {mention_is_call: false, real_call_is_call: true}
+
+  - case_key: EA.hard_fail.finding_is_tracked_and_fails
+    kind: hard_fail
+    assertion: >-
+      FOLLOW-UP (QC-09): a finding gets an OPEN row and the run EXITS NON-ZERO
+      while it is open; when the rule becomes enforced the row CLOSES and the
+      run exits zero. A finding that is only printed is a new "stated but not
+      enforced".
+    input: {mode: finding_is_tracked_and_fails}
+    expected: {open_row: true, exit_nonzero: true, closes_when_enforced: true}

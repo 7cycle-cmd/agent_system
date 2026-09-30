@@ -1,0 +1,119 @@
+# contract.yaml — the DECLARATION for ui_skill.
+#
+# THIS SKILL POINTS AT ONE STANDARD. IT DOES NOT DECLARE ITS OWN RULES.
+# -------------------------------------------------------------------
+# THE HUMAN (2026-09-27): "3 > UI template > 1, that are full cycle".
+#
+# MEASURED before this file: the repo had 10 `contract.yaml` files and 0 of them
+# were UI, so `ui_skill` (dev_task 329) had NO contract, NO LOCKED QC checklist
+# and NO proof. It was a skill that could not fail.
+#
+# The three UI skills — `ui_skill`, `skill_ui_ux_audit`, `ui_field_builder` —
+# each declare a contract that POINTS AT `SKILL.UI.STANDARD`. They do not each
+# get their own rules, because three rule sets for one page is how the page ends
+# up meeting none of them.
+#
+# WHAT THIS SKILL IS RESPONSIBLE FOR
+# ----------------------------------
+# `ui_skill` is the DESIGN skill: card -> detail modal, status badge colours,
+# empty state, minimal click cost. Its rules are the STANDARD's five rules; this
+# file records WHICH of them this skill owns and how it is measured.
+
+skill_key: ui_skill
+contract_id: SKILL.UI.DESIGN
+taxonomy_path: module/task_center
+version_label: v1_strict
+probe_token: "UIS."
+points_at: SKILL.UI.STANDARD
+
+purpose: >-
+  Design a page so it meets the ONE UI standard: a card opens a detail modal, a
+  status badge carries a colour semantic, an empty state names a next action, and
+  the click cost to see everything is one.
+
+purpose_not_responsible: >-
+  NOT responsible for the five rules themselves — those are declared once in
+  `SKILL.UI.STANDARD` and enforced by `ui_standard.py`. This skill owns the
+  DESIGN decisions that make the rules satisfiable.
+
+flow:
+  - A card is a `<button data-...>` with a hover ring and a "click for detail" hint
+  - A status badge uses the declared colour semantics (green/amber/rose/sky)
+  - An empty state names a next action, never a blank table
+  - One click shows everything; a tab switch uses pushState, not a page reload
+  - Verify by DRIVING the UI, never by reading the code
+
+not_to_do:
+  - DO NOT declare a second set of rules; point at SKILL.UI.STANDARD
+  - DO NOT manually remove a node Vue's `v-if` owns (the trap that made a modal
+    open once and then silently fail)
+  - DO NOT bind a handler inside a page-specific function when the target page
+    runs a different one
+
+fields:
+  - field_name: element_key
+    data_type: TEXT
+    mandatory: true
+    hard_rule: >-
+      The element this design decision applies to, resolving in
+      `ui_element_register`.
+  - field_name: element_kind
+    data_type: TEXT
+    mandatory: true
+    hard_rule: >-
+      One of label / badge / number / empty_state / action. The design rule
+      differs by kind, so the kind must be stated.
+  - field_name: user_label
+    data_type: TEXT
+    mandatory: true
+    hard_rule: >-
+      The word the user reads. It must be a registered term, not a DB column
+      name.
+  - field_name: unit_key
+    data_type: TEXT
+    mandatory: true
+    hard_rule: >-
+      The measured unit, resolving in `unit_register`. A design decision with no
+      unit cannot be audited.
+  - field_name: status
+    data_type: TEXT
+    mandatory: true
+    hard_rule: >-
+      One of the five failure statuses or USER_FRIENDLY. Only USER_FRIENDLY is
+      kept.
+
+tdd_cases:
+  - case_key: UIS.pass.all_five_rules
+    kind: pass
+    assertion: >-
+      A designed element that meets all five rules returns USER_FRIENDLY with
+      all five rule results present.
+    input: {mode: all_five_rules}
+    expected: {status: USER_FRIENDLY, keep: true, rules_total: 5}
+  - case_key: UIS.pass.five_rules_always_run
+    kind: pass
+    assertion: >-
+      The design check runs ALL FIVE rules even when all five pass, so a
+      short-circuit cannot hide the other four.
+    input: {mode: five_rules_always_run}
+    expected: {rules_total: 5, rules_failed: []}
+  - case_key: UIS.pass.count_metric_is_failures
+    kind: pass
+    assertion: >-
+      A `count` rule's metric is the count of FAILURES, so a hover-only hint
+      cannot be reported as a pass.
+    input: {mode: count_metric_is_failures}
+    expected: {metric_kind: count, target: 0}
+  - case_key: UIS.hard_fail.hover_only_why_dropped
+    kind: hard_fail
+    assertion: >-
+      A badge designed with a hover-only hint is WHY_HOVER_ONLY and is DROPPED.
+    input: {mode: hover_only_why_dropped}
+    expected: {status: WHY_HOVER_ONLY, keep: false}
+  - case_key: UIS.hard_fail.dropped_is_not_downgraded
+    kind: hard_fail
+    assertion: >-
+      A design that fails a rule is DROPPED with no `low_confidence` key, so no
+      caller can quietly keep it.
+    input: {mode: dropped_is_not_downgraded}
+    expected: {kept: 1, dropped: 1, has_low_confidence: false}

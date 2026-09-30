@@ -1,0 +1,19 @@
+{
+  "skill_key": "skill_requirement_research",
+  "prompt_key": "main",
+  "version_label": "v1_draft",
+  "status": "draft",
+  "parser": "result_yes_no",
+  "output_schema": "result_yes_no",
+  "model_default": "qwen2.5:7b-instruct",
+  "source": "seed_draft",
+  "dimension_tags": ["research"],
+  "notes": "Draft template. After skill_run, lifecycle task_state → researching. Execution chain is Phase D.",
+  "hard_rules": [
+    "Research raw requirements only; do not finalize task",
+    "dimension_tags must include research",
+    "After successful run, lifecycle event skill_run should set task_state researching",
+    "Do not mutate task_lifecycle_log directly — call lifecycle recorder / API"
+  ],
+  "prompt_text": "You are skill [skill_requirement_research], version skill-1.0 (draft).\nAnalyze the raw requirement for {{task_id}}.\nProduce a short research summary and gap list.\nDimension tags: [\"research\"].\nAfter this skill runs, lifecycle state should become researching (via skill_lifecycle_trace_recorder).\n\nInput:\n{{task_id}}\n{{requirement_text}}\n\nOutput:\nResult: [YES / NO]\nRESEARCH_SUMMARY: ...\nGAP_LIST:\n- ...\nReason: one short sentence\n"
+}

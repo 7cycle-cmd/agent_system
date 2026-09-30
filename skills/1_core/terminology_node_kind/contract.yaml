@@ -1,0 +1,129 @@
+skill_key: terminology_node_kind
+contract_id: TERMINOLOGY.NODE.KIND
+taxonomy_path: module/task_center
+version_label: v1_strict
+
+purpose: >-
+  SAY whether a term is a GROUP (it contains other terms) or a LEAF (it
+  contains none), and REFUSE a name that encodes an INSTANCE. A reader looking
+  at the register must be able to tell a container from a leaf, and a name must
+  be a KIND -- a value that does not change when the data changes.
+
+purpose_not_responsible: >-
+  NOT a schema change. It does NOT add a `group` value to `term_kind` (a group
+  is a POSITION in the tree, not a KIND of thing) and does NOT add an `is_group`
+  column (a second truth that can drift). The kind is DERIVED from
+  `children > 0`. NOT a guesser: it cannot tell `Optical` (a window title) from
+  `English` (a variant) by looking at the string, so the instance list is
+  DECLARED, never inferred.
+
+flow:
+  - "1. The reader: `terminology_generator.node_kind(conn, term_id)` returns 'group' when the term has children, 'leaf' otherwise, plus the count."
+  - "2. The gate: `terminology_registry.check_instance_name(conn, term_key)` refuses a name containing a DECLARED instance value, for a NEW term only."
+  - "3. The declaration: the instance values live in `terminology_instance_value`, a TABLE ROW with a reason -- not a Python literal."
+  - "4. The phase: the `group` sweep phase calls the SAME reader, so the report cannot drift from it."
+
+not_to_do:
+  - "DO NOT add a `group` value to `term_kind`'s CHECK. A group is a POSITION, not a KIND."
+  - "DO NOT add an `is_group` column. It is a SECOND truth that can drift from `children > 0`."
+  - "DO NOT guess whether a token is an instance. MEASURED: 6 labels carry a parenthetical and only 1 is an instance, so a guesser would refuse `English`."
+  - "DO NOT retro-refuse an existing row -- the gate applies to a NEW term only."
+  - "DO NOT restate the derivation in a second place. `node_kind` is the ONE reader."
+  - "DO NOT write `taxonomy_path` -- it is a SECOND path, and a third hierarchy was already refused."
+
+refusals:
+  - code: INSTANCE_IN_NAME
+    rule: declared_instance_value
+    when: the term_key contains a token DECLARED as an instance value
+    because: an instance is a value that CHANGES with the data, so a name carrying it is a snapshot, not a name
+
+catalog_vocabulary:
+  declared_table: terminology_instance_value
+  reader: terminology_generator.node_kind
+  gate: terminology_registry.check_instance_name
+  derived_from: children > 0
+  kinds: [group, leaf]
+  scope: a NEW term only
+
+fields:
+  - field_name: term_id
+    data_type: INTEGER
+    hard_rule: required; the row whose kind is asked
+    mandatory: true
+    immutable: false
+  - field_name: node_kind
+    data_type: TEXT
+    hard_rule: 'group | leaf; DERIVED from children > 0, never stored'
+    mandatory: true
+    immutable: false
+  - field_name: children
+    data_type: INTEGER
+    hard_rule: the count of rows whose parent_term_id is this term; the ONLY source of the kind
+    mandatory: true
+    immutable: false
+  - field_name: value
+    data_type: TEXT
+    hard_rule: a DECLARED instance value; a name may not contain it
+    mandatory: true
+    immutable: false
+  - field_name: reason
+    data_type: TEXT
+    hard_rule: WHY this value is an instance and not a variant; required, because a declared value with no reason is a guess wearing a table's clothes
+    mandatory: true
+    immutable: false
+
+tdd_cases:
+  # --- pass cases: the allowed paths ---
+  - case_key: TERMINOLOGY.NODE.KIND.pass.group_has_children
+    kind: pass
+    assertion: >-
+      A term WITH children is a GROUP. MEASURED: `taskbar_vscode` (1489) has 2
+      children, so it is the container holding VS Code's elements.
+    input: {term_key: "taskbar_vscode"}
+    expected: {rule: valid}
+
+  - case_key: TERMINOLOGY.NODE.KIND.pass.leaf_has_none
+    kind: pass
+    assertion: >-
+      A term with NO children is a LEAF. MEASURED: `taskbar_vscode_app` (1474)
+      has 0 children, so it is the VS Code app button itself.
+    input: {term_key: "taskbar_vscode_app"}
+    expected: {rule: valid}
+
+  - case_key: TERMINOLOGY.NODE.KIND.pass.variant_is_not_an_instance
+    kind: pass
+    assertion: >-
+      A VARIANT is ACCEPTED. MEASURED: `Tray input indicator (English)` and
+      `(Traditional Chinese)` are variants of one thing, not instances of it, so
+      a name carrying `en`/`zh` is a KIND. This is the case a GUESSER would
+      wrongly refuse.
+    input: {term_key: "taskbar_tray_input_en"}
+    expected: {rule: valid}
+
+  # --- hard_fail cases: these ARE the protections ---
+  - case_key: TERMINOLOGY.NODE.KIND.hard_fail.instance_in_name
+    kind: hard_fail
+    assertion: >-
+      A name containing a DECLARED instance value is REFUSED with
+      `declared_instance_value`. MEASURED: `taskbar_chrome_optical` encoded the
+      WINDOW TITLE `Optical`, so the same Chrome button would be
+      `taskbar_chrome_deepseek` tomorrow.
+    input: {term_key: "taskbar_chrome_optical"}
+    expected: {rule: unregistered}
+
+  - case_key: TERMINOLOGY.NODE.KIND.hard_fail.instance_case_insensitive
+    kind: hard_fail
+    assertion: >-
+      The check is case-insensitive, so `taskbar_chrome_Optical` is REFUSED too.
+      A rule that a capital letter defeats is not a rule.
+    input: {term_key: "taskbar_chrome_Optical"}
+    expected: {rule: unregistered}
+
+  - case_key: TERMINOLOGY.NODE.KIND.hard_fail.no_group_kind_in_term_kind
+    kind: hard_fail
+    assertion: >-
+      `term_kind`'s CHECK is UNCHANGED -- there is NO `group` value. A group is
+      a POSITION in the tree, not a KIND of thing, and adding it would make
+      `term_kind` answer two questions.
+    input: {term_kind: "group"}
+    expected: {rule: unregistered}

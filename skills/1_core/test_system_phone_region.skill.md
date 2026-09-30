@@ -1,0 +1,46 @@
+---
+task_id: 10.TEST.SYSTEM
+name: test_system_phone_region
+catalog_id: 1
+subcatalog_id: 1
+# prompt_setting_id: 34  REMOVED 2026-09-20 — id 34 is 'yes_no' (YES/NO output only); this skill is not a YES/NO skill. Reassign to a correct row or leave unset.
+final_verdict: "INCOMPLETE"
+ingested: "yes"
+modified_files: []
+qc_summary: "Test system holding phone + region data, 8-item task breakdown"
+reason: "Test system with phone + region data across Channel/Module/Capability/API/Function/Table/Field"
+artifacts: ["test_system_phone_region.skill.md"]
+schema: "test1 table schema (phone, region)"
+---
+# Prompt 內容
+建立一個測試系統，用於存放 phone + region 資料。
+Build a test system that holds phone + region data.
+
+## Task Breakdown (8 tasks, one per item type)
+
+| # | Task ID | Type | Name | Action |
+|---|---------|------|------|--------|
+| 1 | 10.1 | Channel | local | CREATE |
+| 2 | 10.2 | Module | test | CREATE |
+| 3 | 10.3 | Capability | member data | CREATE |
+| 4 | 10.4 | API | member_data_api | CREATE |
+| 5 | 10.5 | Function | get_member | CREATE |
+| 6 | 10.6 | Table | test1 | CREATE |
+| 7 | 10.7 | Field | phone | CREATE |
+| 8 | 10.8 | Field | region | CREATE |
+
+## Task ID Coding Rule
+- Format: `{RootTaskId}.{GlobalSequenceNumber}`
+- Within one RootTaskId, Function/API/Table/Field/Job/Event share ONE continuous global sequence.
+- Do NOT reset sequence when item type changes.
+- Item type metadata is stored separately; ID only has root + seq.
+- Never renumber after delete; keep orphaned/skipped numbers.
+- Types: F=Function, A=API, T=Table, D=Field, J=Job, E=Event
+
+## Field Details
+- phone: format INT
+- region: format TEXT
+
+## Logging to Report
+Each task can be logged via `POST /api/llm-tasks` with fields:
+`task`, `source`, `model`, `status`, `result`, `type`, `action`, `name`, `format`, `writer`, `task_id`, `session_id`, `chat_id`.

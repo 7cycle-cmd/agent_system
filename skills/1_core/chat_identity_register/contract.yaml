@@ -1,0 +1,191 @@
+# contract.yaml — the DECLARATION for `chat_identity_register`.
+#
+# WHY THIS FILE EXISTS
+# --------------------
+# The human (2026-09-25):
+#     "not all the VScode chat will submit to that auto?"
+#     "skill missing to help the automactic!! have the plan now"
+#
+# MEASURED, and the human is right on both counts:
+#   * 80 VS Code chat session files exist, and NOTHING submits them
+#     automatically. Every writer of `chat_identity_log` is a CALLER.
+#   * `skill_register` had 61 rows and NONE was about chat identity, so every
+#     worker that wanted to register a conversation had to re-derive the two
+#     routes and the payload shape from the source.
+#
+# This declaration makes the skill DISCOVERABLE (`skill_registrar.py` reads it)
+# and states the refusals as data, so a caller cannot silently pass a bad value.
+
+skill_key: chat_identity_register
+contract_id: CHAT.IDENTITY.REGISTER
+# `taxonomy_path` MUST be `{entity_type}/{entity_key}` AND resolve to an
+# is_active=1 row in that entity's registry (skill_contract_store.py:514).
+# MEASURED: every other task_center skill uses `module/task_center`
+# (citation_discipline, env_task_proof, evidence_classify, ...), and
+# `module_registry` id=1 `task_center` is is_active=1. Using the SAME anchor as
+# its siblings keeps one taxonomy for one family of skills.
+taxonomy_path: module/task_center
+version_label: v1_strict
+
+purpose: >-
+  Register a VS Code conversation into the chat identity SSOT — ONE
+  `chat_center_message` row per turn — and link it to its ENVIRONMENT and its
+  LLM through the REGISTERS, so the Chat Identity table shows the real
+  environment (`kind > product > surface`), the real model name, and the turn's
+  status.
+
+purpose_not_responsible: >-
+  NOT responsible for reading `chatSessions/*.jsonl`, for deciding WHICH turns
+  matter, for inventing a status, for guessing an environment, or for writing
+  `chat_identity_log` directly.
+
+flow:
+  - Decide whether the turn is worth registering (a decision, a lesson, or a deliverable)
+  - POST /api/chat_center/register_conversation with the session_id and the turns
+  - POST /api/chat_identity/link_environment with apply=true to store the environment_id
+  - Assign the LLM through `llm_model_alias`, never as free text
+  - Verify with GET /api/chat_identity/recent that environment_display, llm and status are filled
+
+not_to_do:
+  - DO NOT read `chatSessions/*.jsonl` for the model or the content
+  - DO NOT register every turn — only turns that produced something worth keeping
+  - DO NOT pass a free-text model name
+  - DO NOT guess an environment — a non-exact match is refused
+  - DO NOT write `chat_identity_log` directly
+
+# THE THREE REFUSALS, as data. A caller that hits one gets a NAMED code.
+refusals:
+  - code: INVALID_STATUS
+    when: the status is not in WORKFLOW_STATUSES
+    because: a status a reader cannot enumerate is a status nobody can filter or count
+  - code: UNKNOWN_ALIAS
+    when: the LLM alias is not in llm_model_alias
+    because: a model must come from a REGISTER, not from another program's log file
+  - code: NO_EXACT_ENVIRONMENT
+    when: no working_environment.product matches the name EXACTLY
+    because: a name join is this repo's recurring defect #4 ("a fuzzy match joins by luck")
+
+# The vocabulary this skill writes. Read from the SOURCE, never restated.
+status_vocabulary:
+  turn: [draft, pending, progressing, completed]
+  existing_kept: [done, ask, progressive, QC]
+  step: [researching, writing, verifying]
+
+routes:
+  - method: POST
+    path: /api/chat_center/register_conversation
+    body: "{session_id, turns:[{role, content}], status}"
+    writes: one chat_center_message row per turn
+  - method: POST
+    path: /api/chat_identity/link_environment
+    body: "{session_id, apply:true}"
+    writes: identity_register.environment_id
+  - method: GET
+    path: /api/chat_identity/recent
+    reads: the table the human reviews
+
+cite:
+  - skill_library_api.py:register_conversation
+  - skill_library_api.py:resolve_environment_id
+  - skill_library_api.py:WORKFLOW_STATUSES
+  - mouse_spot_helper.py:api_chat_center_register_conversation
+  - mouse_spot_helper.py:api_chat_identity_link_environment
+  - identity_llm.py
+
+# The contract fields. Declared HERE because this skill's subject is a ROUTE
+# PAIR, not a module constant — there is no `field_seed` module to point at.
+#
+# KEY NAMES ARE NOT FREE: `skill_registrar.fields_from_list` (line 244) reads
+# `field_name` / `data_type` / `hard_rule` / `mandatory` / `immutable`, and
+# `upsert_field` REFUSES a row with no `field_name` or no `hard_rule`
+# (skill_contract_store.py:1224, 1230). MEASURED: a `name:`/`type:` spelling
+# produced 5 x MISSING_FIELD_NAME and wrote 0 rows.
+fields:
+  - field_name: session_id
+    data_type: TEXT
+    hard_rule: required; the VS Code session UUID and the identity key
+    mandatory: true
+    immutable: false
+  - field_name: turns
+    data_type: JSON
+    hard_rule: required; a LIST of {role, content}; ONE chat_center_message row each
+    mandatory: true
+    immutable: false
+  - field_name: status
+    data_type: TEXT
+    hard_rule: optional; one of WORKFLOW_STATUSES; defaults to draft
+    mandatory: false
+    immutable: false
+  - field_name: environment_id
+    data_type: INTEGER
+    hard_rule: optional; resolved EXACTLY from the IDE then the channel; NULL when no exact match
+    mandatory: false
+    immutable: false
+  - field_name: llm_id
+    data_type: INTEGER
+    hard_rule: optional; assigned through llm_model_alias; never a free-text model name
+    mandatory: false
+    immutable: false
+
+probe_token: ""
+
+# `expected.rule` MUST be one of PAYLOAD_RULES (valid / missing / type / enum /
+# unregistered / immutable), because a case WITHOUT one is a BEHAVIOUR case and
+# would need a dedicated probe in `skill_tdd_runner.PROBES`. These cases are
+# decided by the payload validator, so they carry a rule and need no probe.
+tdd_cases:
+  # --- pass cases: the allowed paths ---
+  - case_key: CHAT.IDENTITY.REGISTER.pass.valid_payload
+    kind: pass
+    assertion: >-
+      A payload with session_id, turns and a status from the vocabulary is
+      ACCEPTED. This is the path every caller takes.
+    input: {session_id: "11111111-2222-4333-8444-555555555555",
+            turns: [{role: Question, content: "hi"}], status: draft}
+    expected: {rule: valid}
+
+  - case_key: CHAT.IDENTITY.REGISTER.pass.status_optional
+    kind: pass
+    assertion: >-
+      `status` is OPTIONAL and defaults to `draft`, so a caller that does not
+      care about the lifecycle is not forced to invent one.
+    input: {session_id: "11111111-2222-4333-8444-555555555555",
+            turns: [{role: Question, content: "hi"}]}
+    expected: {rule: valid}
+
+  - case_key: CHAT.IDENTITY.REGISTER.pass.environment_optional
+    kind: pass
+    assertion: >-
+      `environment_id` is OPTIONAL. A session with no exact environment match
+      stores NULL, which is an honest "not linked" rather than a lucky join.
+    input: {session_id: "11111111-2222-4333-8444-555555555555",
+            turns: [{role: Question, content: "hi"}], environment_id: null}
+    expected: {rule: valid}
+
+  # --- hard_fail cases: these ARE the protections ---
+  - case_key: CHAT.IDENTITY.REGISTER.hard_fail.missing_session_id
+    kind: hard_fail
+    assertion: >-
+      A payload with NO session_id MUST be refused. Without it there is no
+      identity key, so the row cannot be attributed to any chat.
+    input: {turns: [{role: Question, content: "hi"}]}
+    expected: {rule: missing}
+
+  - case_key: CHAT.IDENTITY.REGISTER.hard_fail.bad_status
+    kind: hard_fail
+    assertion: >-
+      A status OUTSIDE the vocabulary MUST be refused with INVALID_STATUS. A
+      status a reader cannot enumerate is a status nobody can filter or count.
+    input: {session_id: "11111111-2222-4333-8444-555555555555",
+            turns: [{role: Question, content: "hi"}], status: "not_a_status"}
+    expected: {rule: enum}
+
+  - case_key: CHAT.IDENTITY.REGISTER.hard_fail.wrong_turns_type
+    kind: hard_fail
+    assertion: >-
+      `turns` MUST be a LIST. A string would be read as one turn per character
+      and write a row per character.
+    input: {session_id: "11111111-2222-4333-8444-555555555555", turns: "hi"}
+    expected: {rule: type}
+
+

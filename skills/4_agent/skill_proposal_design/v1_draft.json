@@ -1,0 +1,19 @@
+{
+  "skill_key": "skill_proposal_design",
+  "prompt_key": "main",
+  "version_label": "v1_draft",
+  "status": "draft",
+  "parser": "result_yes_no",
+  "output_schema": "result_yes_no",
+  "model_default": "qwen2.5:7b-instruct",
+  "source": "seed_draft",
+  "dimension_tags": ["proposal"],
+  "notes": "Draft template. After skill_run, lifecycle task_state → proposal_draft. Execution chain is Phase D.",
+  "hard_rules": [
+    "Design proposal from research only",
+    "dimension_tags must include proposal",
+    "After successful run, lifecycle skill_run sets task_state proposal_draft",
+    "Do not finalize or dispatch workers"
+  ],
+  "prompt_text": "You are skill [skill_proposal_design], version skill-1.0 (draft).\nDesign a proposal for {{task_id}} based on prior research.\nDimension tags: [\"proposal\"].\nAfter run, lifecycle state should become proposal_draft.\n\nInput:\n{{task_id}}\n{{research_summary}}\n\nOutput:\nResult: [YES / NO]\nPROPOSAL_ID: ...\nPROPOSAL_SUMMARY: ...\nReason: one short sentence\n"
+}

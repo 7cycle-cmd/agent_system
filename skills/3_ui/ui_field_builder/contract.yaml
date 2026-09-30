@@ -1,0 +1,115 @@
+# contract.yaml — the DECLARATION for ui_field_builder.
+#
+# THIS SKILL POINTS AT ONE STANDARD. IT DOES NOT DECLARE ITS OWN RULES.
+# -------------------------------------------------------------------
+# THE HUMAN (2026-09-27): "3 > UI template > 1, that are full cycle".
+#
+# MEASURED before this file: `ui_field_builder` (dev_task 251) had NO
+# `contract.yaml`, NO `skill_prompt_ssot` row, and NO skill DIRECTORY at all —
+# its `.skill.md` sat loose under `skills/3_ui/`. So it was invisible to the SSOT
+# dropdown AND unprovable. It was a skill that could not fail.
+#
+# WHAT THIS SKILL IS RESPONSIBLE FOR
+# ----------------------------------
+# `ui_field_builder` is the BUILDER skill: it generates CRUD UI from the Table
+# Register + Field Register. Its rules are the STANDARD's five rules; this file
+# records that a generated field must carry a registered user label and a
+# measured unit, because a generated form with raw column names is the defect the
+# standard exists to catch.
+
+skill_key: ui_field_builder
+contract_id: SKILL.UI.FIELD.BUILDER
+taxonomy_path: module/task_center
+version_label: v1_strict
+probe_token: "UIS."
+points_at: SKILL.UI.STANDARD
+
+purpose: >-
+  Generate CRUD UI from the Table Register + Field Register so that every
+  generated field carries a REGISTERED user label and a MEASURED unit, meeting
+  the ONE UI standard.
+
+purpose_not_responsible: >-
+  NOT responsible for the five rules themselves — those are declared once in
+  `SKILL.UI.STANDARD`. This skill owns the GENERATION: turning a field definition
+  into a labelled, unit-carrying UI element.
+
+flow:
+  - Load the Table Register + Field Register snapshots; freeze the hash version
+  - Map each field to a registered user label, never the raw column name
+  - Attach the field's measured unit from `unit_register`
+  - Generate the payload validation and the boundary tests
+  - Register each generated element in `ui_element_register`
+
+not_to_do:
+  - DO NOT hardcode a table structure; the registers are the SSOT
+  - DO NOT render a raw column name as a user label
+  - DO NOT generate an element with no `unit_key`
+  - DO NOT declare a second set of rules; point at SKILL.UI.STANDARD
+
+fields:
+  - field_name: element_key
+    data_type: TEXT
+    mandatory: true
+    hard_rule: >-
+      The generated element's key, resolving in `ui_element_register`.
+  - field_name: element_kind
+    data_type: TEXT
+    mandatory: true
+    hard_rule: >-
+      One of label / badge / number / empty_state / action. A generated field is
+      usually a `label` or a `number`.
+  - field_name: user_label
+    data_type: TEXT
+    mandatory: true
+    hard_rule: >-
+      The registered user word for the field. A raw column name is NOT a user
+      label.
+  - field_name: unit_key
+    data_type: TEXT
+    mandatory: true
+    hard_rule: >-
+      The measured unit, resolving in `unit_register`. A generated field with no
+      unit cannot be audited.
+  - field_name: population
+    data_type: TEXT
+    mandatory: true
+    hard_rule: >-
+      WHAT the field's number counts, required when the field renders a number.
+
+tdd_cases:
+  - case_key: UIS.pass.all_five_rules
+    kind: pass
+    assertion: >-
+      A generated element that meets all five rules returns USER_FRIENDLY with
+      all five rule results present.
+    input: {mode: all_five_rules}
+    expected: {status: USER_FRIENDLY, keep: true, rules_total: 5}
+  - case_key: UIS.pass.five_rules_always_run
+    kind: pass
+    assertion: >-
+      The generation check runs ALL FIVE rules even when all five pass, so a
+      short-circuit cannot hide the other four.
+    input: {mode: five_rules_always_run}
+    expected: {rules_total: 5, rules_failed: []}
+  - case_key: UIS.pass.count_metric_is_failures
+    kind: pass
+    assertion: >-
+      A `count` rule's metric is the count of FAILURES, so a generated hover-only
+      hint cannot be reported as a pass.
+    input: {mode: count_metric_is_failures}
+    expected: {metric_kind: count, target: 0}
+  - case_key: UIS.hard_fail.unregistered_label_dropped
+    kind: hard_fail
+    assertion: >-
+      A generated field whose label is not a registered term is
+      LABEL_UNREGISTERED and is DROPPED.
+    input: {mode: unregistered_label_dropped}
+    expected: {status: LABEL_UNREGISTERED, keep: false}
+  - case_key: UIS.hard_fail.dropped_is_not_downgraded
+    kind: hard_fail
+    assertion: >-
+      A generated element that fails a rule is DROPPED with no `low_confidence`
+      key, so no caller can quietly keep it.
+    input: {mode: dropped_is_not_downgraded}
+    expected: {kept: 1, dropped: 1, has_low_confidence: false}

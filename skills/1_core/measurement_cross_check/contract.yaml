@@ -1,0 +1,212 @@
+# contract.yaml — the DECLARATION for measurement_cross_check.
+#
+# WHY THIS SKILL EXISTS
+# ---------------------
+# MEASURED 2026-09-29. The agent reported a total of 1516 uncovered paths. The
+# number was wrong by a factor of 22 (the real split was 776 structural, 532 not
+# product code, 69 real code). What caught it was the agent asking itself
+# "what should the number be?" — a HUMAN judgement, not a mechanism.
+#
+# The human named the defect exactly:
+#   「份報告靠『問個數應該係幾多』嚟捉量度錯 —— 呢個係人肉判斷，唔係系統化」
+#   「依賴人（或 agent）自覺，唔係依賴機制」
+#
+# That is the SAME disease as the plan gate's fail-open. This skill is the
+# mechanism that replaces the human question.
+#
+# WHY `measurement_scope` DOES NOT ALREADY CLOSE IT
+# -------------------------------------------------
+# `measurement_scope` checks that a count NAMES its population. It does NOT check
+# that the count is REPRODUCIBLE by a second reader, and it does NOT check that
+# the count is BOUNDED by the population's size. The 1516 error passed both: the
+# population was named, the citation was real, and the number was simply wrong.
+#
+# `fields` IS A LIST, NOT A `field_seed`
+# --------------------------------------
+# The five steps are declared HERE, once, and `measurement_cross_check.STEP_NAMES`
+# is derived from the same five names. There is no second copy to point at.
+
+skill_key: measurement_cross_check
+contract_id: SKILL.MEASUREMENT.CROSS.CHECK
+taxonomy_path: module/task_center
+version_label: v1_strict
+
+purpose: >-
+  Make a number CHECKABLE by requiring it to be REPRODUCED by a SECOND reader
+  that differs in NAME, METHOD and DATA SOURCE, and to FIT the independently
+  measured size of the population it counts — so a wrong-but-plausible number is
+  refused by a MECHANISM rather than by a human asking "should it be that big?".
+
+purpose_not_responsible: >-
+  NOT responsible for catching EVERY wrong measurement. It catches the two
+  classes MEASURED here: a number produced by one reader (SAME_READER) and a
+  number that cannot fit its population (UNBOUNDED). A wrong
+  number that two genuinely independent readers agree on is NOT caught, and this
+  skill does not claim it is.
+
+flow:
+  - Declare TWO readers, each as {name, method, data_source}
+  - Refuse if there is no second reader — one reader is not a cross-check
+  - Refuse if the two readers share a NAME — a reader compared to itself
+  - Refuse if they share a METHOD or a DATA SOURCE — a shared bug can agree
+  - Run both readers; refuse if the two numbers differ, reporting BOTH
+  - Refuse if the number EXCEEDS the measured population size
+  - Discard a non-AGREED finding at the write site; never downgrade it
+
+not_to_do:
+  - DO NOT accept two readers that share a method or a data source — a shared bug can agree while both are wrong
+  - DO NOT accept a reader compared to itself — that is the 1516 defect
+  - DO NOT accept a reader that declares no method or no data source — independence is UNPROVABLE
+  - DO NOT downgrade a DISAGREED finding to "low confidence" — DISCARD it
+  - DO NOT make the cross-check opt-in by a caller flag — it is a DECLARED factor
+  - DO NOT claim this catches every wrong measurement — it catches same-reader and unbounded
+  - DO NOT call the gate anywhere but the write site
+
+# The probe token. These are BEHAVIOUR cases: they exercise
+# `measurement_cross_check`'s real functions, so they cannot be decided by the
+# payload validator and they DO need a dedicated probe. `skill_registrar.py`
+# verifies this token is present in `skill_tdd_runner.PROBES` BEFORE it writes
+# anything — a case whose key matches no token returns "no probe registered" and
+# FAILS, so the contract would be documented but unproven.
+probe_token: "XC."
+
+# Layer 3 — the five steps, as contract fields. Each carries a HARD RULE, because
+# `upsert_field` refuses an empty one. The five names are the same five as
+# `measurement_cross_check.STEP_NAMES`.
+fields:
+  - field_name: reader_a
+    data_type: TEXT
+    hard_rule: >-
+      The first reader, as {name, method, data_source}. A bare string is a NAME
+      only, so its method and source are empty and independence is UNPROVABLE —
+      refused, the safe direction.
+    mandatory: true
+    immutable: false
+  - field_name: reader_b
+    data_type: TEXT
+    hard_rule: >-
+      The SECOND reader. It must differ from reader_a in NAME, METHOD and DATA
+      SOURCE. A missing second reader is SECOND_READER_MISSING; a shared name,
+      method or source is SAME_READER. Both are DISCARDED.
+    mandatory: true
+    immutable: false
+  - field_name: count_a
+    data_type: INTEGER
+    hard_rule: >-
+      The number reader_a produced. It must EQUAL count_b; a difference is
+      DISAGREED and BOTH numbers are reported.
+    mandatory: true
+    immutable: false
+  - field_name: count_b
+    data_type: INTEGER
+    hard_rule: >-
+      The number reader_b produced, independently. It must equal count_a.
+    mandatory: true
+    immutable: false
+  - field_name: population_size
+    data_type: INTEGER
+    hard_rule: >-
+      The INDEPENDENTLY measured size of the population the count claims to
+      count. The count must be <= it; a count that exceeds it is UNBOUNDED and
+      refused without anyone asking "should it be that big?".
+    mandatory: true
+    immutable: false
+  - field_name: status
+    data_type: TEXT
+    hard_rule: >-
+      One of SECOND_READER_MISSING / SAME_READER / DISAGREED / UNBOUNDED /
+      AGREED. Only AGREED keeps the finding; every other terminal state is
+      DISCARDED, never downgraded to low confidence. SAME_READER covers BOTH a
+      shared NAME and a shared METHOD or DATA SOURCE — the pair is not a valid
+      second reader.
+    mandatory: true
+    immutable: false
+
+# `expected` is ALWAYS a dict and ALWAYS the CORRECT outcome, for `pass` and
+# `hard_fail` alike. A plain string would be silently read as "no expectation
+# recorded" and the case would pass unconditionally.
+tdd_cases:
+  # --- pass cases: the allowed paths ---
+  - case_key: XC.pass.agreed_when_readers_independent
+    kind: pass
+    assertion: >-
+      The 1516 case with the RIGHT number (69 <= 329): two readers that differ in
+      name, method and source agree, and the number fits its population, so the
+      finding is AGREED and KEPT.
+    input: {mode: agreed_when_readers_independent}
+    expected: {status: AGREED, keep: true, steps_run: 5}
+
+  - case_key: XC.pass.disagreed_reports_both
+    kind: pass
+    assertion: >-
+      Two independent readers that DISAGREE (12 vs 1584) are DISAGREED, and BOTH
+      numbers are reported so a reader sees the disagreement rather than a bare
+      refusal.
+    input: {mode: disagreed_reports_both}
+    expected: {status: DISAGREED, keep: false, reports_both: true}
+
+  - case_key: XC.pass.five_steps_named
+    kind: pass
+    assertion: >-
+      The five steps are declared once, and the module's STEP_NAMES is the same
+      five names — so the contract and the code cannot disagree about the steps.
+    input: {mode: five_steps_named}
+    expected: {steps_total: 5, names_match: true}
+
+  - case_key: XC.pass.same_reader_same_source_control
+    kind: pass
+    assertion: >-
+      THE POSITIVE CONTROL FOR QC-11. Two readers with DIFFERENT names and
+      DIFFERENT methods but the SAME data_source, whose numbers AGREE, must be
+      caught as SAME_READER. This proves the check is on the DECLARED source,
+      not on the agent's word that the readers differ.
+    input: {mode: same_reader_same_source_control}
+    expected: {status: SAME_READER, keep: false, names_differ: true, methods_differ: true, sources_same: true}
+
+  # --- hard_fail cases: these ARE the protections ---
+  - case_key: XC.hard_fail.same_reader_refused
+    kind: hard_fail
+    assertion: >-
+      The 1516 defect: ONE parser used twice. A reader compared to itself is not
+      a cross-check, so it is SAME_READER and DISCARDED. If this case passed, the
+      skill would certify a number produced by a single reader.
+    input: {mode: same_reader_refused}
+    expected: {status: SAME_READER, keep: false}
+
+  - case_key: XC.hard_fail.same_reader_shared_method
+    kind: hard_fail
+    assertion: >-
+      THE HUMAN'S APPROVED DELTA (QC-11). Two DIFFERENTLY-NAMED readers over ONE
+      parser can AGREE WHILE BOTH ARE WRONG. Reporting AGREED on a shared bug is
+      worse than no second reader, because it claims "verified". So a shared
+      method or data source is SAME_READER and DISCARDED, even though the names
+      differ.
+    input: {mode: same_reader_shared_method}
+    expected: {status: SAME_READER, keep: false, names_differ: true}
+
+  - case_key: XC.hard_fail.unbounded_refused
+    kind: hard_fail
+    assertion: >-
+      MECHANISM B. A count of 1584 when only 329 plans exist is IMPOSSIBLE, and
+      this refuses it WITHOUT anyone asking "should it be that big?". This is the
+      human's question turned into a comparison against a measured denominator.
+    input: {mode: unbounded_refused}
+    expected: {status: UNBOUNDED, keep: false}
+
+  - case_key: XC.hard_fail.second_reader_missing_refused
+    kind: hard_fail
+    assertion: >-
+      THE POSITIVE CONTROL. One reader is not a cross-check, and the steps
+      SHORT-CIRCUIT at step 1. This proves the detector can find something, so an
+      empty result is not mistaken for "nothing wrong".
+    input: {mode: second_reader_missing_refused}
+    expected: {status: SECOND_READER_MISSING, keep: false, steps_run: 1}
+
+  - case_key: XC.hard_fail.not_agreed_is_dropped_not_downgraded
+    kind: hard_fail
+    assertion: >-
+      `partition()` returns a non-AGREED finding in `dropped` and NOT in `kept`,
+      and there is no third list and no "low confidence" label. A downgrade would
+      let a non-reproducible finding keep existing under a new name.
+    input: {mode: not_agreed_is_dropped_not_downgraded}
+    expected: {kept: 1, dropped: 1, has_low_confidence_label: false}

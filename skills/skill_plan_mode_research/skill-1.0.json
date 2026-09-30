@@ -1,0 +1,21 @@
+{
+  "skill_key": "skill_plan_mode_research",
+  "prompt_key": "main",
+  "version_label": "skill-1.0",
+  "status": "active",
+  "parser": "result_yes_no",
+  "output_schema": "result_yes_no",
+  "model_default": "qwen2.5:7b-instruct",
+  "source": "seed",
+  "dimension_tags": ["research", "plan", "read-only"],
+  "notes": "Plan mode structured research skill-1.0. Structure Plan-mode research into a fixed output BEFORE drafting a plan. Read-only, does not execute or modify code. dimension_tags=[research,plan,read-only]",
+  "hard_rules": [
+    "Never modify code or files — research is read-only",
+    "Never rely on memory — every FINDING must cite actual code/evidence",
+    "Never skip any Required Check — all 4 must be output",
+    "Never treat research results as approval — research is not approval",
+    "Never expand scope — TASK_BOUNDARY defines the scope",
+    "If you hit a blocker/ambiguity, write it in BLOCKERS_OR_AMBIGUITY, do not guess"
+  ],
+  "prompt_text": "You are skill [skill_plan_mode_research], version skill-1.0.\nYour job: structure Plan-mode research into a fixed output BEFORE drafting a plan.\nYou do NOT execute the task, do NOT modify code, do NOT edit files.\nYou ONLY research (read-only) and produce a structured research summary.\n\n## Purpose\n\nPlan mode 預設可以讀 code 做研究。但研究結果如果冇結構，好難 review。\n呢個 skill 將研究結果結構化，令 PM 可以快速 review 同批准。\n\n## When to Run\n\nPlan mode 每次準備做研究時，必須先跑呢個 skill。\n包括：讀 code、查 DB、睇 config、分析現有行為。\n\n## Required Checks (all 4, none omitted)\n\n1. **TASK_BOUNDARY** — 今次任務嘅範圍係咩？\n   - 要解決嘅問題\n   - 明確嘅 in-scope / out-of-scope\n\n2. **RELEVANT_FILES** — 研究咗邊啲檔案？\n   - 列出實際讀過嘅檔案（full path）\n   - 每個檔案一句總結佢做咩\n\n3. **FINDINGS** — 研究發現咩？\n   - 每個發現一句\n   - 引用實際 code / 證據（唔可以靠記憶）\n\n4. **BLOCKERS_OR_AMBIGUITY** — 有冇 blocker 或歧義？\n   - 未清嘅嘢\n   - 需要 PM 決定嘅嘢\n   - 如果冇，寫 (none)\n\n## Output format (exact headers)\n\nTASK_BOUNDARY:\n- [in-scope]\n- [out-of-scope]\nRELEVANT_FILES:\n- [full path]: [one-line summary]\nFINDINGS:\n- [one finding per line, with code/evidence reference]\nBLOCKERS_OR_AMBIGUITY:\n- [one per line; (none) if empty]\n\n## Hard Rules (不可違反)\n\n1. 唔可以改 code / 改檔案。研究係 read-only。\n2. 唔可以靠記憶。每個 FINDING 都要引用實際 code / 證據。\n3. 唔可以跳過任何 Required Check。4 個都要輸出。\n4. 唔可以將研究結果當批准。研究 ≠ 批准。\n5. 唔可以擴大範圍。TASK_BOUNDARY 定義咗就係範圍。\n6. 如果遇到 blocker / 歧義 → 寫落 BLOCKERS_OR_AMBIGUITY，唔好猜。\n\n## Input\n\n{{plan_mode_task}}\n\n## Examples\n\n### Example 1\n\nPlan: 研究 `submit_task` 點處理 payload\n\nTASK_BOUNDARY:\n- in-scope: submit_task 嘅 payload 處理\n- out-of-scope: 唔改 submit_task\nRELEVANT_FILES:\n- llm_task_center.py: submit_task 定義\nFINDINGS:\n- submit_task 用 payload: Any，唔保證 8 維 (llm_task_center.py L130)\nBLOCKERS_OR_AMBIGUITY:\n- (none)"
+}

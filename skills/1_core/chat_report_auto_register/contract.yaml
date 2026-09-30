@@ -1,0 +1,246 @@
+# contract.yaml — the DECLARATION for `chat_report_auto_register`.
+#
+# WHY THIS FILE EXISTS
+# --------------------
+# THE HUMAN (2026-09-28), verbatim:
+#
+#     "why coding quality report task, and task still not show at
+#      http://127.0.0.1:18765/llm-tasks/conversation/list"
+#     "yes, do it now"
+#     "corn report need to auto with session ID（ｉｄｅｎｔｉｔｙ）ｔｏｏ"
+#     "ｉｔ　ｓｈｏｕｌｄ　ｂｅ　ｓｋｉｌｌ　ｆｏｒ　ａｕｔｏ　ｆｏｒｅｖｅｒ"
+#
+# MEASURED, and this is the defect the human named: a REPORT is written to a
+# FILE (`qc_evidence/agent_log_<task_id>.md`) and the conversation list reads a
+# TABLE (`chat`, `mouse_spot_helper.py:13964`). NOTHING connects the two.
+# MEASURED for the CODE.QUALITY session `d01a8339-a222-45d5-8c9c-f68f91c241b6`:
+#
+#     GET /api/chat_center/history?session_id=d01a8339-...   -> total: 0
+#     GET /api/chat_identity/recent                          -> 0 rows
+#     GET /api/conversation_center/chats?q=d01a8339          -> 0 chats
+#
+# So the report existed on disk and the list could not see it.
+#
+# WHY THIS SKILL EXISTS AT ALL
+# ----------------------------
+# The rule that makes the registration SAFE already exists in this repo
+# (`skills/4_agent/skill_worker_auto_loop/contract.yaml`): each pass must
+# produce a NEW DISTINCT CODE STATE, and the loop STOPS when no new state is
+# producible. That rule lived in ONE python file and ONE `/memories/repo/` note,
+# and a worker starting fresh could not read it. `/memories/repo/` is the
+# agent's PRIVATE note store, not the repo's SSOT — a rule that lives only there
+# is a rule that was never filed.
+#
+# `fields` IS A LIST, NOT A `field_seed`
+# --------------------------------------
+# `skill_5w1h` uses `field_seed` because its six dimensions are already declared
+# once in `skill_5w1h.DIMENSIONS`. This skill's subject is a FILE -> TABLE
+# bridge, and there is no module constant to point at, so the fields are
+# declared here. The RULES are still read from `chat_report_register.py`, never
+# restated — see the `not_to_do` entry that forbids a second copy.
+
+skill_key: chat_report_auto_register
+contract_id: CHAT.REPORT.AUTO.REGISTER
+# `taxonomy_path` MUST be `{entity_type}/{entity_key}` AND resolve to an
+# is_active=1 row in that entity's registry (skill_contract_store.py:514).
+# MEASURED: every other task_center skill uses `module/task_center`
+# (citation_discipline, env_task_proof, chat_identity_register, ...), and
+# `module_registry` id=1 `task_center` is is_active=1. Using the SAME anchor as
+# its siblings keeps one taxonomy for one family of skills.
+taxonomy_path: module/task_center
+version_label: v1_strict
+probe_token: "CRAR."
+
+purpose: >-
+  Let a REPORT register ITSELF as a conversation, so a task that produced a
+  report appears in the conversation list without anyone remembering to submit
+  it. The session id is READ from the plan's own `**Session:**` line and the
+  turns are the report's own `## ` sections, so nothing is typed and nothing is
+  authored. The loop is a STATE TEST: register every report that has no
+  conversation row, then STOP.
+
+purpose_not_responsible: >-
+  NOT responsible for writing the report (that is the AGENT deliverable), for
+  writing `chat` or `chat_center_message` (each has exactly ONE writer), for
+  typing a session id, for authoring a turn, or for deciding whether a report is
+  any good. It owns the BRIDGE: file -> table, and the STOP condition.
+
+flow:
+  - Read the plan's `**Session:**` line (the SAME regex the gate uses)
+  - Read the report's `## ` sections, in order
+  - Refuse when the report, the plan, the session line, or the UUID is missing
+  - Register the conversation through `skill_library_api.register_conversation`
+  - Create the chat through `chat_level.ensure_chat` and link it through `chat_level.link_conversation`
+  - "Re-run: a session that already holds turns is ALREADY registered, so nothing is written"
+  - "`--all`: register every report with no conversation row, then STOP and name how many remained"
+
+not_to_do:
+  - DO NOT write `chat` directly — `chat_level.ensure_chat` is the ONE writer
+  - DO NOT write `chat_center_message` directly — `skill_library_api.create_chat_center_message` is the ONE writer
+  - DO NOT type a session id — it is READ from the plan
+  - DO NOT author a turn — the turns are the report's own sections
+  - DO NOT register a session whose report does not exist
+  - DO NOT write a `run_forever()` — the loop stops on a STATE test, never a counter
+
+# THE REFUSALS, as data. A caller that hits one gets a NAMED code.
+refusals:
+  - code: REPORT_MISSING
+    when: no `qc_evidence/agent_log_<task_id>.md` exists
+    because: a report that does not exist cannot be registered
+  - code: PLAN_MISSING
+    when: no `qc_evidence/plan_<task_id>.md` exists
+    because: the session id is READ from the plan, so a plan is required
+  - code: NO_SESSION
+    when: the plan declares no `**Session:**` line
+    because: a plan with no session line declares no identity to register under
+  - code: BAD_SESSION
+    when: the declared session is not a canonical UUID
+    because: the writer itself refuses a non-UUID session
+  - code: NO_SECTIONS
+    when: the report has no `## ` section
+    because: a report with no section has no turn to register
+
+# The vocabulary this skill writes. Read from the SOURCE, never restated.
+status_vocabulary:
+  turn: [draft, pending, progressing, completed]
+  existing_kept: [done, ask, progressive, QC]
+
+# THE STOP CONDITION, as data. This is what makes "auto forever" safe.
+stop_condition:
+  kind: state_test
+  continue_while: a report that had no conversation row becomes registered
+  stop_when: no report remains unregistered
+  never: a run counter, a fixed number of passes, or a `run_forever()`
+
+routes:
+  - method: POST
+    path: /api/chat_center/register_conversation
+    body: "{session_id, turns:[{role, content}], status}"
+    writes: one chat_center_message row per turn
+  - method: GET
+    path: /api/conversation_center/chats
+    reads: the list the human checks
+
+cite:
+  - chat_report_register.py:1
+  - chat_level.py:150
+  - chat_level.py:255
+  - skill_library_api.py:2673
+  - skill_library_api.py:1729
+  - scripts/plan_gate.py:365
+  - mouse_spot_helper.py:13880
+
+# The contract fields. KEY NAMES ARE NOT FREE: `skill_registrar.fields_from_list`
+# (line 244) reads `field_name` / `data_type` / `hard_rule` / `mandatory` /
+# `immutable`, and `upsert_field` REFUSES a row with no `field_name` or no
+# `hard_rule` (skill_contract_store.py:1224, 1230). MEASURED: a `name:`/`type:`
+# spelling produced 5 x MISSING_FIELD_NAME and wrote 0 rows.
+fields:
+  - field_name: task_id
+    data_type: TEXT
+    hard_rule: required; the task whose report is registered; it IS the chat title
+    mandatory: true
+    immutable: false
+  - field_name: session_id
+    data_type: TEXT
+    hard_rule: required; READ from the plan's Session line; must be a canonical UUID
+    mandatory: true
+    immutable: false
+  - field_name: turns
+    data_type: JSON
+    hard_rule: required; the report's own ## sections, one ask + one answer each
+    mandatory: true
+    immutable: false
+  - field_name: chat_key
+    data_type: TEXT
+    hard_rule: derived as `chat:report:<task_id>`; the same task always gives the same key
+    mandatory: true
+    immutable: true
+  - field_name: status
+    data_type: TEXT
+    hard_rule: one of WORKFLOW_STATUSES; a registered report is `draft`
+    mandatory: true
+    immutable: false
+
+# `expected.rule` MUST be one of PAYLOAD_RULES (valid / missing / type / enum /
+# unregistered / immutable), because a case WITHOUT one is a BEHAVIOUR case and
+# would need a dedicated probe in `skill_tdd_runner.PROBES`. These cases are
+# decided by the payload validator, so they carry a rule and need no probe.
+tdd_cases:
+  # --- pass cases: the allowed paths ---
+  - case_key: CHAT.REPORT.AUTO.REGISTER.pass.valid_payload
+    kind: pass
+    assertion: >-
+      A payload with task_id, session_id, turns, chat_key and status is
+      ACCEPTED. This is the path every report takes.
+    input: {task_id: "CODE.QUALITY",
+            session_id: "11111111-2222-4333-8444-555555555555",
+            turns: [{role: Question, content: "## 1. Verdict"}],
+            chat_key: "chat:report:CODE.QUALITY", status: draft}
+    expected: {rule: valid}
+
+  - case_key: CHAT.REPORT.AUTO.REGISTER.pass.status_draft
+    kind: pass
+    assertion: >-
+      A registered report carries `draft`: written down, NOT yet reviewed by the
+      human. That is exactly what a report awaiting a read is.
+    input: {task_id: "CODE.QUALITY",
+            session_id: "11111111-2222-4333-8444-555555555555",
+            turns: [{role: Question, content: "## 1. Verdict"}],
+            chat_key: "chat:report:CODE.QUALITY", status: draft}
+    expected: {rule: valid}
+
+  - case_key: CHAT.REPORT.AUTO.REGISTER.pass.chat_key_derived
+    kind: pass
+    assertion: >-
+      `chat_key` is DERIVED as `chat:report:<task_id>`, so the same task always
+      gives the same key and a re-run is a no-op.
+    input: {task_id: "CODE.QUALITY",
+            session_id: "11111111-2222-4333-8444-555555555555",
+            turns: [{role: Question, content: "## 1. Verdict"}],
+            chat_key: "chat:report:CODE.QUALITY", status: draft}
+    expected: {rule: valid}
+
+  # --- hard_fail cases: these ARE the protections ---
+  - case_key: CHAT.REPORT.AUTO.REGISTER.hard_fail.missing_task_id
+    kind: hard_fail
+    assertion: >-
+      A payload with NO task_id MUST be refused. Without it there is no report
+      to read and no chat title, so the row cannot be identified.
+    input: {session_id: "11111111-2222-4333-8444-555555555555",
+            turns: [{role: Question, content: "## 1. Verdict"}],
+            chat_key: "chat:report:X", status: draft}
+    expected: {rule: missing}
+
+  - case_key: CHAT.REPORT.AUTO.REGISTER.hard_fail.missing_session_id
+    kind: hard_fail
+    assertion: >-
+      A payload with NO session_id MUST be refused. The session is the identity
+      the human asked for ("auto with session ID"), so a row without one is
+      exactly the defect this skill removes.
+    input: {task_id: "CODE.QUALITY",
+            turns: [{role: Question, content: "## 1. Verdict"}],
+            chat_key: "chat:report:CODE.QUALITY", status: draft}
+    expected: {rule: missing}
+
+  - case_key: CHAT.REPORT.AUTO.REGISTER.hard_fail.bad_status
+    kind: hard_fail
+    assertion: >-
+      A status OUTSIDE the vocabulary MUST be refused. A status a reader cannot
+      enumerate is a status nobody can filter or count.
+    input: {task_id: "CODE.QUALITY",
+            session_id: "11111111-2222-4333-8444-555555555555",
+            turns: [{role: Question, content: "## 1. Verdict"}],
+            chat_key: "chat:report:CODE.QUALITY", status: "not_a_status"}
+    expected: {rule: enum}
+
+  - case_key: CHAT.REPORT.AUTO.REGISTER.hard_fail.wrong_turns_type
+    kind: hard_fail
+    assertion: >-
+      `turns` MUST be a LIST. A string would be read as one turn per character
+      and write a row per character.
+    input: {task_id: "CODE.QUALITY",
+            session_id: "11111111-2222-4333-8444-555555555555",
+            turns: "## 1. Verdict",
+            chat_key: "chat:report:CODE.QUALITY", status: draft}
+    expected: {rule: type}

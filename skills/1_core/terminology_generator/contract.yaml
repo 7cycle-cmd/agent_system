@@ -1,0 +1,139 @@
+skill_key: terminology_generator
+contract_id: TERMINOLOGY.GENERATOR
+taxonomy_path: module/task_center
+version_label: v1_strict
+
+purpose: >-
+  DERIVE a name from its catalog path, so one catalog is named by ONE
+  convention. The catalog path is the SSOT; the name is a PROJECTION of it, so
+  the name cannot drift from the catalog because it is computed from it.
+
+purpose_not_responsible: >-
+  NOT a second catalog. The catalog is `terminology_register.parent_term_id`
+  (`plan_CATALOG.AND.TERMONTOLOGY.STANDARD.md`, APPROVED). NOT a renamer that
+  moves a term between catalogs. NOT the definition writer -- the 7B keeps the
+  DEFINITION, which is the half it is measurably good at.
+
+flow:
+  - "1. Read the catalog path: `ancestors(conn, term_id)` walks `parent_term_id` upward."
+  - "2. Derive the name: `name_for(parent_key, segment)` joins with '_'."
+  - "3. Check: `expected_name(conn, term_id)` -- does the term_key EQUAL the derived name?"
+  - "4. Generate: `generate(conn, catalog_key, entry_key, definition, cite_ref)`."
+  - "5. Rename: `rename(conn, term_id, new_segment, new_parent_key)` -- alias kept, cross-catalog move refused."
+
+not_to_do:
+  - "DO NOT let the model choose the NAME. The 7B drafts the DEFINITION only."
+  - "DO NOT move a term OUT of its catalog root -- that changes what ANOTHER catalog contains."
+  - "DO NOT write `taxonomy_level_registry.is_active` by hand; the gate owns it."
+  - "DO NOT create a second catalog table."
+  - "DO NOT delete or renumber a `terminology_register` row."
+  - "DO NOT accept a `definition_sha256` from a caller; the writer derives it."
+
+refusals:
+  - code: UNKNOWN_CATALOG
+    when: the catalog root does not exist
+    because: a name with no catalog has no path to derive from
+  - code: UNKNOWN_PARENT
+    when: the named parent term does not exist
+    because: a child of nothing is not in the catalog
+  - code: REFUSES_REPARENT
+    when: the move would change the term's catalog ROOT
+    because: that changes what ANOTHER catalog contains -- a decision for the human
+  - code: NAME_TAKEN
+    when: the derived name already exists under the target parent
+    because: UNIQUE(parent_term_id, term_key) would raise, and a raw IntegrityError is not a refusal a caller can act on
+  - code: BAD_PATH
+    when: a path element is empty
+    because: "`taskbar_` (a trailing separator) is a name nobody can read"
+
+catalog_vocabulary:
+  declared_table: terminology_register
+  catalog_column: parent_term_id
+  layer_column: taxonomy_level
+  separator: "_"
+  rule: "a child's term_key MUST START WITH its parent's term_key + '_'"
+  reader: terminology_generator.expected_name
+  checker: terminology_generator.check
+
+fields:
+  - field_name: parent_key
+    data_type: TEXT
+    hard_rule: required; the parent term's term_key, or NULL for a catalog root
+    mandatory: true
+    immutable: false
+  - field_name: segment
+    data_type: TEXT
+    hard_rule: required; the LEAF segment only -- the parent key is prepended by name_for
+    mandatory: true
+    immutable: false
+  - field_name: term_key
+    data_type: TEXT
+    hard_rule: DERIVED, never supplied by a caller
+    mandatory: true
+    immutable: false
+  - field_name: definition
+    data_type: TEXT
+    hard_rule: required; says what the thing IS and what it is NOT
+    mandatory: true
+    immutable: false
+  - field_name: cite_ref
+    data_type: TEXT
+    hard_rule: required; a real path, path:line, command, or 'measured:' note
+    mandatory: true
+    immutable: false
+
+tdd_cases:
+  # --- pass cases: the allowed paths ---
+  - case_key: TERMINOLOGY.GENERATOR.pass.two_level
+    kind: pass
+    assertion: >-
+      A two-level path derives the name the human named as the example:
+      `taskbar > widgets` -> `taskbar_widgets`. This is the path 18 of the 20
+      taskbar rows already take.
+    input: {parent_key: "taskbar", segment: "widgets"}
+    expected: {rule: valid}
+
+  - case_key: TERMINOLOGY.GENERATOR.pass.three_level
+    kind: pass
+    assertion: >-
+      A three-level path derives a three-part name: `taskbar > vscode > app` ->
+      `taskbar_vscode_app`. This is the path the human asked for.
+    input: {parent_key: "taskbar_vscode", segment: "app"}
+    expected: {rule: valid}
+
+  - case_key: TERMINOLOGY.GENERATOR.pass.catalog_root
+    kind: pass
+    assertion: >-
+      A catalog ROOT names itself, so its derived name is its own key. A root has
+      no parent to derive from, and that is not an error.
+    input: {parent_key: null, segment: "taskbar"}
+    expected: {rule: valid}
+
+  # --- hard_fail cases: these ARE the protections ---
+  - case_key: TERMINOLOGY.GENERATOR.hard_fail.cross_catalog_move
+    kind: hard_fail
+    assertion: >-
+      A move that changes the term's catalog ROOT is REFUSED with
+      `REFUSES_REPARENT`. MEASURED: `vscode` (term_id 3) belongs to
+      `vscode_conversation`, so moving it into `taskbar` would change what
+      ANOTHER catalog contains.
+    input: {term_id: 3, new_parent_key: "taskbar"}
+    expected: {rule: unregistered}
+
+  - case_key: TERMINOLOGY.GENERATOR.hard_fail.empty_segment
+    kind: hard_fail
+    assertion: >-
+      An empty leaf segment is REFUSED with `BAD_PATH`. A trailing separator is a
+      name nobody can read, and silently joining it would put a malformed name in
+      the register.
+    input: {parent_key: "taskbar", segment: ""}
+    expected: {rule: unregistered}
+
+  - case_key: TERMINOLOGY.GENERATOR.hard_fail.name_taken
+    kind: hard_fail
+    assertion: >-
+      A derived name that already exists under the target parent is REFUSED with
+      `NAME_TAKEN`, rather than raising a raw IntegrityError from
+      `UNIQUE(parent_term_id, term_key)`.
+    input: {parent_key: "taskbar", segment: "widgets", already_present: true}
+    expected: {rule: unregistered}

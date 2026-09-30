@@ -1,0 +1,195 @@
+# contract.yaml — the DECLARATION for `structure_contract`.
+#
+# WHY THIS FILE EXISTS
+# --------------------
+# The human (2026-09-27):
+#     "channel, module, capability, api, function, table, field / entity with
+#      terminology, can we have system or skill to help for folder name,
+#      filename and location format management"
+#
+# MEASURED, and the answer before this skill was NO:
+#   * `structure_contract.py` derived the path for FOUR levels (channel folder,
+#     module folder, capability folder, capability file) and NOTHING for the
+#     other three (api, function, table, field).
+#   * `code_location_register` had 298 rows, only 37 active, and 5 ACTIVE rows
+#     whose path did not equal the derivation (the writer wrote the capability's
+#     path for the channel and module rows too).
+#   * 261 CODE (R) rows sat at flat root paths (`activation_gate.py`) — the
+#     "801 root files" damage — with no rule saying a code location is
+#     structured iff it sits under a derived capability folder.
+#
+# This declaration makes the skill DISCOVERABLE (`skill_registrar.py` reads it)
+# and states the refusal as data, so a caller cannot silently hand-type a path.
+
+skill_key: structure_contract
+contract_id: STRUCTURE.CONTRACT
+# `taxonomy_path` MUST be `{entity_type}/{entity_key}` AND resolve to an
+# is_active=1 row in that entity's registry (skill_contract_store.py:514).
+# MEASURED: every other task_center skill uses `module/task_center`
+# (citation_discipline, env_task_proof, evidence_classify, ...), and
+# `module_registry` id=1 `task_center` is is_active=1. Using the SAME anchor as
+# its siblings keeps one taxonomy for one family of skills.
+taxonomy_path: module/task_center
+version_label: v1_strict
+
+purpose: >-
+  Derive the folder name, file name, and location for ALL SEVEN levels —
+  channel, module, capability, api, function, table, field — from the entity's
+  registered key, so a path is never hand-typed. A location row is activated
+  ONLY when its path EQUALS the derivation; a row whose path does not equal the
+  derivation is REFUSED with `PATH_MISMATCH` (reported, never forced), and a
+  code row at a flat root path is REFUSED with `UNSTRUCTURED_CODE`.
+
+purpose_not_responsible: >-
+  NOT a file mover (it does not move files on disk), NOT a decider of what a
+  capability MEANS (that is `capability_registry`), NOT a general path
+  validator, and NOT a re-implementer of the register writers.
+
+flow:
+  - Derive the path for the level from the entity's registered key
+    (`structure_of` for channel/module/capability, `api_structure_of` /
+    `function_structure_of` / `table_structure_of` / `field_structure_of` for
+    the other three)
+  - Check a candidate path with `check_path` / `check_file`
+  - Before activating a location row, call `location_mismatches` and confirm the
+    row's path EQUALS the derivation
+  - Activate ONLY the rows that match (`activate_locations`); report the rest
+  - For a code (R) row, confirm the file sits UNDER a derived capability folder
+    before it may be activated
+
+not_to_do:
+  - DO NOT hand-type a path — derive it from the registered key
+  - DO NOT activate a row whose path does not equal the derivation
+  - DO NOT move files on disk (this skill DERIVES and REPORTS, it does not move)
+  - DO NOT bless a flat root path as a structured location
+  - DO NOT invent a level's rule without a citation to the register it reads
+
+# THE REFUSAL, as data. A caller that hits it gets a NAMED code.
+refusals:
+  - code: PATH_MISMATCH
+    when: a location row's path does not equal the derivation for its entity
+    because: activating a mismatched path is hand-typing a path, the exact act
+      the derivation exists to stop
+  - code: UNSTRUCTURED_CODE
+    when: a code (R) row sits at a flat root path, under no derived capability
+      folder
+    because: a file at the repo root is the "801 root files" damage, not a
+      location to bless
+  - code: UNRESOLVABLE_ENTITY
+    when: the entity's key cannot be resolved to a registered row
+    because: a path derived from nothing is a guess, and a guess is a second
+      truth
+
+# The vocabulary this skill reads. Read from the SOURCE, never restated.
+derivation_sources:
+  channel: channel_registry.channel_key
+  module: module_registry.module_key + channel_registry.channel_key
+  capability: capability_registry.capability_key
+  api: api_registry.capability_id -> capability_registry
+  function: function_registry.capability_id -> capability_registry
+  table: db_table_registry.table_key (no capability_id FK — candidates reported)
+  field: db_field_registry.db_table_id -> db_table_registry
+
+routes: []
+
+cite:
+  - structure_contract.py:STRUCTURE_TERMS
+  - structure_contract.py:structure_of
+  - structure_contract.py:api_structure_of
+  - structure_contract.py:function_structure_of
+  - structure_contract.py:table_structure_of
+  - structure_contract.py:field_structure_of
+  - structure_contract.py:location_mismatches
+  - structure_contract.py:activate_locations
+  - _proof_structure_contract.py
+
+# The contract fields. Declared HERE because this skill's subject is a DERIVATION,
+# not a module constant.
+#
+# KEY NAMES ARE NOT FREE: `skill_registrar.fields_from_list` reads
+# `field_name` / `data_type` / `hard_rule` / `mandatory` / `immutable`, and
+# `upsert_field` REFUSES a row with no `field_name` or no `hard_rule`.
+fields:
+  - field_name: level
+    data_type: TEXT
+    hard_rule: required; one of channel|module|capability|api|function|table|field
+    mandatory: true
+    immutable: false
+  - field_name: entity_key
+    data_type: TEXT
+    hard_rule: required; the registered key the path is derived from
+    mandatory: true
+    immutable: false
+  - field_name: derived_path
+    data_type: TEXT
+    hard_rule: the path the derivation produces; the ONLY path a location row may take
+    mandatory: false
+    immutable: false
+  - field_name: mismatch
+    data_type: TEXT
+    hard_rule: the refusal code (PATH_MISMATCH / UNSTRUCTURED_CODE / UNRESOLVABLE_ENTITY) when the row's path does not equal the derivation
+    mandatory: false
+    immutable: false
+
+tdd_cases:
+  # --- pass cases: the allowed paths ---
+  - case_key: STRUCTURE.CONTRACT.pass.capability_file
+    kind: pass
+    assertion: >-
+      A capability's file path is DERIVED from its registered key and ACCEPTED.
+      This is the path every caller takes.
+    input: {level: capability, entity_key: "task_center.validate_new_task"}
+    expected: {rule: valid}
+
+  - case_key: STRUCTURE.CONTRACT.pass.api_file
+    kind: pass
+    assertion: >-
+      An api's file path is DERIVED from its capability (via capability_id) and
+      ACCEPTED — the level that had NO rule before this skill.
+    input: {level: api, entity_key: "task_center.validate_new_task"}
+    expected: {rule: valid}
+
+  - case_key: STRUCTURE.CONTRACT.pass.module_folder
+    kind: pass
+    assertion: >-
+      A module's folder path is DERIVED as `channel/module/` (the full path the
+      writer records) and ACCEPTED.
+    input: {level: module, entity_key: "task_center"}
+    expected: {rule: valid}
+
+  - case_key: STRUCTURE.CONTRACT.pass.code_under_capability
+    kind: pass
+    assertion: >-
+      A code (R) row whose file sits UNDER a derived capability folder is
+      STRUCTURED and may be activated.
+    input: {level: code, file_path: "local_pc/task_center/validate_new_task/x.py"}
+    expected: {rule: valid}
+
+  # --- hard_fail cases: these ARE the protections ---
+  - case_key: STRUCTURE.CONTRACT.hard_fail.path_mismatch
+    kind: hard_fail
+    assertion: >-
+      A location row whose path does NOT equal the derivation is REFUSED with
+      `PATH_MISMATCH` — reported, never forced. This is the protection that
+      would have stopped the 5 active rows whose path was the capability's path
+      written for the channel and module rows.
+    input: {level: module, entity_key: "task_center", row_path: "local_pc/task_center/validate_new_task/"}
+    expected: {rule: unregistered}
+
+  - case_key: STRUCTURE.CONTRACT.hard_fail.unstructured_code
+    kind: hard_fail
+    assertion: >-
+      A code (R) row at a FLAT ROOT path is REFUSED with `UNSTRUCTURED_CODE`.
+      This is the protection that names the "801 root files" damage instead of
+      blessing it.
+    input: {level: code, file_path: "activation_gate.py"}
+    expected: {rule: unregistered}
+
+  - case_key: STRUCTURE.CONTRACT.hard_fail.unresolvable_entity
+    kind: hard_fail
+    assertion: >-
+      An entity whose key resolves to NO registered row is REFUSED with
+      `UNRESOLVABLE_ENTITY` — a path derived from nothing is a guess, and a
+      guess is a second truth.
+    input: {level: capability, entity_key: "does.not.exist"}
+    expected: {rule: unregistered}

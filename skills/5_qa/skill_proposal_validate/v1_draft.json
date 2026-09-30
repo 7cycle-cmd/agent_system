@@ -1,0 +1,19 @@
+{
+  "skill_key": "skill_proposal_validate",
+  "prompt_key": "main",
+  "version_label": "v1_draft",
+  "status": "draft",
+  "parser": "result_yes_no",
+  "output_schema": "result_yes_no",
+  "model_default": "qwen2.5:7b-instruct",
+  "source": "seed_draft",
+  "dimension_tags": ["validation", "proposal-gate"],
+  "notes": "Draft template. PASS → validated; FAIL → roll back proposal_draft via new lifecycle row. Phase D chains execution.",
+  "hard_rules": [
+    "Validate proposal readiness for next gates",
+    "PASS: lifecycle validation_pass → task_state validated",
+    "FAIL: lifecycle validation_fail → task_state proposal_draft (append only)",
+    "dimension_tags: validation, proposal-gate"
+  ],
+  "prompt_text": "You are skill [skill_proposal_validate], version skill-1.0 (draft).\nValidate proposal for {{task_id}}.\nDimension tags: [\"validation\",\"proposal-gate\"].\nPASS → lifecycle state validated. FAIL → roll back to proposal_draft (new lifecycle row only).\n\nInput:\n{{task_id}}\n{{proposal_id}}\n\nOutput:\nResult: [YES / NO]\nVALIDATION_RESULT: [PASS | FAIL]\nERROR_LIST:\n- (none) or list\nRECOMMENDATION:\n(none) or fix\nReason: one short sentence\n"
+}

@@ -1,0 +1,19 @@
+{
+  "skill_key": "skill_api_standard_validator",
+  "prompt_key": "main",
+  "version_label": "v1_draft",
+  "status": "draft",
+  "parser": "result_yes_no",
+  "output_schema": "result_yes_no",
+  "model_default": "qwen2.5:7b-instruct",
+  "source": "seed_draft",
+  "dimension_tags": ["validation", "api-gate"],
+  "notes": "Draft template. Check-only: after skill_run keep task_state proposal_draft (may warn). Phase D chains execution.",
+  "hard_rules": [
+    "Validate API shape/standards only",
+    "Do NOT advance major lifecycle state — stay proposal_draft",
+    "Warnings allowed; FAIL still appends lifecycle validation_fail without jumping to validated",
+    "dimension_tags: validation, api-gate"
+  ],
+  "prompt_text": "You are skill [skill_api_standard_validator], version skill-1.0 (draft).\nValidate API standards for proposal on {{task_id}}.\nDimension tags: [\"validation\",\"api-gate\"].\nIMPORTANT: This is check-only. Lifecycle task_state should remain proposal_draft after skill_run (warnings ok).\n\nInput:\n{{task_id}}\n{{proposal_id}}\n{{api_spec}}\n\nOutput:\nResult: [YES / NO]\nWARNINGS:\n- (none) or list\nERROR_LIST:\n- (none) or list\nReason: one short sentence\n"
+}

@@ -1,0 +1,181 @@
+# contract.yaml — the DECLARATION for `terminology_spelling`.
+#
+# WHY THIS FILE EXISTS
+# --------------------
+# The human (2026-09-27):
+#     "alias must = terminonotology, all in same language, do it now"
+#     "fucking mis-undersatnd name never happen again"
+#     "environment this is wrong spelling, is it?"
+#     "terminontology_registered has splleing proof?"
+#
+# MEASURED, and the answer to the last question is NO:
+#   * `_proof_terminology_ko_spelling.py` has "spelling" in its NAME, but it
+#     proves ALIAS IDENTITY, not spelling CORRECTNESS.
+#   * zero modules import a spell-checker (enchant / spellchecker / symspellpy).
+#   * `terminology_registry` had no `spell` function.
+#   * MEASURED POPULATION: `environment` 12,423 / `enviornment` 3,970. Of the
+#     3,970, 3,584 are QUOTES of the human's words (evidence) and 357 are real
+#     identifiers (the defect).
+#
+# This declaration makes the skill DISCOVERABLE (`skill_registrar.py` reads it)
+# and states the refusal as data, so a caller cannot silently pass a typo.
+
+skill_key: terminology_spelling
+contract_id: TERMINOLOGY.SPELLING
+# `taxonomy_path` MUST be `{entity_type}/{entity_key}` AND resolve to an
+# is_active=1 row in that entity's registry (skill_contract_store.py:514).
+# MEASURED: every other task_center skill uses `module/task_center`
+# (citation_discipline, env_task_proof, evidence_classify, ...), and
+# `module_registry` id=1 `task_center` is is_active=1. Using the SAME anchor as
+# its siblings keeps one taxonomy for one family of skills.
+taxonomy_path: module/task_center
+version_label: v1_strict
+
+purpose: >-
+  Refuse a MISSPELLED or MISFORMED name at the write site, so a typo or an
+  uppercase constant can never enter `terminology_register` as a term again.
+  A NEW term or alias that contains a declared misspelling is REFUSED with
+  `MISSPELLED_NAME`; a NEW term_key that is not lowercase snake_case or dotted
+  is REFUSED with `BAD_TERM_KEY_FORM` (an uppercase constant is a CARRIER —
+  an alias of the lowercase term, not a term). A legacy typo already present is
+  KEPT for resolution and the CORRECT spelling is ADDED as a second alias.
+
+purpose_not_responsible: >-
+  NOT a general English spell-checker, NOT rewriting existing rows, NOT rewriting
+  QUOTES of the human's words (they are evidence), and NOT deciding what a term
+  MEANS (that is `terminology_register`).
+
+flow:
+  - Before naming anything, call `terminology_registry.check_spelling(name)`
+  - If it returns ok=False, use the `correct` spelling it names
+  - Before registering a term_key, call `terminology_registry.check_naming(key)`
+  - "If it returns ok=False, the name is a constant or legacy name — register it
+    as an ALIAS of the lowercase term, not as a term"
+  - Register the term with `add_term` (which refuses a typo and a bad form itself)
+  - Add an alias with `add_alias` (which refuses a typo itself)
+  - For a legacy typo already in the register, ADD the correct spelling as a
+    second alias so BOTH resolve
+
+not_to_do:
+  - DO NOT use a general English dictionary (it refuses the repo's own vocabulary)
+  - DO NOT retro-refuse existing rows (that is a mass refusal of live data)
+  - DO NOT rewrite a QUOTE of the human's words
+  - DO NOT invent a typo entry without a citation
+
+# THE REFUSAL, as data. A caller that hits it gets a NAMED code.
+refusals:
+  - code: MISSPELLED_NAME
+    when: a NEW term or alias contains a declared misspelling
+    because: a name a reader must decode is a name that will be mis-understood
+  - code: BAD_TERM_KEY_FORM
+    when: a NEW term_key is not lowercase snake_case or dotted
+    because: an uppercase constant is a carrier (an alias), not a term; the
+      defect it stops is LLM_OFF_FORM (id=87) entering as a term_key
+
+# The vocabulary this skill reads. Read from the SOURCE, never restated.
+spelling_vocabulary:
+  declared_table: terminology_registry.MISSPELLINGS
+  match_kind: substring, case-insensitive
+  scope: NEW term or alias only
+
+naming_rule:
+  declared_in:
+    - terminology_sweep.py:96   # "term_key (lowercase snake_case)"
+    - register_fill.py:494      # "key (lowercase snake_case or dotted)"
+  form: lowercase snake_case or dotted  (TERM_KEY_RE)
+  scope: NEW term_key only (all 1452 active terms already comply, measured 2026-09-27)
+
+routes: []
+
+cite:
+  - terminology_registry.py:MISSPELLINGS
+  - terminology_registry.py:check_spelling
+  - terminology_registry.py:TERM_KEY_RE
+  - terminology_registry.py:check_naming
+  - terminology_registry.py:add_term
+  - terminology_alias.py:add_alias
+  - _proof_alias_must_be_terminology.py
+
+# The contract fields. Declared HERE because this skill's subject is a CHECK,
+# not a module constant.
+#
+# KEY NAMES ARE NOT FREE: `skill_registrar.fields_from_list` reads
+# `field_name` / `data_type` / `hard_rule` / `mandatory` / `immutable`, and
+# `upsert_field` REFUSES a row with no `field_name` or no `hard_rule`.
+fields:
+  - field_name: name
+    data_type: TEXT
+    hard_rule: required; the term_key or alias about to be written
+    mandatory: true
+    immutable: false
+  - field_name: typo
+    data_type: TEXT
+    hard_rule: the declared misspelling found in the name, when one is found
+    mandatory: false
+    immutable: false
+  - field_name: correct
+    data_type: TEXT
+    hard_rule: the correct spelling the caller must use instead
+    mandatory: false
+    immutable: false
+
+tdd_cases:
+  # --- pass cases: the allowed paths ---
+  - case_key: TERMINOLOGY.SPELLING.pass.correct_name
+    kind: pass
+    assertion: >-
+      A correctly spelled name is ACCEPTED. This is the path every caller takes.
+    input: {name: "environment_playwright"}
+    expected: {rule: valid}
+
+  - case_key: TERMINOLOGY.SPELLING.pass.repo_vocabulary
+    kind: pass
+    assertion: >-
+      The repo's OWN vocabulary is ACCEPTED — `5w1h`, `db_row`, `llm_100_run`,
+      `CP-S-00`. A general English dictionary would refuse these, which is why
+      the check is a DECLARED table and not a dictionary.
+    input: {name: "llm_100_run"}
+    expected: {rule: valid}
+
+  - case_key: TERMINOLOGY.SPELLING.pass.legacy_typo_kept
+    kind: pass
+    assertion: >-
+      A legacy typo ALREADY present as an alias is KEPT for resolution, and the
+      correct spelling is ADDED as a second alias. Both resolve.
+    input: {name: "enviornment_playwright", already_present: true}
+    expected: {rule: valid}
+
+  # --- hard_fail cases: these ARE the protections ---
+  - case_key: TERMINOLOGY.SPELLING.hard_fail.misspelled_new_term
+    kind: hard_fail
+    assertion: >-
+      A NEW term containing a declared misspelling is REFUSED with
+      `MISSPELLED_NAME`. This is the protection the human asked for.
+    input: {name: "enviornment_playwright", already_present: false}
+    expected: {rule: unregistered}
+
+  - case_key: TERMINOLOGY.SPELLING.hard_fail.misspelled_substring
+    kind: hard_fail
+    assertion: >-
+      The check is a SUBSTRING match, so a typo INSIDE a longer name is caught —
+      `enviornment` inside `enviornment_playwright`. An equality test would miss
+      it, which is the defect this closes.
+    input: {name: "my_enviornment_helper", already_present: false}
+    expected: {rule: unregistered}
+
+  - case_key: TERMINOLOGY.SPELLING.pass.dotted_name
+    kind: pass
+    assertion: >-
+      A DOTTED lowercase name is ACCEPTED — `register_fill.py:494` declares
+      "key (lowercase snake_case or dotted)", so `a.b_c` is a legal term_key.
+    input: {name: "task_center.5w1h"}
+    expected: {rule: valid}
+
+  - case_key: TERMINOLOGY.SPELLING.hard_fail.uppercase_term_key
+    kind: hard_fail
+    assertion: >-
+      An UPPERCASE term_key is REFUSED with `BAD_TERM_KEY_FORM`. This is the
+      protection that would have stopped `LLM_OFF_FORM` (id=87) from entering
+      the register as a term: it is a Python constant, a carrier, an alias.
+    input: {name: "LLM_OFF_FORM", already_present: false}
+    expected: {rule: unregistered}

@@ -1,0 +1,170 @@
+# contract.yaml — the DECLARATION for skill_worker_auto_loop.
+#
+# WHY THIS FILE EXISTS
+# --------------------
+# THE HUMAN (2026-09-27), verbatim:
+#
+#     "yes! and be skill help worker can auto forever"
+#
+# MEASURED, and this is the defect the human named: the rule that makes an
+# auto-loop SAFE already exists in this repo — `discover_cases.py` (proof 39/0)
+# — and it is NOT a skill. MEASURED: `skill_register` has 73 active skills and
+# the only auto-ish one is `skill_terminology_autopilot`, which is terminology
+# only. So the rule lives in ONE python file and ONE `/memories/repo/` note, and
+# a worker starting fresh cannot read it.
+#
+# `/memories/repo/` is the agent's PRIVATE note store, not the repo's SSOT. A
+# rule that lives only there is a rule that was never filed — the same defect
+# `skill_worker_code_builder` records for its six lessons.
+#
+# WHY THIS SKILL EXISTS AT ALL
+# ----------------------------
+# "auto forever" is a REQUEST FOR A LOOP WITH NO STOP CONDITION, and that is the
+# dangerous reading. The measured answer is that safety and termination are the
+# SAME property:
+#
+#     each pass must produce a NEW DISTINCT CODE STATE.
+#
+# Then:
+#   * safety      — infinite passes cannot promote work with no new state
+#   * termination — when no new state is producible, the loop STOPS
+#
+# A count-based loop would promote by REPETITION, which is why there is no
+# `run_forever()` anywhere in this repo and why this skill FORBIDS writing one.
+#
+# `fields` IS A LIST, NOT A `field_seed`
+# --------------------------------------
+# `skill_5w1h` uses `field_seed` because its six dimensions are already declared
+# once in `skill_5w1h.DIMENSIONS`. `discover_cases` has no such `DIMENSIONS`
+# tuple, so there is no source to point at and the fields are declared here.
+# The RULES are still read from `discover_cases`, never restated — see the
+# `not_to_do` entry that forbids a second copy.
+
+skill_key: skill_worker_auto_loop
+contract_id: SKILL.WORKER.AUTO.LOOP
+taxonomy_path: module/task_center
+version_label: v1_strict
+probe_token: "WAL."
+
+purpose: >-
+  Let a worker loop WITHOUT a stop condition and still be safe: a pass may
+  continue only while it produces a NEW DISTINCT CODE STATE, and the loop STOPS
+  when no new state is producible. Safety and termination are the same property,
+  so "auto forever" is answered by a STATE test rather than by a run counter.
+
+purpose_not_responsible: >-
+  NOT responsible for generating the case a pass proposes (that is the LLM's
+  step), for deciding whether a derived assertion is TRUE (that is
+  `independent_review`), or for activating a factor proposal (a proposal is
+  `is_active=0` until a human confirms it). It owns the LOOP DISCIPLINE: what
+  counts as progress, and when to stop.
+
+flow:
+  - PROPOSE a case for one of the failure classes, and write NOTHING yet
+  - DERIVE the assertion; REFUSE a no-match, a same-tier ambiguity, or an unknown signal
+  - MEASURE with two independent methods, and write ONLY on agreement
+  - PROVE over DISTINCT CODE STATES; a repeated state is not progress
+  - DISCOVER which sibling could be proven next, by FAMILY MEMBERSHIP not similarity
+  - STOP on STATE, never on a counter; report the reason so saturation is not read as an unfinished job
+
+not_to_do:
+  - DO NOT write a `run_forever()` or any count-based loop — a count promotes by REPETITION
+  - DO NOT count an iteration as progress; only a NEW DISTINCT CODE STATE is progress
+  - DO NOT widen a gate to keep the loop turning — `assert_not_loosened` RAISES by design
+  - DO NOT treat a saturation stop as an obstacle; it is a RESULT to report
+  - DO NOT resolve an ambiguity by picking the largest or the most confident candidate
+  - DO NOT restate the loop rules in a second place; `discover_cases` is the ONE copy
+
+fields:
+  - field_name: code_state
+    data_type: TEXT
+    mandatory: true
+    hard_rule: >-
+      The identity of the code state a pass produced. Progress is measured over
+      DISTINCT values of this field, so two passes that produce the SAME state
+      are ONE unit of progress, not two. A loop that cannot name its code state
+      cannot tell progress from repetition.
+  - field_name: stop_reason
+    data_type: TEXT
+    mandatory: true
+    hard_rule: >-
+      Why the loop stopped, decided by STATE. `SATURATED` means no family has an
+      unproven member left; `UNSATURABLE` means a family cannot reach `evidence`
+      however often it runs, and the missing input is a DEDICATED PROBE (a code
+      change), not more iterations. A stop with no reason is indistinguishable
+      from a crash.
+  - field_name: family
+    data_type: TEXT
+    mandatory: true
+    hard_rule: >-
+      The family a candidate belongs to, taken from `contract_id`'s entity-type
+      LETTER (schema-defined), NEVER from the `assertion` prose. MEASURED: a
+      first draft derived the family from the assertion text and returned 100%
+      UNKNOWN — a single uniform answer is a blind extractor's signature.
+  - field_name: candidate_count
+    data_type: TEXT
+    mandatory: true
+    hard_rule: >-
+      How many unproven members the family has: 1 -> CONFIRMABLE, >1 ->
+      AMBIGUOUS (reported, never resolved by picking the largest), 0 ->
+      FULLY_PROVEN. The three buckets must ACCOUNT for every family; MEASURED: a
+      first draft omitted the fully_proven bucket and reported 8 families as
+      5+0+0.
+  - field_name: new_code_state
+    data_type: TEXT
+    mandatory: true
+    hard_rule: >-
+      Whether the pass produced a state that did not exist before. `False` is
+      what makes a stop legitimate: repeating a pass cannot promote work, so the
+      loop must stop rather than turn. A missing value is None, never 0.
+
+tdd_cases:
+  - case_key: WAL.pass.distinct_state_is_progress
+    kind: pass
+    assertion: >-
+      A pass that produces a code state not seen before is reported as progress,
+      and the state it produced is named.
+    input: {mode: distinct_state_is_progress}
+    expected: {ok: true, new_code_state: true, distinct: true}
+  - case_key: WAL.pass.stop_is_state_based
+    kind: pass
+    assertion: >-
+      The stop decision is read from STATE, and it carries a reason, so a
+      saturation stop cannot be mistaken for an unfinished job.
+    input: {mode: stop_is_state_based}
+    expected: {ok: true, has_reason: true, state_based: true}
+  - case_key: WAL.pass.family_from_contract_letter
+    kind: pass
+    assertion: >-
+      A family is derived from the contract_id's entity-type LETTER, so the
+      family is schema-defined rather than read from prose.
+    input: {mode: family_from_contract_letter}
+    expected: {ok: true, from_letter: true, unknown_count: 0}
+  - case_key: WAL.pass.buckets_account_for_all
+    kind: pass
+    assertion: >-
+      CONFIRMABLE + AMBIGUOUS + FULLY_PROVEN accounts for EVERY family, so no
+      family is silently dropped from the report.
+    input: {mode: buckets_account_for_all}
+    expected: {ok: true, accounted: true, missing: 0}
+  - case_key: WAL.hard_fail.repeated_state_is_not_progress
+    kind: hard_fail
+    assertion: >-
+      A pass that reproduces a code state already seen is NOT progress, so a
+      count-based loop cannot promote by repetition.
+    input: {mode: repeated_state_is_not_progress}
+    expected: {ok: false, new_code_state: false, distinct: false}
+  - case_key: WAL.hard_fail.loosening_a_gate_raises
+    kind: hard_fail
+    assertion: >-
+      Widening a gate to keep the loop turning RAISES, because a gate may be
+      changed by a MEASUREMENT and never by a desire to continue.
+    input: {mode: loosening_a_gate_raises}
+    expected: {ok: false, raised: true}
+  - case_key: WAL.hard_fail.no_run_forever_exists
+    kind: hard_fail
+    assertion: >-
+      No `run_forever` entry point exists in the loop module, so a caller cannot
+      start an unbounded loop by name.
+    input: {mode: no_run_forever_exists}
+    expected: {ok: false, run_forever_found: false}

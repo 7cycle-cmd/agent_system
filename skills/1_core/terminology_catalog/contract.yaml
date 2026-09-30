@@ -1,0 +1,193 @@
+# contract.yaml — the DECLARATION for `terminology_catalog`.
+#
+# WHY THIS FILE EXISTS
+# --------------------
+# The human (2026-09-27):
+#     "why you have 2 language for the same thing, so we need to have catalog,
+#      and how does it can standardize, by termontology ?"
+#     "catalog table and subcatalog table, name defintion by termontology"
+#     "by skill and auto forever"
+#
+# MEASURED, and this is the answer to "why 2 languages":
+#   * `taskbar_doubao` (label `豆包 button`) and `taskbar_doubao_browser`
+#     (label `豆包浏览器 button`) are TWO PRODUCTS from one vendor — the 豆包
+#     desktop app (`Doubao.exe`) and the 豆包 browser window.
+#   * NOTHING RECORDED that. A reader saw `doubao` and `doubao_browser` and
+#     could not tell a hierarchy from a duplicate.
+#   * MEASURED: 20 taskbar element names, ZERO terms in `terminology_register`.
+#   * MEASURED: `catalog`/`subcatalog` ALREADY EXIST and are a chat_center
+#     artifact (2 + 3 rows, every `description = 'auto-created by chat_center'`).
+#   * MEASURED: `terminology_register` ALREADY has two hierarchies
+#     (`parent_term_id` self-FK; `taxonomy_level` + `taxonomy_path`).
+#
+# THE DECISION THIS SKILL ENFORCES: the two existing hierarchies get ONE job
+# each, so a third is never needed.
+#
+#     parent_term_id          -> the CATALOG  (what contains what)
+#     taxonomy_level + path   -> the LAYER    (what KIND of thing it is)
+#
+# This declaration makes the skill DISCOVERABLE (`skill_registrar.py` reads it)
+# and states the refusal as data, so a caller cannot silently register a name
+# with no definition.
+
+skill_key: terminology_catalog
+contract_id: TERMINOLOGY.CATALOG
+# `taxonomy_path` MUST be `{entity_type}/{entity_key}` AND resolve to an
+# is_active=1 row in that entity's registry (skill_contract_store.py:514).
+# MEASURED: every other task_center skill uses `module/task_center`
+# (citation_discipline, env_task_proof, evidence_classify, terminology_spelling),
+# and `module_registry` id=1 `task_center` is is_active=1. Using the SAME anchor
+# as its siblings keeps one taxonomy for one family of skills.
+taxonomy_path: module/task_center
+version_label: v1_strict
+
+purpose: >-
+  Give every NAME a DEFINITION, and give every CATALOG a parent, so a reader can
+  tell a hierarchy from a duplicate. A catalog is a term whose children are its
+  entries (`parent_term_id`), and a layer is what KIND of thing a term is
+  (`taxonomy_level`). A name with no term is a GAP and is REPORTED, never hidden.
+  A term_key is an IDENTIFIER (lowercase ASCII); a label is DISPLAY text (any
+  language) — the two are different columns, which is why "2 languages for the
+  same thing" is not a duplicate but an identifier beside a label.
+
+purpose_not_responsible: >-
+  NOT a spell-checker (that is `terminology_spelling`), NOT the alias resolver
+  (that is `terminology_registry.alias_index`), NOT deciding what a term MEANS
+  beyond its definition, and NOT creating a `catalog`/`subcatalog` TABLE — those
+  already exist as a chat_center artifact and reusing them would put two meanings
+  in one table.
+
+flow:
+  - "Before naming a target, ask: is this a CATALOG (it contains others) or an ENTRY?"
+  - "A catalog is a ROOT term: `add_term(..., parent_term_id=None)`"
+  - "An entry is a CHILD term: `add_term(..., parent_term_id=<catalog term_id>)`"
+  - "Set `taxonomy_level` to the KIND of thing it is (db_table, module, ...), or 'NA'"
+  - "Write the definition so it says what the thing IS and what it is NOT"
+  - "Cite a real `path:line` — `add_term` REFUSES an unciteable citation"
+  - "Read the catalog back with `terminology_catalog.catalog_tree(conn, root_key)`"
+  - "Measure the gap with `terminology_catalog.unregistered_names(conn)`"
+
+not_to_do:
+  - DO NOT create a `catalog` / `subcatalog` table (they exist; they are chat_center's)
+  - DO NOT write `taxonomy_level_registry.is_active` by hand — the activation gate owns it
+  - DO NOT delete or renumber a `terminology_register` row
+  - DO NOT store a term with no definition or no citation
+  - DO NOT accept a `definition_sha256` from a caller (the writer derives it)
+  - DO NOT render an unregistered name as blank — it is a GAP
+
+# THE REFUSALS, as data. A caller that hits one gets a NAMED code.
+refusals:
+  - code: MISSING_DEFINITION
+    when: a term is registered with an empty definition
+    because: a term with no definition is a word nobody defined
+  - code: MISSING_CITE_REF
+    when: a term is registered with an empty citation
+    because: no citation, no term — a claim nobody can check
+  - code: UNCITEABLE_CITE_REF
+    when: the citation is prose rather than a path, a path:line, a command, or a
+      `measured:` note
+    because: a citation that cannot be checked is not evidence
+  - code: UNKNOWN_PARENT
+    when: "`parent_term_id` names no `terminology_register` row"
+    because: a child of nothing is not in the catalog
+  - code: BAD_TAXONOMY_LEVEL
+    when: "`taxonomy_level` is not a declared level in `taxonomy_level_registry`"
+    because: a layer nobody declared is a layer nobody can group by
+
+# The vocabulary this skill reads. Read from the SOURCE, never restated.
+catalog_vocabulary:
+  declared_table: terminology_register
+  catalog_column: parent_term_id
+  layer_columns: [taxonomy_level, taxonomy_path]
+  level_table: taxonomy_level_registry
+  gap_reader: terminology_catalog.unregistered_names
+  tree_reader: terminology_catalog.catalog_tree
+  scope: a NEW term only
+
+# KEY NAMES ARE NOT FREE: `skill_registrar.fields_from_list` reads
+# `field_name` / `data_type` / `hard_rule` / `mandatory` / `immutable`, and
+# `upsert_field` REFUSES a row with no `field_name` or no `hard_rule`.
+fields:
+  - field_name: term_key
+    data_type: TEXT
+    hard_rule: required; lowercase snake_case or dotted — the IDENTIFIER, not the label
+    mandatory: true
+    immutable: false
+  - field_name: parent_term_id
+    data_type: INTEGER
+    hard_rule: the CATALOG this term belongs to; NULL means the term IS a catalog root
+    mandatory: false
+    immutable: false
+  - field_name: taxonomy_level
+    data_type: TEXT
+    hard_rule: the LAYER — a declared level in taxonomy_level_registry, or 'NA'
+    mandatory: false
+    immutable: false
+  - field_name: definition
+    data_type: TEXT
+    hard_rule: required; says what the thing IS and what it is NOT
+    mandatory: true
+    immutable: false
+  - field_name: cite_ref
+    data_type: TEXT
+    hard_rule: required; a real path, path:line, command, or 'measured:' note
+    mandatory: true
+    immutable: false
+
+tdd_cases:
+  # --- pass cases: the allowed paths ---
+  - case_key: TERMINOLOGY.CATALOG.pass.catalog_root
+    kind: pass
+    assertion: >-
+      A CATALOG is a ROOT term — `parent_term_id IS NULL`. This is the path the
+      `taskbar` catalog takes, and it is what makes the human's `catalog` a VIEW
+      over the register rather than a second table.
+    input: {term_key: "taskbar", parent_term_id: null}
+    expected: {rule: valid}
+
+  - case_key: TERMINOLOGY.CATALOG.pass.catalog_child
+    kind: pass
+    assertion: >-
+      An ENTRY is a CHILD term — `parent_term_id` names the catalog. This is the
+      path each of the 20 taskbar elements takes.
+    input: {term_key: "taskbar_doubao", parent_term_id: 1468}
+    expected: {rule: valid}
+
+  - case_key: TERMINOLOGY.CATALOG.pass.two_products_one_vendor
+    kind: pass
+    assertion: >-
+      Two terms from ONE vendor are ACCEPTED as distinct entries when each
+      definition names its own product. This is the case the human asked about:
+      `taskbar_doubao` is the 豆包 desktop app and `taskbar_doubao_browser` is
+      the 豆包 browser — two products, and the definitions are what record it.
+    input: {term_key: "taskbar_doubao_browser", parent_term_id: 1468}
+    expected: {rule: valid}
+
+  # --- hard_fail cases: these ARE the protections ---
+  - case_key: TERMINOLOGY.CATALOG.hard_fail.no_definition
+    kind: hard_fail
+    assertion: >-
+      A term with an EMPTY definition is REFUSED with `MISSING_DEFINITION`. A
+      term with no definition is a word nobody defined — the exact state the 20
+      taskbar names were in before this skill existed.
+    input: {term_key: "taskbar_ghost", definition: ""}
+    expected: {rule: missing}
+
+  - case_key: TERMINOLOGY.CATALOG.hard_fail.unciteable_cite
+    kind: hard_fail
+    assertion: >-
+      A citation that is PROSE is REFUSED with `UNCITEABLE_CITE_REF`. MEASURED:
+      the first draft of this very seed used
+      `terminology_catalog.py:THE_DECISION` and was refused — a citation that
+      cannot be checked is not evidence.
+    input: {term_key: "taskbar_ghost", cite_ref: "terminology_catalog.py:THE_DECISION"}
+    expected: {rule: unregistered}
+
+  - case_key: TERMINOLOGY.CATALOG.hard_fail.unknown_parent
+    kind: hard_fail
+    assertion: >-
+      A `parent_term_id` that names no row is REFUSED with `UNKNOWN_PARENT`. A
+      child of nothing is not in the catalog, and a dangling parent would make
+      the tree unreadable.
+    input: {term_key: "taskbar_ghost", parent_term_id: 999999}
+    expected: {rule: unregistered}

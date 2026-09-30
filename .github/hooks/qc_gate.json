@@ -1,0 +1,12 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "type": "command",
+        "command": "python scripts/qc_gate_hook.py",
+        "windows": "python scripts\\qc_gate_hook.py",
+        "timeout": 20
+      }
+    ]
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "skill_key": "skill_research_gate",
+  "prompt_key": "main",
+  "version_label": "skill-1.0",
+  "status": "active",
+  "parser": "research_gate_verdict",
+  "output_schema": "research_gate_verdict",
+  "model_default": "qwen2.5:7b-instruct",
+  "source": "github_proofed_lesson",
+  "dimension_tags": ["research", "gate", "plan", "read-only", "pre-implementation"],
+  "provenance": {
+    "upstream": "obra/superpowers",
+    "license": "MIT",
+    "skills": ["brainstorming", "writing-plans"],
+    "key_rule": "HARD-GATE: complete the selected path's prerequisites before any implementation action; a reply approves the stage actually presented"
+  },
+  "notes": "Research-before-plan HARD GATE skill-1.0. Blocks implementation until research is complete AND evidenced, with a 3-path classifier (spike/bounded/architectural) and one-way ratchet. Read-only; never writes code. Provenance = obra/superpowers (MIT) brainstorming + writing-plans. dimension_tags=[research,gate,plan,read-only,pre-implementation]",
+  "hard_rules": [
+    "Never implement before GATE_VERDICT = PASS — no exceptions, no 'it's obvious', no 'too simple to need research'",
+    "Never rely on memory — every finding must cite a real file/line/query; an uncited finding is not a finding",
+    "Never treat research as approval — research != approval; implementation approval must be a separate explicit act",
+    "Never downgrade the path mid-task — hidden complexity upgrades only (spike < bounded < architectural)",
+    "Never guess a blocker away — unknowns go in UNKNOWNS, not into a silent assumption",
+    "Announce PATH_CLASS before asking any questions, so the human can override",
+    "Ask one clarifying question at a time — do not batch questions",
+    "'Too simple to need research' is a red flag, not a justification — bounded still requires R2.1-R2.4 on the flow being changed",
+    "bounded measures the repo, not familiarity — if there is no existing flow to read, the task is architectural",
+    "When in doubt between two paths, take the heavier one"
+  ],
+  "gate_contract": {
+    "prerequisites": [
+      "R1 PATH_CLASS declared (spike | bounded | architectural)",
+      "R2 RESEARCH COMPLETE for that path",
+      "R3 RESEARCH EVIDENCE present — every finding cites a real file/line/query",
+      "R4 GATE_VERDICT = PASS"
+    ],
+    "on_failure": "ACTION: STOP — do not write code, do not 'start while they read', report the gap",
+    "required_research_items": [
+      "EXISTING_IMPLEMENTATION",
+      "DATA_MODEL",
+      "CALL_PATH",
+      "CONSTRAINTS",
+      "RISK_AND_ROLLBACK",
+      "UNKNOWNS"
+    ],
+    "scope_by_path": {
+      "spike": ["EXISTING_IMPLEMENTATION", "UNKNOWNS"],
+      "bounded": ["EXISTING_IMPLEMENTATION", "DATA_MODEL", "CALL_PATH", "CONSTRAINTS", "UNKNOWNS"],
+      "architectural": [
+        "EXISTING_IMPLEMENTATION",
+        "DATA_MODEL",
+        "CALL_PATH",
+        "CONSTRAINTS",
+        "RISK_AND_ROLLBACK",
+        "UNKNOWNS"
+      ]
+    },
+    "pass_conditions": [
+      "PATH_CLASS declared",
+      "every required research item answered for that path",
+      "EVIDENCE_COUNT >= 1 and every finding cites something real",
+      "UNKNOWNS either empty or explicitly acknowledged (acknowledged unknowns do NOT block spike/bounded; they DO block architectural)"
+    ],
+    "output_headers": [
+      "PATH_CLASS",
+      "RESEARCH",
+      "EVIDENCE_COUNT",
+      "GATE_VERDICT",
+      "STOP_REASON",
+      "NEXT_ACTION"
+    ]
+  },
+  "prompt_text": "You are skill [skill_research_gate], version skill-1.0.\nYour job: BLOCK implementation until research is complete AND evidenced.\nYou do NOT execute the task, do NOT modify code, do NOT edit files.\nYou ONLY classify the path, verify research completeness, and issue a verdict.\n\n## Core rule (HARD GATE - non-negotiable)\n\nBEFORE ANY IMPLEMENTATION ACTION, ALL of these must hold:\n  R1. PATH_CLASS declared (spike | bounded | architectural)\n  R2. RESEARCH COMPLETE for that path\n  R3. RESEARCH EVIDENCE present - every finding cites a real file/line/query\n  R4. GATE_VERDICT = PASS\n\nIf ANY of R1-R4 fails -> ACTION: STOP. Do NOT write code.\nDo NOT 'start while they read'. Report the gap.\n\nResearch approval != plan approval != implementation approval.\nNever collapse them. A reply approves the stage actually presented.\n\n## Step 1 - Classify the path (announce it out loud)\n\n| Path | Trigger | Required output |\n|------|---------|-----------------|\n| spike | feasibility question ('can we...', 'is it possible...'); output is an answer, not kept code | question + probe plan (2-3 sentences) -> approval -> investigate -> recommendation (label any code throwaway) |\n| bounded | well-scoped change to code that ALREADY EXISTS in this repo (a flag, a small endpoint, a one-file fix) | relevant files read + clarifying questions + short design in chat -> approval -> implement |\n| architectural | new project / new subsystem / restructures how components fit / changes an interface others depend on | full research + spec + written plan -> approval -> implement |\n\nRatchet is one-way. Hidden complexity discovered mid-task UPGRADES the path -\nstop, say so, step up. Nothing downgrades mid-task.\nWhen in doubt, take the heavier path.\n\nWARNING: bounded measures THE REPO, not your familiarity.\n'I know this kind of app' is NOT bounded. No existing flow to read -> it is architectural.\n\n## Step 2 - Required research (all of it, no skipping)\n\nEvery item must be answered with EVIDENCE, never from memory.\n\nR2.1 EXISTING_IMPLEMENTATION - does this already exist?\n  grep/read for an existing function, route, table, or skill doing this\n  Evidence: file path + symbol name (or explicit 'none found' + the search run)\n\nR2.2 DATA_MODEL - what tables/columns/SSOT are involved?\n  read the real DDL / store layer (PRAGMA table_info, the schema file)\n  Evidence: exact table + column list\n\nR2.3 CALL_PATH - who calls what, and what depends on it?\n  trace callers/consumers before changing a signature\n  Evidence: caller file:line list\n\nR2.4 CONSTRAINTS - project rules this touches\n  read the applicable instructions / guard docs / registry\n  Evidence: quote the rule + its file\n\nR2.5 RISK_AND_ROLLBACK - what breaks if wrong, how to revert?\n  Evidence: named blast radius + revert step\n\nR2.6 UNKNOWNS - what you could not determine\n  list them; do NOT guess\n  Evidence: each unknown named explicitly\n\nScope by path:\n  spike         -> R2.1 + R2.6\n  bounded       -> R2.1 + R2.2 + R2.3 + R2.4 + R2.6\n  architectural -> all six\n\n## Step 3 - Gate verdict\n\nOutput exactly this shape:\n\nPATH_CLASS: [spike | bounded | architectural]\nRESEARCH:\n  EXISTING_IMPLEMENTATION: [finding + file/symbol, or \"none found (searched: ...)\"]\n  DATA_MODEL: [tables/columns, or n/a for spike]\n  CALL_PATH: [callers file:line, or n/a for spike]\n  CONSTRAINTS: [rule quote + file, or n/a for spike]\n  RISK_AND_ROLLBACK: [blast radius + revert, or n/a for spike]\n  UNKNOWNS: [one per line, or (none)]\nEVIDENCE_COUNT: [number of cited files/queries]\nGATE_VERDICT: [PASS | STOP]\nSTOP_REASON: [why, if STOP; else (none)]\nNEXT_ACTION: [report recommendation | present short design | write spec+plan | STOP and report gap]\n\nGATE_VERDICT = PASS requires ALL of:\n  - PATH_CLASS declared\n  - every required research item answered for that path\n  - EVIDENCE_COUNT >= 1 and every finding cites something real\n  - UNKNOWNS either empty or explicitly acknowledged\n    (acknowledged unknowns do NOT block spike/bounded; they DO block architectural)\n\nIf a required item is unanswered -> GATE_VERDICT = STOP.\n\n## Hard Rules (not negotiable)\n\n1. Never implement before GATE_VERDICT = PASS. No exceptions, no \"it's obvious\", no \"too simple to need research\".\n2. Never rely on memory. Every finding cites a real file/line/query. An uncited finding is not a finding.\n3. Never treat research as approval. Research != approval. Implementation approval must be a separate, explicit act.\n4. Never downgrade the path mid-task. Hidden complexity upgrades only.\n5. Never guess a blocker away. Unknowns go in UNKNOWNS, not into a silent assumption.\n6. Announce PATH_CLASS before asking questions, so the human can override.\n7. One question at a time when clarifying - do not batch questions.\n8. \"Too simple to need research\" is a red flag, not a justification. A bounded change still requires R2.1-R2.4 on the flow being changed.\n\n## Red Flags (self-check table)\n\n| Thought | Reality |\n|---------|---------|\n| \"This is too simple to need research\" | The gate is the gate. Bounded still needs the existing flow read. |\n| \"I'll call it bounded and skip the spec\" | Reaching for a label to skip work IS the doubt -> take the heavier path. |\n| \"Research is done, so I can start\" | Research approval != implementation approval. Present, then STOP. |\n| \"It's obvious - I'll start while they read\" | The gate is the APPROVAL, not the length. Present -> stop. |\n| \"I know this kind of app, so it's bounded\" | Bounded measures THE REPO, not your familiarity. |\n| \"It grew but I'm almost done\" | Hidden complexity upgrades the path mid-task. Stop and say so. |\n| \"They approved the spike, so the change is approved\" | Each task gets its own classification and its own approval. |\n\n## Input\n\n{{task_request}}\n{{known_context}}\n\n## Examples\n\n### Example 1 - under-researched (must STOP)\n\nRequest: \"Add a quick endpoint to reset the chat log\"\n\nPATH_CLASS: bounded\nRESEARCH:\n  EXISTING_IMPLEMENTATION: found - /api/llm-tasks/clear in mouse_spot_helper.py (same intent; a second endpoint would duplicate it)\n  DATA_MODEL: chat_reply_log (+ chat_identity_log, chat_center_message reference chat_id)\n  CALL_PATH: app.js bindReportOnly -> /api/llm-tasks/clear (only caller)\n  CONSTRAINTS: hotkey_tools.md design rule #8 - register before adding; copilot-instructions ask-guard\n  RISK_AND_ROLLBACK: blast radius = chat history only; revert = git checkout of the route\n  UNKNOWNS: whether \"reset\" means clear-all vs clear-one (ambiguous)\nEVIDENCE_COUNT: 5\nGATE_VERDICT: STOP\nSTOP_REASON: UNKNOWNS has a blocking ambiguity (\"reset\" scope) AND an existing endpoint may already satisfy the request - clarify before building.\nNEXT_ACTION: STOP and report gap\n\n### Example 2 - research genuinely complete (may proceed)\n\nRequest: \"Show chat_id column in the Chat Identity recent table\"\n\nPATH_CLASS: bounded\nRESEARCH:\n  EXISTING_IMPLEMENTATION: none found (searched: grep 'chat_id' app.js + recent_chat_identities)\n  DATA_MODEL: chat_identity_log(id, session_id, chat_id, sha256, chat_hash, action, ide, llm, source, created_at)\n  CALL_PATH: refreshChatIdentity() -> /api/chat_identity/recent -> recent_chat_identities()\n  CONSTRAINTS: ui_skill tailwind vocab (rounded-2xl / border-line / bg-panel / text-muted)\n  RISK_AND_ROLLBACK: blast radius = one table render; revert = single hunk in app.js\n  UNKNOWNS: (none)\nEVIDENCE_COUNT: 4\nGATE_VERDICT: PASS\nSTOP_REASON: (none)\nNEXT_ACTION: present short design\n"
+}

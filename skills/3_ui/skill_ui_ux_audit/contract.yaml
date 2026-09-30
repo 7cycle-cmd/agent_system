@@ -1,0 +1,111 @@
+# contract.yaml — the DECLARATION for skill_ui_ux_audit.
+#
+# THIS SKILL POINTS AT ONE STANDARD. IT DOES NOT DECLARE ITS OWN RULES.
+# -------------------------------------------------------------------
+# THE HUMAN (2026-09-27): "3 > UI template > 1, that are full cycle".
+#
+# MEASURED before this file: `skill_ui_ux_audit` (dev_task 252) had NO
+# `contract.yaml` AND NO `skill_prompt_ssot` row — so it was invisible to the
+# SSOT dropdown as well as unprovable. It was a skill that could not fail.
+#
+# WHAT THIS SKILL IS RESPONSIBLE FOR
+# ----------------------------------
+# `skill_ui_ux_audit` is the AUDIT skill: it reads a page and reports P0/P1/P2.
+# Its rules are the STANDARD's five rules; this file records that the audit's
+# verdict must be the five NUMBERS, not an adjective.
+
+skill_key: skill_ui_ux_audit
+contract_id: SKILL.UI.UX.AUDIT
+taxonomy_path: module/task_center
+version_label: v1_strict
+probe_token: "UIS."
+points_at: SKILL.UI.STANDARD
+
+purpose: >-
+  Audit a page against the ONE UI standard and report the five rules as NUMBERS
+  with a P0/P1/P2 priority, so "user friendly" is a measurement rather than an
+  opinion.
+
+purpose_not_responsible: >-
+  NOT responsible for the five rules themselves — those are declared once in
+  `SKILL.UI.STANDARD`. This skill owns the AUDIT: reading the page, running the
+  five checks, and reporting which fail and how badly.
+
+flow:
+  - Read the page's registered elements from `ui_element_register`
+  - Run all five rules on each element
+  - Report the five baselines as NUMBERS, never as an adjective
+  - Rank a failure P0 (blocks use) / P1 (costs efficiency) / P2 (polish)
+  - Prefer a front-end fix; do not change the backend to make a check pass
+
+not_to_do:
+  - DO NOT report "user friendly" without the five numbers
+  - DO NOT count a rule that does not APPLY in the denominator
+  - DO NOT stop at the first failed rule
+  - DO NOT weaken a check to make the audit pass
+
+fields:
+  - field_name: element_key
+    data_type: TEXT
+    mandatory: true
+    hard_rule: >-
+      The audited element, resolving in `ui_element_register`.
+  - field_name: page_key
+    data_type: TEXT
+    mandatory: true
+    hard_rule: >-
+      The audited page, e.g. `user_environment.sessions`. An audit with no page
+      cannot be reproduced.
+  - field_name: element_kind
+    data_type: TEXT
+    mandatory: true
+    hard_rule: >-
+      One of label / badge / number / empty_state / action.
+  - field_name: unit_key
+    data_type: TEXT
+    mandatory: true
+    hard_rule: >-
+      The measured unit, resolving in `unit_register`.
+  - field_name: status
+    data_type: TEXT
+    mandatory: true
+    hard_rule: >-
+      One of the five failure statuses or USER_FRIENDLY. The audit's verdict IS
+      this status, per element.
+
+tdd_cases:
+  - case_key: UIS.pass.all_five_rules
+    kind: pass
+    assertion: >-
+      An audited element that meets all five rules returns USER_FRIENDLY with all
+      five rule results present.
+    input: {mode: all_five_rules}
+    expected: {status: USER_FRIENDLY, keep: true, rules_total: 5}
+  - case_key: UIS.pass.five_rules_always_run
+    kind: pass
+    assertion: >-
+      The audit runs ALL FIVE rules even when all five pass, so the report cannot
+      hide the other four.
+    input: {mode: five_rules_always_run}
+    expected: {rules_total: 5, rules_failed: []}
+  - case_key: UIS.pass.count_metric_is_failures
+    kind: pass
+    assertion: >-
+      A `count` rule's metric is the count of FAILURES, so the audit cannot
+      report a hover-only hint as a pass.
+    input: {mode: count_metric_is_failures}
+    expected: {metric_kind: count, target: 0}
+  - case_key: UIS.hard_fail.unregistered_label_dropped
+    kind: hard_fail
+    assertion: >-
+      An element whose label is not a registered term is LABEL_UNREGISTERED and
+      is DROPPED.
+    input: {mode: unregistered_label_dropped}
+    expected: {status: LABEL_UNREGISTERED, keep: false}
+  - case_key: UIS.hard_fail.dropped_is_not_downgraded
+    kind: hard_fail
+    assertion: >-
+      A failing element is DROPPED with no `low_confidence` key, so the audit
+      cannot quietly keep it.
+    input: {mode: dropped_is_not_downgraded}
+    expected: {kept: 1, dropped: 1, has_low_confidence: false}

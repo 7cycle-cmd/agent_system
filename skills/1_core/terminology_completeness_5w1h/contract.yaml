@@ -1,0 +1,132 @@
+skill_key: terminology_completeness_5w1h
+contract_id: TERMINOLOGY.COMPLETENESS.5W1H
+taxonomy_path: module/task_center
+version_label: v1_strict
+
+purpose: >-
+  ANSWER the six questions a target must answer, and NAME the ones that have no
+  answer. A name answers WHAT; a FIELD answers WHICH. A question with no column
+  is a question nobody can answer, so it is REPORTED, never silently passed.
+
+purpose_not_responsible: >-
+  NOT a schema change for its own sake. It does NOT put an instance back into a
+  NAME (a window title changes, so a name carrying it is a snapshot). It does NOT
+  replace `label` with the selector -- the prose is for the HUMAN, the selector is
+  for the MACHINE. Two readers, two fields. NOT a guesser: a selector is MEASURED,
+  never inferred.
+
+flow:
+  - "1. The reader: `terminology_generator.completeness_5w1h(conn, target_name)` returns the 6 answers and the MISSING ones."
+  - "2. The field: `target_template.selector` + `selector_kind` answer WHICH. A selector with no kind is a value nobody can match."
+  - "3. The gate: `terminology_registry.check_selector(selector, selector_kind)` refuses an empty selector or an undeclared kind."
+  - "4. The phase: the `completeness_5w1h` sweep phase calls the SAME reader, so the report cannot drift from it."
+
+not_to_do:
+  - "DO NOT put an instance back into a NAME. MEASURED: `Optical` is a WINDOW TITLE, so the name would change when the window is renamed."
+  - "DO NOT replace `label` with the selector. The prose is for the human; the selector is for the machine."
+  - "DO NOT guess a selector. MEASURED: 6 labels carry a parenthetical and only 1 is an instance, so a guesser would refuse `English`."
+  - "DO NOT claim WHEN is answerable when there is no column. MEASURED: `when` is missing for ALL 20 taskbar targets, and that is a FINDING, not a pass."
+  - "DO NOT restate the 5W1H in a second place. `completeness_5w1h` is the ONE reader."
+
+refusals:
+  - code: MISSING_SELECTOR
+    rule: empty
+    when: the selector is empty or 'NA'
+    because: a target with no selector cannot answer WHICH one it is
+  - code: BAD_SELECTOR_KIND
+    rule: unknown_kind
+    when: selector_kind is not a declared kind
+    because: a selector with no kind is a value nobody can match
+  - code: MISSING_SELECTOR
+    rule: no_kind
+    when: selector_kind is 'NA'
+    because: the selector has no declared meaning
+
+catalog_vocabulary:
+  declared_table: target_template
+  selector_column: selector
+  kind_column: selector_kind
+  reader: terminology_generator.completeness_5w1h
+  gate: terminology_registry.check_selector
+  questions: [what, which, where, when, why, how]
+  selector_kinds: [window_title, executable, url, hotkey, position, variant, NA]
+
+fields:
+  - field_name: selector
+    data_type: TEXT
+    hard_rule: required for a target; the INSTANCE a machine matches on
+    mandatory: true
+    immutable: false
+  - field_name: selector_kind
+    data_type: TEXT
+    hard_rule: required; WHAT the selector matches, so a reader knows how to use it
+    mandatory: true
+    immutable: false
+  - field_name: target_name
+    data_type: TEXT
+    hard_rule: required; the target whose 5W1H is asked
+    mandatory: true
+    immutable: false
+  - field_name: missing
+    data_type: TEXT
+    hard_rule: the questions with NO answer; NAMED, never silently passed
+    mandatory: false
+    immutable: false
+  - field_name: complete
+    data_type: INTEGER
+    hard_rule: 1 when all 6 are answered; a 0 is a FINDING, not a failure to hide
+    mandatory: false
+    immutable: false
+
+tdd_cases:
+  # --- pass cases: the allowed paths ---
+  - case_key: TERMINOLOGY.COMPLETENESS.5W1H.pass.which_is_the_selector
+    kind: pass
+    assertion: >-
+      WHICH is answered by the selector. MEASURED: `taskbar_chrome` has
+      selector='Optical', selector_kind='window_title', so "which Chrome?" now
+      has a machine-usable answer.
+    input: {target_name: "taskbar_chrome"}
+    expected: {rule: valid}
+
+  - case_key: TERMINOLOGY.COMPLETENESS.5W1H.pass.variant_is_a_kind
+    kind: pass
+    assertion: >-
+      A VARIANT is a legitimate selector kind. MEASURED: `Tray input indicator
+      (English)` is a variant of one control, not an instance of it, so
+      selector_kind='variant' is correct and the name stays a KIND.
+    input: {selector: "English", selector_kind: "variant"}
+    expected: {rule: valid}
+
+  - case_key: TERMINOLOGY.COMPLETENESS.5W1H.pass.executable_is_stable
+    kind: pass
+    assertion: >-
+      An EXECUTABLE is a stable selector. MEASURED: `taskbar_microsoft_edge` ->
+      msedge.exe, which does not change when a window is renamed.
+    input: {selector: "msedge.exe", selector_kind: "executable"}
+    expected: {rule: valid}
+
+  # --- hard_fail cases: these ARE the protections ---
+  - case_key: TERMINOLOGY.COMPLETENESS.5W1H.hard_fail.selector_with_no_kind
+    kind: hard_fail
+    assertion: >-
+      A selector with NO KIND is REFUSED. `'Optical'` means nothing until a
+      reader knows it is a window title and not an executable.
+    input: {selector: "Optical", selector_kind: "NA"}
+    expected: {rule: unregistered}
+
+  - case_key: TERMINOLOGY.COMPLETENESS.5W1H.hard_fail.empty_selector
+    kind: hard_fail
+    assertion: >-
+      An EMPTY selector is REFUSED. A target with no selector cannot answer
+      WHICH one it is, which is exactly the human's question.
+    input: {selector: "", selector_kind: "window_title"}
+    expected: {rule: unregistered}
+
+  - case_key: TERMINOLOGY.COMPLETENESS.5W1H.hard_fail.undeclared_kind
+    kind: hard_fail
+    assertion: >-
+      An UNDECLARED kind is REFUSED. A kind that is not in the declared list is a
+      value nobody can act on.
+    input: {selector: "Optical", selector_kind: "whatever"}
+    expected: {rule: unregistered}

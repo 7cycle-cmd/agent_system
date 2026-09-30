@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "python scripts/plan_gate_launcher.py",
+        "windows": "python scripts\\plan_gate_launcher.py",
+        "timeout": 10
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "type": "command",
+        "command": "python scripts/plan_gate_launcher.py",
+        "windows": "python scripts\\plan_gate_launcher.py",
+        "timeout": 10
+      }
+    ],
+    "PreToolUse": [
+      {
+        "type": "command",
+        "command": "python scripts/plan_gate_launcher.py",
+        "windows": "python scripts\\plan_gate_launcher.py",
+        "timeout": 10
+      }
+    ]
+  }
+}

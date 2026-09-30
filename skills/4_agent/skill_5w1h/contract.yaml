@@ -1,0 +1,124 @@
+# contract.yaml — the DECLARATION for skill_5w1h.
+#
+# WHY THIS FILE EXISTS
+# --------------------
+# Registering a skill used to mean writing a `_register_<name>_skill.py` script.
+# Five of those exist and they are the same program five times. This file is the
+# replacement: the skill DECLARES its contract, and `skill_registrar.py` writes
+# the four SSOT layers from it. Adding a skill is now writing a skill file.
+#
+# WHY NOT IN THE .skill.md FRONTMATTER
+# ------------------------------------
+# `.skill.md` says HOW to work; this file says HOW IT IS VERIFIED. Two audiences.
+# The frontmatter would also balloon (6 fields + 6 cases) and `skill_scanner`
+# carries the whole frontmatter into every `dev_task.payload_json`.
+#
+# `field_seed` INSTEAD OF `fields`
+# --------------------------------
+# The six dimensions are ALREADY declared once, in `skill_5w1h.DIMENSIONS`, and
+# the skill's own "Not to do" section forbids a second copy:
+#
+#   "DO NOT hand-write a second copy of the six dimensions. Derive from
+#    DIMENSIONS; a copy is the drift this skill exists to prevent."
+#
+# So this declaration POINTS AT that source rather than restating it. The
+# registrar reads `DIMENSIONS` and writes the same six fields that
+# `skill_5w1h.seed_contract_5w1h` writes — which is a checkable property, not a
+# promise (see `_proof_skill_registrar.py`).
+
+skill_key: skill_5w1h
+contract_id: SKILL.5W1H
+taxonomy_path: module/task_center
+version_label: v1_strict
+
+purpose: >-
+  Make a plan or a contract answerable on six dimensions — what, why, who, when,
+  where, how — and make a missing dimension CHECKABLE rather than merely stated.
+
+purpose_not_responsible: >-
+  NOT responsible for judging whether an answer is a GOOD answer, for filling a
+  dimension on the author's behalf, for rendering a plan, or for deciding which
+  dimensions a particular artifact needs.
+
+flow:
+  - Declare the six dimensions ONCE, as data (skill_5w1h.DIMENSIONS)
+  - Derive the document template from that data, never hand-write it
+  - Write the six contract fields through skill_contract_store.upsert_field
+  - Report which dimensions a contract does NOT declare, without raising
+  - Treat a missing dimension as INCOMPLETE, never as an error
+
+not_to_do:
+  - DO NOT hand-write a second copy of the six dimensions
+  - DO NOT register a dimension as a bare heading (upsert_field refuses an empty hard_rule)
+  - DO NOT ignore the return value of upsert_field (it RETURNS a refusal, it does not raise)
+  - DO NOT treat a missing dimension as an error — it is INCOMPLETE
+  - DO NOT invent a seventh dimension for a particular artifact
+
+# Q5: point at the field source instead of restating it.
+# The registrar imports this module and reads `DIMENSIONS`, whose entries are
+# `(field_name, question, hard_rule, mandatory)`.
+field_seed: skill_5w1h
+
+# The probe token. These are BEHAVIOUR cases: they exercise `skill_5w1h`'s real
+# functions, so they cannot be decided by the payload validator and they DO need
+# a dedicated probe. `skill_registrar.py` verifies this token is present in
+# `skill_tdd_runner.PROBES` BEFORE it writes anything — a case whose key matches
+# no token returns "no probe registered" and FAILS, so the contract would be
+# documented but unproven.
+probe_token: "5W1H."
+
+# `expected` is ALWAYS a dict and ALWAYS the CORRECT outcome, for `pass` and
+# `hard_fail` alike. A plain string would be silently read as "no expectation
+# recorded" and the case would pass unconditionally.
+tdd_cases:
+  # --- pass cases: the allowed paths ---
+  - case_key: 5W1H.pass.all_six_present
+    kind: pass
+    assertion: >-
+      A contract carrying all six dimensions reports NONE missing.
+    input: {mode: all_six_present}
+    expected: {missing: []}
+
+  - case_key: 5W1H.pass.template_derived
+    kind: pass
+    assertion: >-
+      The document template is DERIVED from DIMENSIONS: every dimension name
+      appears in it, so the template cannot disagree with the fields.
+    input: {mode: template_derived}
+    expected: {all_six_in_template: true}
+
+  - case_key: 5W1H.pass.seed_writes_six
+    kind: pass
+    assertion: >-
+      Seeding a contract writes exactly the six dimensions, and is idempotent.
+    input: {mode: seed_writes_six}
+    expected: {count: 6, idempotent: true}
+
+  # --- hard_fail cases: these ARE the protections ---
+  - case_key: 5W1H.hard_fail.missing_reported_not_raised
+    kind: hard_fail
+    assertion: >-
+      A contract declaring NO dimensions reports all six as missing and does NOT
+      raise. If the module raised instead, a contract that predates the template
+      would look BROKEN rather than INCOMPLETE — and the difference matters to a
+      reader.
+    input: {mode: missing_reported}
+    expected: {missing_count: 6, raised: ""}
+
+  - case_key: 5W1H.hard_fail.unknown_contract_refused
+    kind: hard_fail
+    assertion: >-
+      Seeding an UNKNOWN contract MUST raise. A field with no contract is an
+      orphan, and writing one would create a dimension that belongs to nothing.
+    input: {mode: unknown_contract_refused}
+    expected: {raised: FiveWOneHError}
+
+  - case_key: 5W1H.hard_fail.empty_hard_rule_refused
+    kind: hard_fail
+    assertion: >-
+      A dimension with an EMPTY hard_rule MUST be refused by the contract store.
+      This is the whole point of the template: a heading can be left empty, a
+      hard rule cannot. If the refusal were removed, a dimension could be
+      registered as a bare heading and the template would certify nothing.
+    input: {mode: empty_hard_rule_refused}
+    expected: {ok: false, code: MISSING_HARD_RULE}

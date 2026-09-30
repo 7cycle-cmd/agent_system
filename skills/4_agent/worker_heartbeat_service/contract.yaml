@@ -1,0 +1,111 @@
+# contract.yaml — the DECLARATION for worker_heartbeat_service.
+#
+# WHY THIS SKILL EXISTS
+# --------------------
+# MEASURED 2026-09-24. `worker_heartbeat.business_alive` has **distinct = 1** over
+# every row, and `worker_heartbeat.pid` has **distinct = 1**. The column is not a
+# measurement of the world; it is a field the dying process wrote about itself:
+#
+#   worker_heartbeat_service.py:60   business_alive() = monotonic() - last_tick <= 30
+#   worker_heartbeat_service.py:128  INSERT ... 1 if business_alive else 0, os.getpid()
+#   worker_heartbeat_service.py:197  send_heartbeat(worker_id, snap_path, state.business_alive())
+#
+# **A dead process cannot write a row saying it is dead.** So the column is
+# structurally incapable of returning the other value — the same failure class
+# `empty_detector_failure_class` records, where a detector that cannot return both
+# values reports "all clear" forever.
+#
+# WHAT THIS SKILL IS FOR
+# ----------------------
+# The heartbeat's health is asked by whoever is READING, as *seconds since this
+# worker's newest heartbeat row*, so the writer no longer grades itself. The
+# heartbeat's job (write a row, keep a screenshot) is unchanged; what changes is
+# WHO decides whether it is alive.
+#
+# NOT RESPONSIBLE FOR restarting a stuck worker, for judging whether the work the
+# worker reports is real, or for the 5-minute cadence itself.
+
+skill_key: worker_heartbeat_service
+contract_id: SKILL.WORKER.HEARTBEAT
+# MEASURED: `module/helper` is not a `module_registry` key (see the same note in
+# helper_watchdog/contract.yaml). The heartbeat reports on the helper, and
+# `worker_heartbeat_service.py` captures through `mouse_spot_helper`'s screen
+# path (screen_watch.py:27), so that module is the taxonomy home.
+taxonomy_path: module/mouse_spot_helper
+version_label: v1_strict
+
+purpose: >-
+  Make a worker's liveness a fact ABOUT THE ROW'S AGE, computed at read time, so
+  the column that answers "is it alive?" is no longer written by the process whose
+  liveness is in question.
+
+purpose_not_responsible: >-
+  NOT responsible for restarting a stuck worker, for judging whether the work a
+  live worker does is GOOD, for choosing the heartbeat cadence, or for deleting
+  heartbeat history.
+
+flow:
+  - Ask "how old is this worker's newest heartbeat row?" as a query
+  - Compute the verdict at READ TIME, never from a value the writer supplied
+  - Return ALIVE / DEAD / NEVER, with the age null rather than zero when no row exists
+  - Report the age in a unit that names its subject
+  - Refuse a question whose unit is not declared, rather than guessing one
+
+not_to_do:
+  - DO NOT trust `business_alive` — measured distinct = 1, so it cannot say "dead"
+  - DO NOT substitute 0 for "no row exists" — 0 seconds reads as brand new
+  - DO NOT restart or signal the worker from a liveness read
+  - DO NOT answer an undeclared liveness question by inventing a unit
+  - DO NOT delete or rewrite `worker_heartbeat` rows
+
+# Q5: point at the field source instead of restating it.
+field_seed: watchdog_health
+
+# The probe token, verified in `skill_tdd_runner.PROBES` before any write.
+probe_token: "WH."
+
+tdd_cases:
+  # --- pass cases ---
+  - case_key: WH.pass.fresh_heartbeat_is_alive
+    kind: pass
+    assertion: >-
+      A heartbeat row 5 seconds old reads ALIVE, so the healthy direction of the
+      unit is reachable.
+    input: {mode: fresh_is_alive}
+    expected: {state: ALIVE, ok: true}
+
+  - case_key: WH.pass.unit_names_its_subject
+    kind: pass
+    assertion: >-
+      The unit says what is being aged ("seconds since this worker's newest
+      heartbeat row"), not merely a number of seconds.
+    input: {mode: units_named}
+    expected: {problems: []}
+
+  - case_key: WH.pass.alarm_reason_is_structured
+    kind: pass
+    assertion: >-
+      A liveness failure becomes `{ring, unit, observed, expected}`, the shape
+      `done_chain.propose_factor_from_refusal` accepts, so the EXISTING learning
+      cycle consumes it instead of a second collector being written.
+    input: {mode: alarm_reason_structured}
+    expected: {keys: [cite_ref, expected, observed, ring, unit]}
+
+  # --- hard_fail cases ---
+  - case_key: WH.hard_fail.stale_heartbeat_is_dead
+    kind: hard_fail
+    assertion: >-
+      A heartbeat row 100000 seconds old MUST read DEAD. Without this direction
+      the unit could be a constant that only ever says ALIVE — which is exactly
+      the defect measured in `business_alive` (distinct = 1).
+    input: {mode: stale_is_dead}
+    expected: {state: DEAD, ok: false}
+
+  - case_key: WH.hard_fail.undeclared_question_is_refused
+    kind: hard_fail
+    assertion: >-
+      Asking a liveness question that is NOT declared MUST raise rather than
+      guess a unit. A guessed unit would produce a number nobody can audit, which
+      is why `route_register._assert_unit` refuses a subject-less unit too.
+    input: {mode: unknown_question_refused}
+    expected: {raised: HealthError}

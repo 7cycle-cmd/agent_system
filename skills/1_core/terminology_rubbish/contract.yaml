@@ -1,0 +1,136 @@
+skill_key: terminology_rubbish
+contract_id: TERMINOLOGY.RUBBISH
+taxonomy_path: module/task_center
+version_label: v1_strict
+
+purpose: >-
+  REFUSE a definition that says nothing, and MEASURE the ones that already
+  exist. A definition must say what the thing IS; a definition that is empty,
+  that only restates the name, or that is boilerplate is not a definition.
+
+purpose_not_responsible: >-
+  NOT a rewriter. It reports; the human decides. A cleanup that rewrites
+  definitions it did not write is a SECOND AUTHOR. NOT a correctness check --
+  it cannot read meaning, so it refuses only what it can PROVE says nothing.
+
+flow:
+  - "1. The gate: `terminology_registry.check_definition(definition, term_key)` runs inside `add_term`, for a NEW term only."
+  - "2. The measurement: `terminology_rubbish.scan(conn)` reports every existing term the gate would refuse."
+  - "3. The phase: the `rubbish` sweep phase calls the SAME function, so the report cannot drift from the gate."
+
+not_to_do:
+  - "DO NOT rewrite an existing definition. Report it; the human decides."
+  - "DO NOT retro-refuse an existing row -- the gate applies to a NEW term only."
+  - "DO NOT restate the rules in a second place. `check_definition` is the ONE copy."
+  - "DO NOT claim a definition is CORRECT. The check refuses what says nothing; it cannot read meaning."
+  - "DO NOT write `taxonomy_path` -- it is a SECOND path, and a third hierarchy was already refused."
+
+refusals:
+  - code: RUBBISH_DEFINITION
+    rule: empty
+    when: the definition is empty
+    because: a term with no definition is a word nobody defined
+  - code: RUBBISH_DEFINITION
+    rule: restates_the_name
+    when: the definition equals the term_key (or its spaces form)
+    because: repeating the name says nothing about the thing
+  - code: RUBBISH_DEFINITION
+    rule: boilerplate
+    when: the definition starts with a declared placeholder
+    because: a placeholder is not a definition
+  - code: RUBBISH_DEFINITION
+    rule: too_short
+    when: the definition is below the 20-char floor
+    because: MEASURED -- the shortest real definition in the register is 64 chars
+
+catalog_vocabulary:
+  declared_table: terminology_register
+  definition_column: definition
+  gate: terminology_registry.check_definition
+  scanner: terminology_rubbish.scan
+  min_chars: 20
+  rules: [empty, restates_the_name, boilerplate, too_short]
+  scope: a NEW term only
+
+fields:
+  - field_name: definition
+    data_type: TEXT
+    hard_rule: required; must say what the thing IS, not restate its name
+    mandatory: true
+    immutable: false
+  - field_name: term_key
+    data_type: TEXT
+    hard_rule: required; the name the definition must NOT merely repeat
+    mandatory: true
+    immutable: false
+  - field_name: rule
+    data_type: TEXT
+    hard_rule: which of the four rules fired; named so a reader looks in the right place
+    mandatory: false
+    immutable: false
+  - field_name: term_id
+    data_type: INTEGER
+    hard_rule: the row the scan found; the scan WRITES NOTHING
+    mandatory: false
+    immutable: false
+  - field_name: by_rule
+    data_type: TEXT
+    hard_rule: the count per rule, so a reader sees WHICH kind of rubbish exists
+    mandatory: false
+    immutable: false
+
+tdd_cases:
+  # --- pass cases: the allowed paths ---
+  - case_key: TERMINOLOGY.RUBBISH.pass.real_definition
+    kind: pass
+    assertion: >-
+      A real definition is ACCEPTED. This is the path every one of the 1497
+      existing terms takes -- MEASURED: 0 false refusals across the whole
+      register.
+    input: {definition: "The Widgets button on the Windows taskbar: a pinned app button.", term_key: "taskbar_widgets"}
+    expected: {rule: valid}
+
+  - case_key: TERMINOLOGY.RUBBISH.pass.long_definition
+    kind: pass
+    assertion: >-
+      A long definition is ACCEPTED regardless of content, because the check
+      refuses only what it can PROVE says nothing. It cannot read meaning, so it
+      stays silent about what it cannot judge.
+    input: {definition: "A term whose definition is long enough to pass the floor and says something real.", term_key: "some_term"}
+    expected: {rule: valid}
+
+  - case_key: TERMINOLOGY.RUBBISH.pass.scan_writes_nothing
+    kind: pass
+    assertion: >-
+      The scan WRITES NOTHING. MEASURED: the register row count is identical
+      before and after a scan, because the helper reports and the human decides.
+    input: {mode: "scan"}
+    expected: {rule: valid}
+
+  # --- hard_fail cases: these ARE the protections ---
+  - case_key: TERMINOLOGY.RUBBISH.hard_fail.restates_the_name
+    kind: hard_fail
+    assertion: >-
+      A definition that only restates the term_key is REFUSED with
+      `restates_the_name`. Repeating the name says nothing about the thing.
+    input: {definition: "taskbar_widgets", term_key: "taskbar_widgets"}
+    expected: {rule: unregistered}
+
+  - case_key: TERMINOLOGY.RUBBISH.hard_fail.boilerplate
+    kind: hard_fail
+    assertion: >-
+      The sweep's own fallback (`a name from tables`) is REFUSED with
+      `boilerplate`. MEASURED: this is the exact string
+      `terminology_sweep.run_phase` would have written, and nothing refused it
+      before this gate existed.
+    input: {definition: "a name from tables", term_key: "some_table"}
+    expected: {rule: unregistered}
+
+  - case_key: TERMINOLOGY.RUBBISH.hard_fail.too_short
+    kind: hard_fail
+    assertion: >-
+      A definition below the 20-char floor is REFUSED with `too_short`.
+      MEASURED: the shortest real definition in the register is 64 chars, so the
+      floor refuses only what says nothing.
+    input: {definition: "short", term_key: "some_term"}
+    expected: {rule: unregistered}
