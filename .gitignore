@@ -66,6 +66,28 @@ qc_evidence/*
 hko_proof/
 helper_watchdog.pid
 
+# Generated evidence / captures (plan CHAT.PIPELINE.S9, S9-pre-b batch 2a).
+# MEASURED 2026-09-30: these dirs were untracked AND not ignored, so a
+# `git add -A` would have committed 10520 generated files. They are OUTPUTS,
+# not source. The dirs have NO leading dot (the plan wrote `.evidence/` etc.;
+# the real names are `evidence/` etc.).
+evidence/
+evidence_final/
+evidence_steps/
+evidence_redbox/
+chrome_cdp_profile/
+debug_shots/
+out/
+diag/
+mouse_spot_targets/crosshair/
+
+# Node dependencies (plan CHAT.PIPELINE.S17, step S17-a).
+# MEASURED 2026-09-30: 1929 files under `node_modules/` were TRACKED (69.6 MB),
+# added by the initial commit. They are INSTALLED OUTPUTS, not source — the
+# `package-lock.json` files ARE tracked (the correct thing to track), so a
+# `npm ci` reproduces them. Untracked here; the files stay on disk.
+node_modules/
+
 # Temporary / generated
 _chk_app.js
 _repair_wd_ui.py
